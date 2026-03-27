@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FHG Tracker — Trading Sportif</title>
+  <meta name="description" content="Application de trading sportif basée sur la méthode FHG (First Half Goal) et Double Chance." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="src/css/main.css" />
+  <link rel="stylesheet" href="src/css/components.css" />
+  <link rel="stylesheet" href="src/css/responsive.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <span class="logo-icon">⚡</span>
+          <span class="logo-text">FHG Tracker</span>
+        </div>
+        <button id="sidebar-close" class="sidebar-close" aria-label="Fermer le menu">✕</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" data-page="matches">
+          <span class="nav-icon">⚽</span>
+          <span class="nav-label">Matchs à venir</span>
+        </a>
+        <a href="#" class="nav-item" data-page="leagues">
+          <span class="nav-icon">🏆</span>
+          <span class="nav-label">Ligues actives</span>
+        </a>
+        <a href="#" class="nav-item" data-page="alerts">
+          <span class="nav-icon">🔔</span>
+          <span class="nav-label">Alertes</span>
+          <span class="nav-badge" id="alerts-badge">0</span>
+        </a>
+        <a href="#" class="nav-item" data-page="settings">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label">Paramètres</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="api-status">
+          <span class="api-dot" id="api-dot"></span>
+          <span class="api-label" id="api-label">API déconnectée</span>
+        </div>
+        <button id="btn-pause-session" class="btn-pause">
+          ⏸ PAUSE SESSION
+        </button>
+      </div>
+    </aside>
+
+    <!-- Mobile overlay -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <!-- Main content -->
+    <main id="main-content" class="main-content">
+      <!-- Mobile header -->
+      <header class="mobile-header">
+        <button id="menu-burger" class="btn-burger" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+        <span class="mobile-title">FHG Tracker</span>
+        <div class="mobile-api-dot" id="mobile-api-dot"></div>
+      </header>
+
+      <!-- Demo banner -->
+      <div id="demo-banner" class="demo-banner" style="display:none;">
+        <span>⚠️ Mode démonstration — Configurez votre clé API dans</span>
+        <a href="#" data-page="settings" class="demo-link">Paramètres</a>
+      </div>
+
+      <!-- Session paused banner -->
+      <div id="pause-banner" class="pause-banner" style="display:none;">
+        <span>⏸ Session en pause — Aucune alerte active</span>
+        <button id="btn-resume" class="btn-resume">Reprendre</button>
+      </div>
+
+      <!-- Page containers -->
+      <div id="page-dashboard" class="page active"></div>
+      <div id="page-matches" class="page"></div>
+      <div id="page-leagues" class="page"></div>
+      <div id="page-alerts" class="page"></div>
+      <div id="page-settings" class="page"></div>
+    </main>
+  </div>
+
+  <!-- Modal container -->
+  <div id="modal-overlay" class="modal-overlay" style="display:none;">
+    <div id="modal-container" class="modal-container"></div>
+  </div>
+
+  <!-- Focus mode overlay -->
+  <div id="focus-mode" class="focus-mode" style="display:none;">
+    <div class="focus-header">
+      <h2>Mode Focus</h2>
+      <button id="focus-exit">✕ Quitter</button>
+    </div>
+    <div id="focus-content" class="focus-content"></div>
+  </div>
+
+  <!-- JS modules -->
+  <script type="module" src="src/js/app.js"></script>
+</body>
+</html>
