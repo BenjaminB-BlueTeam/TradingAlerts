@@ -1,0 +1,93 @@
+<script>
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { isDemo, apiConnected, alertesActives, pauseSession, savePrefs } from '$lib/stores/appStore.js';
+
+  let sidebarOpen = false;
+
+  const navItems = [
+    { href: '/',         icon: '📊', label: 'Dashboard'     },
+    { href: '/matches',  icon: '⚽', label: 'Matchs à venir' },
+    { href: '/leagues',  icon: '🏆', label: 'Ligues actives' },
+    { href: '/explore',  icon: '🌍', label: 'Explorer'       },
+    { href: '/alerts',   icon: '🔔', label: 'Alertes'        },
+    { href: '/settings', icon: '⚙️', label: 'Paramètres'    },
+    { href: '/debug',    icon: '🐛', label: 'Debug'          },
+  ];
+
+  function navigate(href) {
+    goto(href);
+    savePrefs({ currentPage: href === '/' ? 'dashboard' : href.slice(1) });
+    sidebarOpen = false;
+  }
+
+  function togglePause() {
+    pauseSession.update(p => !p);
+  }
+
+  function isActive(href) {
+    if (href === '/') return $page.url.pathname === '/';
+    return $page.url.pathname.startsWith(href);
+  }
+
+  $: apiDotClass = $isDemo ? '' : $apiConnected ? 'connected' : 'error';
+  $: apiLabel = $isDemo ? 'Mode démo' : $apiConnected ? 'API connectée' : 'API déconnectée';
+  $: alertsBadgeCount = $alertesActives?.length || 0;
+</script>
+
+<!-- OVERLAY MOBILE -->
+{#if sidebarOpen}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <div class="sidebar-overlay active" on:click={() => sidebarOpen = false} role="presentation"></div>
+{/if}
+
+<!-- TOPBAR MOBILE -->
+<div class="topbar">
+  <button class="burger-btn" on:click={() => sidebarOpen = !sidebarOpen} aria-label="Menu">☰</button>
+  <span class="topbar__title">FHG Tracker</span>
+  <div class="topbar__right">
+    <div class="api-dot {apiDotClass}"></div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" class:open={sidebarOpen}>
+  <div class="sidebar__header">
+    <div class="sidebar__logo">
+      <span class="sidebar__logo-icon">⚽</span>
+      <span class="sidebar__logo-text">FHG Tracker</span>
+    </div>
+    <button class="sidebar__close-btn" on:click={() => sidebarOpen = false} aria-label="Fermer">✕</button>
+  </div>
+
+  <div class="sidebar__nav">
+    {#each navItems as item}
+      <a
+        href={item.href}
+        class="sidebar__nav-item"
+        class:active={isActive(item.href)}
+        on:click|preventDefault={() => navigate(item.href)}
+      >
+        <span class="sidebar__nav-icon">{item.icon}</span>
+        <span class="sidebar__nav-label">{item.label}</span>
+        {#if item.href === '/alerts' && alertsBadgeCount > 0}
+          <span class="sidebar__badge">{alertsBadgeCount}</span>
+        {/if}
+      </a>
+    {/each}
+  </div>
+
+  <div class="sidebar__footer">
+    <div class="sidebar__api-status">
+      <div class="api-dot {apiDotClass}"></div>
+      <span>{apiLabel}</span>
+    </div>
+    <button
+      class="btn btn--secondary btn--pause btn--full"
+      on:click={togglePause}
+      style={$pauseSession ? 'opacity:0.7' : ''}
+    >
+      {$pauseSession ? '▶ REPRENDRE SESSION' : '⏸ PAUSE SESSION'}
+    </button>
+  </div>
+</nav>
