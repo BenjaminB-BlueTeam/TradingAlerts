@@ -202,11 +202,30 @@ export function savePrefs(prefs) {
   setState({ prefs: merged });
 }
 
-export function addTrade(trade) {
-  const trades = [...state.trades, { ...trade, id: Date.now() }];
-  localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(trades));
-  setState({ trades });
-  return trade;
+export async function addTrade(trade) {
+  // Mise à jour optimiste immédiate (UI réactive)
+  const tempId = Date.now();
+  const optimistic = { ...trade, id: tempId };
+  const optimisticTrades = [...state.trades, optimistic];
+  localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(optimisticTrades));
+  setState({ trades: optimisticTrades });
+
+  // Sync Supabase en arrière-plan
+  try {
+    const { insertTrade } = await import('../api/supabase.js');
+    const saved = await insertTrade(trade);
+    if (saved?.id) {
+      const updatedTrades = state.trades.map(t =>
+        t.id === tempId ? { ...t, id: saved.id } : t
+      );
+      localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(updatedTrades));
+      setState({ trades: updatedTrades }, true);
+    }
+  } catch (e) {
+    console.warn('addTrade: Supabase indisponible, trade conservé en local', e);
+  }
+
+  return optimistic;
 }
 
 export function updateTrade(id, updates) {
@@ -215,12 +234,22 @@ export function updateTrade(id, updates) {
   );
   localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(trades));
   setState({ trades });
+
+  // Sync Supabase en arrière-plan
+  import('../api/supabase.js').then(({ updateTradeInDB }) => {
+    updateTradeInDB(id, updates);
+  });
 }
 
 export function deleteTrade(id) {
   const trades = state.trades.filter(t => t.id !== id);
   localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(trades));
   setState({ trades });
+
+  // Sync Supabase en arrière-plan
+  import('../api/supabase.js').then(({ deleteTradeFromDB }) => {
+    deleteTradeFromDB(id);
+  });
 }
 
 export function clearAllData() {
@@ -240,6 +269,31 @@ function getDefaultLeagues() {
     { id: 'la-liga',       name: 'La Liga',             country: 'Espagne',   flag: '🇪🇸', active: false, leagueId: 87  },
     { id: 'serie-a',       name: 'Serie A',             country: 'Italie',    flag: '🇮🇹', active: false, leagueId: 384 },
   ];
+}
+
+// ---- Synchronisation Supabase ----
+
+/**
+ * Charge les trades depuis Supabase au démarrage.
+ * Migre les trades localStorage si c'est le premier lancement.
+ * Fallback silencieux sur localStorage si Supabase est indisponible.
+ */
+export async function loadTradesFromSupabase() {
+  try {
+    const { fetchTrades, migrateLocalTrades } = await import('../api/supabase.js');
+
+    // Migration unique si localStorage a des trades et Supabase est vide
+    await migrateLocalTrades(state.trades);
+
+    // Charger la liste canonique depuis Supabase
+    const trades = await fetchTrades();
+    if (trades) {
+      localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(trades));
+      setState({ trades });
+    }
+  } catch (e) {
+    console.warn('loadTradesFromSupabase: fallback localStorage', e);
+  }
 }
 
 // ---- Statistiques trades ----
