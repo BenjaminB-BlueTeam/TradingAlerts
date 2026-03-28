@@ -62,34 +62,22 @@
 
   $: if (!$isDemo && !loaded) loadLeagues();
 
-  // Set des season_id actifs pour lookup rapide
-  $: activeIds = new Set($leagues.filter(l => l.active).map(l => l.leagueId || l.id));
-  $: activeCount = activeIds.size;
-  $: allFilteredActive = filtered.length > 0 && filtered.every(l => activeIds.has(l.id));
-
-  function setAll(activate) {
-    const current = [...$leagues];
-    for (const league of apiLeagues) {
-      const sid = league.id;
-      const idx = current.findIndex(l =>
-        (l.leagueId || l.id) === sid ||
-        l.name === league.name
-      );
-      if (idx > -1) {
-        current[idx] = { ...current[idx], active: activate, leagueId: sid };
-      } else {
-        current.push({
-          id: league.name.toLowerCase().replace(/\s+/g, '-'),
-          name: league.name,
-          country: league.country,
-          flag: '',
-          active: activate,
-          leagueId: sid,
-        });
-      }
-    }
-    saveLeagues(current);
+  // Trouver l'entrée store correspondant à une ligue API
+  function findStoreIndex(storeList, apiLeague) {
+    return storeList.findIndex(l =>
+      (l.leagueId && l.leagueId === apiLeague.id) ||
+      l.name === apiLeague.name ||
+      apiLeague.name.includes(l.name) ||
+      l.name.includes(apiLeague.name)
+    );
   }
+
+  function isActive(apiLeague) {
+    const idx = findStoreIndex($leagues, apiLeague);
+    return idx > -1 && $leagues[idx].active;
+  }
+
+  $: activeCount = apiLeagues.filter(l => isActive(l)).length;
 
   $: filtered = searchQuery
     ? apiLeagues.filter(l =>
@@ -98,17 +86,32 @@
       )
     : apiLeagues;
 
-  function isActive(seasonId) {
-    return activeIds.has(seasonId);
+  function setAll(activate) {
+    const current = [...$leagues];
+    for (const league of apiLeagues) {
+      const idx = findStoreIndex(current, league);
+      if (idx > -1) {
+        current[idx] = { ...current[idx], active: activate, leagueId: league.id };
+      } else {
+        current.push({
+          id: league.name.toLowerCase().replace(/\s+/g, '-'),
+          name: league.name,
+          country: league.country,
+          flag: '',
+          active: activate,
+          leagueId: league.id,
+        });
+      }
+    }
+    saveLeagues(current);
   }
 
   function toggleLeague(league) {
-    const sid = league.id;
     const current = [...$leagues];
-    const idx = current.findIndex(l => (l.leagueId || l.id) === sid || l.name === league.name);
+    const idx = findStoreIndex(current, league);
 
     if (idx > -1) {
-      current[idx] = { ...current[idx], active: !current[idx].active };
+      current[idx] = { ...current[idx], active: !current[idx].active, leagueId: league.id };
     } else {
       current.push({
         id: league.name.toLowerCase().replace(/\s+/g, '-'),
@@ -116,7 +119,7 @@
         country: league.country,
         flag: '',
         active: true,
-        leagueId: sid,
+        leagueId: league.id,
       });
     }
     saveLeagues(current);
@@ -178,7 +181,7 @@
 {:else}
   <div class="leagues-list">
     {#each filtered as league (league.id)}
-      {@const active = isActive(league.id)}
+      {@const active = isActive(league)}
       {@const stats = leagueStats[league.id]}
       <div class="league-item" class:league-item--active={active} class:league-item--expanded={expandedLeague === league.id}>
         <div class="league-item__header">
