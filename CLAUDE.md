@@ -159,6 +159,8 @@ Ces décisions sont actées, ne pas remettre en question sauf si Benjamin le dem
 - [ ] Refonte cartes — badges FHG + DC indépendants, bouton "Analyse IA"
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API en prod
 - [ ] Page Historique des Alertes
+- [ ] Page Live — surveillance matchs en temps réel (refresh auto 10-20s), suivi des alertes en cours
+- [ ] Vérification auto des résultats — après chaque match, vérifier si l'alerte FHG/DC était un succès ou un échec (goal_minute, fenêtre validée, etc.) et stocker le résultat en Supabase
 
 ---
 
