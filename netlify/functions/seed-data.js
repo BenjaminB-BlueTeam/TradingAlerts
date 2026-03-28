@@ -26,8 +26,10 @@ async function supabaseRequest(table, method, body, query = '') {
     const text = await res.text();
     throw new Error(`Supabase ${method} ${table}: ${res.status} — ${text}`);
   }
-  if (res.status === 204) return null;
-  return await res.json();
+  // return=minimal renvoie 201 (POST) ou 204 (PATCH/DELETE) avec body vide
+  const text = await res.text();
+  if (!text) return null;
+  return JSON.parse(text);
 }
 
 async function supabaseSelect(table, query = '') {
