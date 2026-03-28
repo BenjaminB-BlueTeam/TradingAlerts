@@ -11,7 +11,7 @@
   let minH2H = 3;
   let filterSignal = 'all'; // all | fort | moyen
 
-  const MAX_SEASONS = 3; // Nombre de saisons à vérifier pour les H2H
+  const MAX_SEASONS = 5; // Nombre de saisons à vérifier pour les H2H
 
   const days = [
     { label: "Aujourd'hui", offset: 0 },
@@ -173,7 +173,7 @@
 
 <div class="page-title">🎯 Double Chance — Analyse H2H</div>
 <div class="page-subtitle">
-  H2H sur 3 saisons — matchs des 3 prochains jours
+  H2H sur 5 saisons — matchs des 3 prochains jours
   {#if !loading} — {totalWithH2H} match{totalWithH2H > 1 ? 's' : ''} avec H2H{/if}
 </div>
 
