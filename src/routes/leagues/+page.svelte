@@ -65,6 +65,28 @@
   // Set des season_id actifs pour lookup rapide
   $: activeIds = new Set($leagues.filter(l => l.active).map(l => l.leagueId || l.id));
   $: activeCount = activeIds.size;
+  $: allFilteredActive = filtered.length > 0 && filtered.every(l => activeIds.has(l.id));
+
+  function setAll(activate) {
+    const current = [...$leagues];
+    for (const league of filtered) {
+      const sid = league.id;
+      const idx = current.findIndex(l => (l.leagueId || l.id) === sid);
+      if (idx > -1) {
+        current[idx] = { ...current[idx], active: activate };
+      } else if (activate) {
+        current.push({
+          id: league.name.toLowerCase().replace(/\s+/g, '-'),
+          name: league.name,
+          country: league.country,
+          flag: '',
+          active: true,
+          leagueId: sid,
+        });
+      }
+    }
+    saveLeagues(current);
+  }
 
   $: filtered = searchQuery
     ? apiLeagues.filter(l =>
@@ -131,9 +153,11 @@
   {activeCount} ligue{activeCount > 1 ? 's' : ''} active{activeCount > 1 ? 's' : ''} sur {apiLeagues.length} disponibles
 </div>
 
-<div class="leagues-search">
+<div class="leagues-toolbar">
   <input type="text" class="form-input" bind:value={searchQuery}
     placeholder="Rechercher une ligue ou un pays..." />
+  <button class="btn btn--sm btn--outline" on:click={() => setAll(true)}>Tout sélectionner</button>
+  <button class="btn btn--sm btn--outline" on:click={() => setAll(false)}>Tout désélectionner</button>
 </div>
 
 {#if loading}
@@ -255,9 +279,15 @@
 {/if}
 
 <style>
-  .leagues-search {
+  .leagues-toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
     margin-bottom: 16px;
-    max-width: 400px;
+    max-width: 600px;
+  }
+  .leagues-toolbar .form-input {
+    flex: 1;
   }
   .leagues-list {
     display: flex;
