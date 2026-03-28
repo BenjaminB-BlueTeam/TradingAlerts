@@ -19,12 +19,12 @@
     { href: '/live',     icon: '📡', label: 'Live'           },
     { href: '/dc',       icon: '🎯', label: 'Double Chance'  },
     { href: '/matches',  icon: '⚽', label: 'Matchs à venir' },
+    { href: '/explore',  icon: '🌍', label: 'Classements ligues' },
     { href: '/settings', icon: '⚙️', label: 'Paramètres'    },
   ];
 
   const adminItems = [
     { href: '/leagues',  icon: '🏆', label: 'Ligues actives' },
-    { href: '/explore',  icon: '🌍', label: 'Classements ligues' },
     { href: '/config',   icon: '🔧', label: 'Configuration'  },
     { href: '/debug',    icon: '🐛', label: 'Debug'          },
   ];
