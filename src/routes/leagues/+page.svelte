@@ -69,18 +69,18 @@
 
   function setAll(activate) {
     const current = [...$leagues];
-    for (const league of filtered) {
+    for (const league of apiLeagues) {
       const sid = league.id;
       const idx = current.findIndex(l => (l.leagueId || l.id) === sid);
       if (idx > -1) {
         current[idx] = { ...current[idx], active: activate };
-      } else if (activate) {
+      } else {
         current.push({
           id: league.name.toLowerCase().replace(/\s+/g, '-'),
           name: league.name,
           country: league.country,
           flag: '',
-          active: true,
+          active: activate,
           leagueId: sid,
         });
       }
