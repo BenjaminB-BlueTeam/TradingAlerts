@@ -71,9 +71,12 @@
     const current = [...$leagues];
     for (const league of apiLeagues) {
       const sid = league.id;
-      const idx = current.findIndex(l => (l.leagueId || l.id) === sid);
+      const idx = current.findIndex(l =>
+        (l.leagueId || l.id) === sid ||
+        l.name === league.name
+      );
       if (idx > -1) {
-        current[idx] = { ...current[idx], active: activate };
+        current[idx] = { ...current[idx], active: activate, leagueId: sid };
       } else {
         current.push({
           id: league.name.toLowerCase().replace(/\s+/g, '-'),
@@ -102,7 +105,7 @@
   function toggleLeague(league) {
     const sid = league.id;
     const current = [...$leagues];
-    const idx = current.findIndex(l => (l.leagueId || l.id) === sid);
+    const idx = current.findIndex(l => (l.leagueId || l.id) === sid || l.name === league.name);
 
     if (idx > -1) {
       current[idx] = { ...current[idx], active: !current[idx].active };
