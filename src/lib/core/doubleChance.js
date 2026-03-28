@@ -115,11 +115,15 @@ export function analyserDC(h2hMatches, homeId, awayId) {
   const recentFormA = recent3.map(r => r.teamAResult).join('');
   const recentFormB = recent3.map(r => r.teamBResult).join('');
 
+  // --- % défaite ---
+  const defeatPctA = Math.round((teamALosses / total) * 100);
+  const defeatPctB = Math.round((teamBLosses / total) * 100);
+
   // --- Signal DC ---
-  // Forte = non-défaite ≥ 70% sur les H2H
-  // Moyenne = non-défaite ≥ 55%
-  const signalA = teamANonDefeatPct >= 70 ? 'fort' : teamANonDefeatPct >= 55 ? 'moyen' : 'faible';
-  const signalB = teamBNonDefeatPct >= 70 ? 'fort' : teamBNonDefeatPct >= 55 ? 'moyen' : 'faible';
+  // Fort = défaite ≤ 20% (donc ne perd presque jamais dans les H2H)
+  // Moyen = défaite ≤ 35%
+  const signalA = defeatPctA <= 20 ? 'fort' : defeatPctA <= 35 ? 'moyen' : 'faible';
+  const signalB = defeatPctB <= 20 ? 'fort' : defeatPctB <= 35 ? 'moyen' : 'faible';
 
   // Meilleur côté DC
   const bestSide = teamANonDefeatPct > teamBNonDefeatPct ? 'home' :
@@ -136,6 +140,7 @@ export function analyserDC(h2hMatches, homeId, awayId) {
       draws: teamADraws,
       losses: teamALosses,
       nonDefeatPct: teamANonDefeatPct,
+      defeatPct: defeatPctA,
       comebackRate: comebackRateA,
       comebacksCount: comebacksA,
       comebacksFrom: matchesWithHTTrailA,
@@ -152,6 +157,7 @@ export function analyserDC(h2hMatches, homeId, awayId) {
       draws: teamBDraws,
       losses: teamBLosses,
       nonDefeatPct: teamBNonDefeatPct,
+      defeatPct: defeatPctB,
       comebackRate: comebackRateB,
       comebacksCount: comebacksB,
       comebacksFrom: matchesWithHTTrailB,

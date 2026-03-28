@@ -90,14 +90,14 @@
   $: filteredAnalyses = analyses.filter(a => {
     if (selectedDay !== -1 && a.dayOffset !== selectedDay) return false;
     if (a.dc.nbH2H < minH2H) return false;
-    if (filterSignal === 'fort' && a.dc.teamA.signal !== 'fort' && a.dc.teamB.signal !== 'fort') return false;
-    if (filterSignal === 'moyen' && a.dc.teamA.signal === 'faible' && a.dc.teamB.signal === 'faible') return false;
+    if (filterSignal === 'fort' && a.dc.teamA.defeatPct > 20 && a.dc.teamB.defeatPct > 20) return false;
+    if (filterSignal === 'moyen' && a.dc.teamA.defeatPct > 35 && a.dc.teamB.defeatPct > 35) return false;
     return a.dc.hasData;
   }).sort((a, b) => {
-    // Trier par meilleur % non-défaite H2H
-    const maxA = Math.max(a.dc.teamA.nonDefeatPct, a.dc.teamB.nonDefeatPct);
-    const maxB = Math.max(b.dc.teamA.nonDefeatPct, b.dc.teamB.nonDefeatPct);
-    return maxB - maxA;
+    // Trier par plus bas % défaite H2H (meilleur signal DC en premier)
+    const minA = Math.min(a.dc.teamA.defeatPct, a.dc.teamB.defeatPct);
+    const minB = Math.min(b.dc.teamA.defeatPct, b.dc.teamB.defeatPct);
+    return minA - minB;
   });
 
   $: totalWithH2H = analyses.filter(a => a.dc.hasData && a.dc.nbH2H >= minH2H).length;
@@ -112,6 +112,13 @@
     if (pct >= 70) return 'var(--color-accent-green)';
     if (pct >= 55) return 'var(--color-signal-moyen)';
     return 'var(--color-text-muted)';
+  }
+
+  // Pour le % défaite : bas = vert (bon), haut = rouge (mauvais)
+  function defeatColor(pct) {
+    if (pct <= 20) return 'var(--color-accent-green)';
+    if (pct <= 35) return 'var(--color-signal-moyen)';
+    return 'var(--color-danger)';
   }
 
   // Expand
@@ -198,12 +205,12 @@
           <div class="dc-card__teams">
             <div class="dc-card__team" class:dc-card__team--best={bestIsHome}>
               <span class="dc-card__team-name">{a.homeName}</span>
-              <span class="dc-badge {signalClass(dc.teamA.signal)}">{dc.teamA.nonDefeatPct}%</span>
+              <span class="dc-badge {signalClass(dc.teamA.signal)}">{dc.teamA.defeatPct}% def.</span>
             </div>
             <span class="dc-card__vs">vs</span>
             <div class="dc-card__team" class:dc-card__team--best={bestIsAway}>
               <span class="dc-card__team-name">{a.awayName}</span>
-              <span class="dc-badge {signalClass(dc.teamB.signal)}">{dc.teamB.nonDefeatPct}%</span>
+              <span class="dc-badge {signalClass(dc.teamB.signal)}">{dc.teamB.defeatPct}% def.</span>
             </div>
           </div>
 
@@ -221,9 +228,9 @@
               <div class="dc-stat-col">
                 <div class="dc-stat-col__title">{a.homeName}</div>
                 <div class="dc-stat-row">
-                  <span class="dc-stat-label">Non-defaite H2H</span>
-                  <span class="dc-stat-value" style:color={pctColor(dc.teamA.nonDefeatPct)}>
-                    <strong>{dc.teamA.nonDefeatPct}%</strong>
+                  <span class="dc-stat-label">Defaite H2H</span>
+                  <span class="dc-stat-value" style:color={defeatColor(dc.teamA.defeatPct)}>
+                    <strong>{dc.teamA.defeatPct}%</strong>
                     <small>({dc.teamA.wins}V {dc.teamA.draws}N {dc.teamA.losses}D)</small>
                   </span>
                 </div>
@@ -275,9 +282,9 @@
               <div class="dc-stat-col">
                 <div class="dc-stat-col__title">{a.awayName}</div>
                 <div class="dc-stat-row">
-                  <span class="dc-stat-label">Non-defaite H2H</span>
-                  <span class="dc-stat-value" style:color={pctColor(dc.teamB.nonDefeatPct)}>
-                    <strong>{dc.teamB.nonDefeatPct}%</strong>
+                  <span class="dc-stat-label">Defaite H2H</span>
+                  <span class="dc-stat-value" style:color={defeatColor(dc.teamB.defeatPct)}>
+                    <strong>{dc.teamB.defeatPct}%</strong>
                     <small>({dc.teamB.wins}V {dc.teamB.draws}N {dc.teamB.losses}D)</small>
                   </span>
                 </div>
