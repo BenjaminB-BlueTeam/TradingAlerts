@@ -86,7 +86,7 @@ async function startFull() {
   const jobId = jobs[0]?.id;
 
   // Récupérer les ligues actives depuis FootyStats
-  const leaguesData = await footyRequest('league-list');
+  const leaguesData = await footyRequest('league-list', { chosen_leagues_only: 'true' });
   const leagues = (leaguesData?.data || leaguesData || []).map(l => ({
     id: l.id || l.league_id,
     name: l.name || l.league_name,

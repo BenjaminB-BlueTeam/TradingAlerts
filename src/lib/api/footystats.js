@@ -67,7 +67,7 @@ export async function testApiConnection() {
 export async function getAllLeagues() {
   const isDemo = getIsDemo();
   if (isDemo) return MOCK_DATA.leagues;
-  return await apiRequest('league-list');
+  return await apiRequest('league-list', { chosen_leagues_only: 'true' });
 }
 
 export async function getLeagueTeams(leagueId) {
