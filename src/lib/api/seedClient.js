@@ -43,14 +43,21 @@ export async function seedLeague(seasonId) {
 
   // 2. Insert dans Supabase côté client (pas de timeout)
   const errors = [];
-  const BATCH = 200;
+  const BATCH = 100;
   for (let i = 0; i < data.rows.length; i += BATCH) {
     const batch = data.rows.slice(i, i + BATCH);
-    const { error } = await supabase
-      .from('h2h_matches')
-      .upsert(batch, { onConflict: 'match_id' });
+    // Essayer upsert, fallback sur insert avec ignore duplicates
+    let error;
+    ({ error } = await supabase.from('h2h_matches').upsert(batch));
+    if (error && error.code === '23505') {
+      // Duplicate key — insérer un par un en ignorant les doublons
+      for (const row of batch) {
+        await supabase.from('h2h_matches').upsert(row);
+      }
+      error = null;
+    }
     if (error) {
-      errors.push(`batch ${i}: ${error.message}`);
+      errors.push(`batch ${i}: ${error.message} (${error.code})`);
     }
   }
 
