@@ -48,7 +48,8 @@ src/
     matches/+page.svelte ← Matchs à venir (table)
     leagues/+page.svelte ← Ligues actives (toggle, stats, classement)
     explore/+page.svelte ← Explorer toutes les ligues (par pays, stats, classement)
-    alerts/+page.svelte  ← Alertes + config algo
+    alerts/+page.svelte  ← Alertes FHG + DC (matchs pertinents à surveiller)
+    config/+page.svelte  ← Configuration algo (profil, seuils, trades)
     settings/+page.svelte← Paramètres, journal trades, bankroll
     debug/+page.svelte   ← Debug (test API/Supabase, seed, testeur API brut)
   lib/
@@ -135,7 +136,8 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - **Page Explorer** — ligues groupées par pays, mêmes stats, classement expand
 - **Page Debug** — test API/Supabase, stats cache, seed data, testeur API brut avec copie JSON
 - **Seed Data** — Netlify Function seed-data.js, orchestration client ligue par ligue
-- **Sidebar** — nav principale (Dashboard, DC, Matchs, Alertes, Paramètres) + section Admin repliable (Ligues, Explorer, Debug) + bouton Refresh (vide cache + reload)
+- **Page Alertes** (`/alerts`) — matchs à surveiller, 2 sections FHG (but 1MT ≥60%) et DC (défaite H2H ≤35%), H2H sur 5 saisons, ligues actives uniquement
+- **Sidebar** — nav principale (Dashboard, Alertes, DC, Matchs, Paramètres) + section Admin repliable (Ligues, Explorer, Configuration, Debug) + bouton Refresh (vide cache + reload)
 
 ---
 

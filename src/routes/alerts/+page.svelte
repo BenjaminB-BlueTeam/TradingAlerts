@@ -1,431 +1,464 @@
 <script>
-  import { config, saveConfig, trades, updateTrade, deleteTrade, calcStatsTradesGlobal } from '$lib/stores/appStore.js';
+  import { onMount } from 'svelte';
+  import { isDemo, leagues } from '$lib/stores/appStore.js';
+  import { getTodaysMatches, getLeagueMatches, getAllLeagues } from '$lib/api/footystats.js';
+  import { analyserDC, resultIcon } from '$lib/core/doubleChance.js';
 
-  const profilLabels = {
-    debutant:      { name: 'Debutant',       desc: '5-10e, cote ~1.50' },
-    intermediaire: { name: 'Intermediaire',   desc: '15-20e' },
-    expert:        { name: 'Expert',          desc: '25-35e, cote 2.30+' },
-  };
+  let loading = true;
+  let selectedDay = -1; // -1 = tous, 0/1/2 = jour
+  let fhgAlerts = [];
+  let dcAlerts = [];
 
-  function setConfig(key, value) {
-    saveConfig({ [key]: value });
-    if (typeof window !== 'undefined' && window.showToast) {
-      window.showToast('Configuration sauvegardee', 'success');
-    }
+  const MAX_SEASONS = 5;
+
+  const days = [
+    { label: "Aujourd'hui", offset: 0 },
+    { label: 'Demain', offset: 1 },
+    { label: 'Après-demain', offset: 2 },
+  ];
+
+  function getDateStr(offset) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().split('T')[0];
   }
 
-  function setToggle(key, checked) {
-    saveConfig({ [key]: checked });
-    if (key === 'filtreH2HActif' && !checked && typeof window !== 'undefined' && window.showToast) {
-      window.showToast('Filtre H2H desactive — contre-recommande !', 'warning');
-      return;
-    }
-    if (typeof window !== 'undefined' && window.showToast) {
-      window.showToast('Configuration sauvegardee', 'success');
-    }
+  function formatTime(unix) {
+    if (!unix) return '—';
+    return new Date(unix * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function setProfil(profil) {
-    saveConfig({ profil });
-    if (typeof window !== 'undefined' && window.showToast) {
-      window.showToast(`Profil "${profil}" selectionne`, 'info');
-    }
-  }
+  async function loadAlerts() {
+    loading = true;
+    fhgAlerts = [];
+    dcAlerts = [];
 
-  function handleTradeResult(id, value) {
-    updateTrade(id, { resultat: value });
-    if (typeof window !== 'undefined' && window.showToast) {
-      window.showToast('Resultat mis a jour', 'success');
-    }
-  }
-
-  function handleDeleteTrade(id) {
-    if (confirm('Supprimer ce trade ?')) {
-      deleteTrade(id);
-      if (typeof window !== 'undefined' && window.showToast) {
-        window.showToast('Trade supprime', 'info');
+    // Charger les ligues pour les saisons historiques
+    const allLeagues = await getAllLeagues();
+    const seasonsByCurrentId = {};
+    for (const league of allLeagues) {
+      if (!league.seasons) continue;
+      const sorted = [...league.seasons].sort((a, b) => String(b.year).localeCompare(String(a.year)));
+      const last = sorted.slice(0, MAX_SEASONS).map(s => s.id);
+      for (const s of sorted) {
+        seasonsByCurrentId[s.id] = last;
       }
     }
+
+    // Charger les matchs des 3 jours
+    const allMatches = [];
+    for (let i = 0; i <= 2; i++) {
+      try {
+        const dateStr = getDateStr(i);
+        const dayMatches = await getTodaysMatches(dateStr);
+        if (Array.isArray(dayMatches)) {
+          dayMatches.forEach(m => { m._dayOffset = i; m._dateStr = dateStr; });
+          allMatches.push(...dayMatches);
+        }
+      } catch {}
+    }
+
+    // Filtrer : uniquement les matchs des ligues actives
+    const activeIds = new Set($leagues.filter(l => l.active).map(l => l.leagueId || l.id));
+    // Aussi matcher par nom de ligue
+    const activeNames = new Set($leagues.filter(l => l.active).map(l => l.name));
+
+    const relevantMatches = allMatches.filter(m => {
+      const compId = m.competition_id || m.league_id;
+      if (activeIds.has(compId)) return true;
+      // Fallback name match
+      const compName = m.competition_name || m.league_name || '';
+      return [...activeNames].some(n => compName.includes(n) || n.includes(compName));
+    });
+
+    // Analyser DC + FHG pour chaque match
+    const leagueMatchesCache = {};
+    const fhgResults = [];
+    const dcResults = [];
+
+    for (const m of relevantMatches) {
+      try {
+        const leagueId = m.competition_id || m.league_id;
+        if (!leagueId) continue;
+
+        // H2H multi-saisons
+        const seasonIds = seasonsByCurrentId[leagueId] || [leagueId];
+        let allLeagueMatches = [];
+        for (const sid of seasonIds) {
+          if (!leagueMatchesCache[sid]) {
+            try { leagueMatchesCache[sid] = await getLeagueMatches(sid); } catch { leagueMatchesCache[sid] = []; }
+          }
+          allLeagueMatches.push(...(leagueMatchesCache[sid] || []));
+        }
+
+        const h2h = allLeagueMatches.filter(lm =>
+          lm.status === 'complete' && (
+            (lm.homeID === m.homeID && lm.awayID === m.awayID) ||
+            (lm.homeID === m.awayID && lm.awayID === m.homeID)
+          )
+        );
+
+        // Dédupliquer
+        const seen = new Set();
+        const uniqueH2H = h2h.filter(lm => {
+          const key = lm.id || `${lm.date_unix}_${lm.homeID}_${lm.awayID}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        const dc = analyserDC(uniqueH2H, m.homeID, m.awayID);
+
+        const entry = {
+          match: m,
+          dc,
+          homeName: m.home_name || 'Home',
+          awayName: m.away_name || 'Away',
+          leagueName: m.competition_name || m.league_name || '—',
+          dayOffset: m._dayOffset,
+          dateStr: m._dateStr,
+          time: formatTime(m.date_unix),
+          nbH2H: dc.nbH2H,
+        };
+
+        // FHG : vérifier si historique H2H montre des buts 31-45 min
+        // Pour l'instant, on flag FHG si au moins 60% des H2H ont un but en 1MT
+        if (dc.hasData && dc.nbH2H >= 3) {
+          const matchesWithGoal1MT = uniqueH2H.filter(lm => {
+            const htHome = lm.ht_goals_team_a ?? lm.homeGoals_HT ?? 0;
+            const htAway = lm.ht_goals_team_b ?? lm.awayGoals_HT ?? 0;
+            return (htHome + htAway) > 0;
+          }).length;
+          const pctGoal1MT = Math.round((matchesWithGoal1MT / uniqueH2H.length) * 100);
+          entry.fhgPct = pctGoal1MT;
+          entry.fhgSignal = pctGoal1MT >= 75 ? 'fort' : pctGoal1MT >= 60 ? 'moyen' : 'faible';
+
+          if (pctGoal1MT >= 60) {
+            fhgResults.push(entry);
+          }
+        }
+
+        // DC : signal fort ou moyen (défaite ≤ 35%)
+        if (dc.hasData && dc.nbH2H >= 3) {
+          const bestDefeatPct = Math.min(dc.teamA.defeatPct, dc.teamB.defeatPct);
+          if (bestDefeatPct <= 35) {
+            dcResults.push(entry);
+          }
+        }
+      } catch {}
+    }
+
+    // Trier FHG par % but 1MT décroissant
+    fhgAlerts = fhgResults.sort((a, b) => b.fhgPct - a.fhgPct);
+    // Trier DC par % défaite croissant (meilleur signal en premier)
+    dcAlerts = dcResults.sort((a, b) => {
+      const minA = Math.min(a.dc.teamA.defeatPct, a.dc.teamB.defeatPct);
+      const minB = Math.min(b.dc.teamA.defeatPct, b.dc.teamB.defeatPct);
+      return minA - minB;
+    });
+
+    loading = false;
   }
 
-  $: cfg = $config;
-  $: tradesJoues = $trades.filter(t => t.resultat !== 'non_joue');
-  $: stats = calcStatsTradesGlobal();
-  $: recentTrades = $trades.slice().reverse().slice(0, 20);
+  $: filteredFHG = selectedDay === -1 ? fhgAlerts : fhgAlerts.filter(a => a.dayOffset === selectedDay);
+  $: filteredDC = selectedDay === -1 ? dcAlerts : dcAlerts.filter(a => a.dayOffset === selectedDay);
+
+  function defeatColor(pct) {
+    if (pct <= 20) return 'var(--color-accent-green)';
+    if (pct <= 35) return 'var(--color-signal-moyen)';
+    return 'var(--color-danger)';
+  }
+
+  function fhgColor(pct) {
+    if (pct >= 75) return 'var(--color-accent-green)';
+    if (pct >= 60) return 'var(--color-signal-moyen)';
+    return 'var(--color-text-muted)';
+  }
+
+  onMount(() => { loadAlerts(); });
+  $: if (!$isDemo) loadAlerts();
 </script>
 
-<div class="page-title">Alertes & Configuration</div>
-<div class="page-subtitle">Parametrez les seuils de la strategie FHG</div>
-
-<!-- BLOC FHG -->
-<div class="settings-block">
-  <div class="settings-block__title">⚡ Criteres FHG principaux</div>
-
-  <div class="slider-row mb-16">
-    <div class="slider-header">
-      <span class="slider-label">Seuil FHG 31-45min saison N</span>
-      <span class="slider-value">{cfg.seuilFHG}%</span>
-    </div>
-    <input type="range" class="form-input"
-      min="60" max="90" value={cfg.seuilFHG}
-      on:change={e => setConfig('seuilFHG', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, seuilFHG: parseInt(e.target.value)}))} />
-  </div>
-
-  <div class="slider-row mb-16">
-    <div class="slider-header">
-      <span class="slider-label">Seuil forme 5 derniers matchs</span>
-      <span class="slider-value">{cfg.seuil5Matchs}/5</span>
-    </div>
-    <input type="range" class="form-input"
-      min="2" max="5" value={cfg.seuil5Matchs}
-      on:change={e => setConfig('seuil5Matchs', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, seuil5Matchs: parseInt(e.target.value)}))} />
-  </div>
-
-  <div class="toggle-row">
-    <div class="toggle-info">
-      <div class="toggle-info__label">Ignorer debut de saison</div>
-      <div class="toggle-info__sub">Malus -10 pts si moins de {cfg.seuilMatchsMin} matchs joues</div>
-    </div>
-    <label class="toggle-switch">
-      <input type="checkbox" checked={cfg.ignoreDebutSaison}
-        on:change={e => setToggle('ignoreDebutSaison', e.target.checked)} />
-      <span class="toggle-slider"></span>
-    </label>
-  </div>
-
-  <div class="slider-row mb-16 mt-12">
-    <div class="slider-header">
-      <span class="slider-label">Seuil matchs joues min (debut saison)</span>
-      <span class="slider-value">{cfg.seuilMatchsMin} matchs</span>
-    </div>
-    <input type="range" class="form-input"
-      min="5" max="15" value={cfg.seuilMatchsMin}
-      on:change={e => setConfig('seuilMatchsMin', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, seuilMatchsMin: parseInt(e.target.value)}))} />
-  </div>
-
-  <div class="toggle-row">
-    <div class="toggle-info">
-      <div class="toggle-info__label">Ponderation saison N-1</div>
-      <div class="toggle-info__sub">Integre les stats de la saison precedente (25%)</div>
-    </div>
-    <label class="toggle-switch">
-      <input type="checkbox" checked={cfg.ponderationN1}
-        on:change={e => setToggle('ponderationN1', e.target.checked)} />
-      <span class="toggle-slider"></span>
-    </label>
-  </div>
+<div class="page-title">🔔 Alertes</div>
+<div class="page-subtitle">
+  Matchs à surveiller — H2H sur 5 saisons, ligues actives uniquement
 </div>
 
-<!-- BLOC 1MT -->
-<div class="settings-block">
-  <div class="settings-block__title">★ Bonus 1MT 50%+</div>
-
-  <div class="toggle-row">
-    <div class="toggle-info">
-      <div class="toggle-info__label">Afficher le badge 1MT 50%+</div>
-    </div>
-    <label class="toggle-switch">
-      <input type="checkbox" checked={cfg.afficher1MT}
-        on:change={e => setToggle('afficher1MT', e.target.checked)} />
-      <span class="toggle-slider"></span>
-    </label>
-  </div>
-
-  <div class="toggle-row">
-    <div class="toggle-info">
-      <div class="toggle-info__label">Alerter en priorite si badge present</div>
-      <div class="toggle-info__sub">Remonte les matchs avec badge 1MT en tete de liste</div>
-    </div>
-    <label class="toggle-switch">
-      <input type="checkbox" checked={cfg.alerter1MT}
-        on:change={e => setToggle('alerter1MT', e.target.checked)} />
-      <span class="toggle-slider"></span>
-    </label>
-  </div>
-
-  <div class="slider-row mb-0 mt-12">
-    <div class="slider-header">
-      <span class="slider-label">Seuil du badge 1MT</span>
-      <span class="slider-value">{cfg.seuil1MT}%</span>
-    </div>
-    <input type="range" class="form-input"
-      min="50" max="70" value={cfg.seuil1MT}
-      on:change={e => setConfig('seuil1MT', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, seuil1MT: parseInt(e.target.value)}))} />
-  </div>
+<!-- Filtres jours -->
+<div class="alerts-filters">
+  <button class="alerts-filter-btn" class:active={selectedDay === -1} on:click={() => selectedDay = -1}>
+    Tous ({fhgAlerts.length + dcAlerts.length})
+  </button>
+  {#each days as day, i}
+    <button class="alerts-filter-btn" class:active={selectedDay === i} on:click={() => selectedDay = i}>
+      {day.label}
+    </button>
+  {/each}
 </div>
 
-<!-- BLOC H2H -->
-<div class="settings-block">
-  <div class="settings-block__title">⚔ H2H Clean Sheet</div>
+{#if loading}
+  <div class="empty-state" style="padding:40px;">
+    <div class="empty-state__icon">⏳</div>
+    <div class="empty-state__title">Analyse des matchs en cours...</div>
+    <div style="font-size:12px;color:var(--color-text-muted);margin-top:8px;">
+      Chargement des H2H sur 5 saisons
+    </div>
+  </div>
+{:else}
 
-  <div class="toggle-row">
-    <div class="toggle-info">
-      <div class="toggle-info__label">Filtre H2H actif</div>
-      <div class="toggle-info__sub" style:color={cfg.filtreH2HActif ? 'var(--color-text-muted)' : 'var(--color-danger)'}>
-        {cfg.filtreH2HActif
-          ? 'Les matchs a 0 but en 1MT sur H2H sont automatiquement exclus'
-          : '⚠ FILTRE DESACTIVE — Contre-recommande'
-        }
+  <!-- SECTION FHG -->
+  <div class="alerts-section">
+    <div class="alerts-section__header">
+      <span class="alerts-section__icon">⚽</span>
+      <span class="alerts-section__title">FHG — But en 1re mi-temps</span>
+      <span class="alerts-section__count">{filteredFHG.length}</span>
+    </div>
+
+    {#if filteredFHG.length === 0}
+      <div class="alerts-empty">Aucun match FHG pertinent</div>
+    {:else}
+      <div class="alerts-list">
+        {#each filteredFHG as a (a.match.id + '_fhg')}
+          <div class="alert-card">
+            <div class="alert-card__time">
+              <div class="alert-card__day">{days[a.dayOffset]?.label || a.dateStr}</div>
+              <div class="alert-card__hour">{a.time}</div>
+            </div>
+            <div class="alert-card__match">
+              <div class="alert-card__teams">{a.homeName} vs {a.awayName}</div>
+              <div class="alert-card__league">{a.leagueName}</div>
+            </div>
+            <div class="alert-card__stats">
+              <div class="alert-pill" title="% de H2H avec but en 1MT">
+                <span class="alert-pill__label">But 1MT</span>
+                <span class="alert-pill__value" style:color={fhgColor(a.fhgPct)}>{a.fhgPct}%</span>
+              </div>
+              <div class="alert-pill" title="Nombre de H2H analysés">
+                <span class="alert-pill__label">H2H</span>
+                <span class="alert-pill__value">{a.nbH2H}</span>
+              </div>
+              <div class="alert-pill" title="Buts moyens par H2H">
+                <span class="alert-pill__label">Avg</span>
+                <span class="alert-pill__value">{a.dc.avgGoals}</span>
+              </div>
+            </div>
+            <span class="alert-badge alert-badge--{a.fhgSignal}">{a.fhgSignal}</span>
+          </div>
+        {/each}
       </div>
-    </div>
-    <label class="toggle-switch">
-      <input type="checkbox" checked={cfg.filtreH2HActif}
-        on:change={e => setToggle('filtreH2HActif', e.target.checked)} />
-      <span class="toggle-slider"></span>
-    </label>
-  </div>
-
-  {#if !cfg.filtreH2HActif}
-    <div class="danger-box mt-8">
-      🚫 Desactiver ce filtre va a l'encontre de la regle fondamentale de la methode.
-      La recurrence prime sur tout. Un FHG de 90% ne justifie pas de prendre un match
-      ou l'equipe n'a jamais marque en 1MT contre cet adversaire. Zero exception.
-    </div>
-  {/if}
-
-  <div class="slider-row mb-16 mt-12">
-    <div class="slider-header">
-      <span class="slider-label">Nb minimum H2H pour appliquer exclusion</span>
-      <span class="slider-value">{cfg.minH2H}</span>
-    </div>
-    <input type="range" class="form-input"
-      min="1" max="5" value={cfg.minH2H}
-      on:change={e => setConfig('minH2H', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, minH2H: parseInt(e.target.value)}))} />
-  </div>
-
-  <div class="slider-row mb-0">
-    <div class="slider-header">
-      <span class="slider-label">Penalite H2H orange (1 but en 1MT)</span>
-      <span class="slider-value">-{cfg.penaliteH2H} pts</span>
-    </div>
-    <input type="range" class="form-input"
-      min="5" max="15" value={cfg.penaliteH2H}
-      on:change={e => setConfig('penaliteH2H', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, penaliteH2H: parseInt(e.target.value)}))} />
-  </div>
-</div>
-
-<!-- BLOC DC -->
-<div class="settings-block">
-  <div class="settings-block__title">🔄 Double Chance (DC)</div>
-
-  <div class="toggle-row">
-    <div class="toggle-info">
-      <div class="toggle-info__label">Analyse DC automatique</div>
-    </div>
-    <label class="toggle-switch">
-      <input type="checkbox" checked={cfg.analyseDC}
-        on:change={e => setToggle('analyseDC', e.target.checked)} />
-      <span class="toggle-slider"></span>
-    </label>
-  </div>
-
-  <div class="slider-row mb-16 mt-12">
-    <div class="slider-header">
-      <span class="slider-label">Seuil % retour au score si encaisse</span>
-      <span class="slider-value">{cfg.seuilRetourDC}%</span>
-    </div>
-    <input type="range" class="form-input"
-      min="45" max="75" value={cfg.seuilRetourDC}
-      on:change={e => setConfig('seuilRetourDC', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, seuilRetourDC: parseInt(e.target.value)}))} />
-  </div>
-
-  <div class="info-box" style="font-size:12px;">
-    🔒 DC identifiee uniquement apres analyse FHG — Regle absolue (non modifiable)
-  </div>
-</div>
-
-<!-- BLOC TIMING -->
-<div class="settings-block">
-  <div class="settings-block__title">⏱ Timing</div>
-
-  <div class="form-group">
-    <label class="form-label">Profil joueur</label>
-    <div class="profile-selector">
-      {#each ['debutant', 'intermediaire', 'expert'] as p}
-        <button class="profile-btn" class:active={cfg.profil === p}
-          on:click={() => setProfil(p)}>
-          <span class="profile-btn__name">{profilLabels[p].name}</span>
-          <span class="profile-btn__desc">{profilLabels[p].desc}</span>
-        </button>
-      {/each}
-    </div>
-  </div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;">
-    <div class="slider-row">
-      <div class="slider-header">
-        <span class="slider-label">Ne pas alerter avant la</span>
-        <span class="slider-value">{cfg.minuteMin}e min</span>
-      </div>
-      <input type="range" class="form-input"
-        min="1" max="40" value={cfg.minuteMin}
-        on:change={e => setConfig('minuteMin', parseInt(e.target.value))}
-        on:input={e => config.update(c => ({...c, minuteMin: parseInt(e.target.value)}))} />
-    </div>
-    <div class="slider-row">
-      <div class="slider-header">
-        <span class="slider-label">Ne pas alerter apres la</span>
-        <span class="slider-value">{cfg.minuteMax}e min</span>
-      </div>
-      <input type="range" class="form-input"
-        min="50" max="90" value={cfg.minuteMax}
-        on:change={e => setConfig('minuteMax', parseInt(e.target.value))}
-        on:input={e => config.update(c => ({...c, minuteMax: parseInt(e.target.value)}))} />
-    </div>
-  </div>
-</div>
-
-<!-- BLOC SESSION -->
-<div class="settings-block">
-  <div class="settings-block__title">🎮 Session</div>
-
-  <div class="slider-row mb-16">
-    <div class="slider-header">
-      <span class="slider-label">Max alertes par session</span>
-      <span class="slider-value">{cfg.maxAlertes}</span>
-    </div>
-    <input type="range" class="form-input"
-      min="1" max="15" value={cfg.maxAlertes}
-      on:change={e => setConfig('maxAlertes', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, maxAlertes: parseInt(e.target.value)}))} />
-  </div>
-
-  <div class="toggle-row">
-    <div class="toggle-info">
-      <div class="toggle-info__label">Stop apres N victoires consecutives</div>
-      <div class="toggle-info__sub">Pause automatique apres une serie gagnante</div>
-    </div>
-    <label class="toggle-switch">
-      <input type="checkbox" checked={cfg.stopVictoires}
-        on:change={e => setToggle('stopVictoires', e.target.checked)} />
-      <span class="toggle-slider"></span>
-    </label>
-  </div>
-
-  <div class="slider-row mt-12">
-    <div class="slider-header">
-      <span class="slider-label">Nb de victoires avant pause</span>
-      <span class="slider-value">{cfg.nbVictoires}</span>
-    </div>
-    <input type="range" class="form-input"
-      min="2" max="10" value={cfg.nbVictoires}
-      on:change={e => setConfig('nbVictoires', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, nbVictoires: parseInt(e.target.value)}))} />
-  </div>
-</div>
-
-<!-- HISTORIQUE ALERTES -->
-<div class="settings-block">
-  <div class="settings-block__title">📋 Historique des alertes</div>
-
-  {#if tradesJoues.length >= 20 && stats}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
-      <div class="stat-card">
-        <div class="stat-card__label">Avec badge 1MT 50%+</div>
-        <div class="stat-card__value" class:green={stats.taux1MT >= 60} class:orange={stats.taux1MT < 60}>
-          {stats.taux1MT ?? '—'}%
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">Sans badge 1MT</div>
-        <div class="stat-card__value">{stats.tauxSans1MT ?? '—'}%</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">H2H vert</div>
-        <div class="stat-card__value green">{stats.tauxH2HVert ?? '—'}%</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">H2H orange</div>
-        <div class="stat-card__value orange">{stats.tauxH2HOrange ?? '—'}%</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">H2H insuffisant</div>
-        <div class="stat-card__value">{stats.tauxH2HGris ?? '—'}%</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">Taux global</div>
-        <div class="stat-card__value" class:green={stats.tauxGlobal >= 50} class:orange={stats.tauxGlobal < 50}>
-          {stats.tauxGlobal}%
-        </div>
-      </div>
-    </div>
-  {:else}
-    <div class="info-box mb-16" style="font-size:12px;">
-      ℹ Les stats croisees apparaitront apres 20+ trades enregistres
-      (actuellement {tradesJoues.length} trade{tradesJoues.length > 1 ? 's' : ''}).
-    </div>
-  {/if}
-
-  {#if $trades.length === 0}
-    <div class="empty-state" style="padding:24px;">
-      <div class="empty-state__icon">📋</div>
-      <div class="empty-state__title">Aucun trade enregistre</div>
-      <div class="empty-state__desc">Utilisez la fiche rapide sur une carte match pour noter vos trades.</div>
-    </div>
-  {:else}
-    <div class="table-wrapper">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Match</th>
-            <th>Signal</th>
-            <th>1MT</th>
-            <th>H2H</th>
-            <th>Resultat</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each recentTrades as t (t.id)}
-            <tr>
-              <td>{t.date || '—'}</td>
-              <td style="font-size:12px;">{t.match || '—'}</td>
-              <td>{t.fhgPct ? t.fhgPct + '%' : '—'}</td>
-              <td>
-                {#if t.badge1MT}
-                  <span class="badge badge--1mt">★</span>
-                {:else}
-                  —
-                {/if}
-              </td>
-              <td>
-                {#if t.h2h === 'favorable'}
-                  <span class="badge badge--h2h-vert">✓</span>
-                {:else if t.h2h === 'defavorable'}
-                  <span class="badge badge--h2h-orange">⚠</span>
-                {:else}
-                  <span class="badge badge--h2h-gris">?</span>
-                {/if}
-              </td>
-              <td>
-                <select class="form-input" style="padding:3px 6px;font-size:11px;width:100px;"
-                  value={t.resultat || 'non_joue'}
-                  on:change={e => handleTradeResult(t.id, e.target.value)}>
-                  <option value="non_joue">Non joue</option>
-                  <option value="gagne">Gagne ✓</option>
-                  <option value="perdu">Perdu ✗</option>
-                </select>
-              </td>
-              <td>
-                <button class="btn btn--ghost btn--sm" on:click={() => handleDeleteTrade(t.id)}>🗑</button>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-    {#if $trades.length > 20}
-      <p style="font-size:12px;color:var(--color-text-muted);margin-top:8px;">
-        Affichage des 20 derniers trades. Voir l'historique complet dans Parametres.
-      </p>
     {/if}
-  {/if}
-</div>
+  </div>
+
+  <!-- SECTION DC -->
+  <div class="alerts-section">
+    <div class="alerts-section__header">
+      <span class="alerts-section__icon">🎯</span>
+      <span class="alerts-section__title">Double Chance</span>
+      <span class="alerts-section__count">{filteredDC.length}</span>
+    </div>
+
+    {#if filteredDC.length === 0}
+      <div class="alerts-empty">Aucun match DC pertinent</div>
+    {:else}
+      <div class="alerts-list">
+        {#each filteredDC as a (a.match.id + '_dc')}
+          {@const bestSide = a.dc.bestSide}
+          {@const bestTeam = bestSide === 'home' ? a.dc.teamA : a.dc.teamB}
+          {@const bestName = bestSide === 'home' ? a.homeName : a.awayName}
+          <div class="alert-card">
+            <div class="alert-card__time">
+              <div class="alert-card__day">{days[a.dayOffset]?.label || a.dateStr}</div>
+              <div class="alert-card__hour">{a.time}</div>
+            </div>
+            <div class="alert-card__match">
+              <div class="alert-card__teams">{a.homeName} vs {a.awayName}</div>
+              <div class="alert-card__league">{a.leagueName}</div>
+            </div>
+            <div class="alert-card__stats">
+              <div class="alert-pill" title="% défaite H2H (meilleur côté)">
+                <span class="alert-pill__label">Def. {bestName.split(' ')[0]}</span>
+                <span class="alert-pill__value" style:color={defeatColor(bestTeam.defeatPct)}>{bestTeam.defeatPct}%</span>
+              </div>
+              <div class="alert-pill" title="Nombre de H2H analysés">
+                <span class="alert-pill__label">H2H</span>
+                <span class="alert-pill__value">{a.nbH2H}</span>
+              </div>
+              <div class="alert-pill" title="% non-défaite">
+                <span class="alert-pill__label">Non-def.</span>
+                <span class="alert-pill__value" style:color={fhgColor(bestTeam.nonDefeatPct)}>{bestTeam.nonDefeatPct}%</span>
+              </div>
+            </div>
+            <span class="alert-badge alert-badge--{bestTeam.signal}">{bestTeam.signal}</span>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
+{/if}
+
+<style>
+  .alerts-filters {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+  }
+  .alerts-filter-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .alerts-filter-btn.active {
+    background: var(--color-accent-blue);
+    border-color: var(--color-accent-blue);
+    color: white;
+  }
+
+  .alerts-section {
+    margin-bottom: 28px;
+  }
+  .alerts-section__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .alerts-section__icon {
+    font-size: 18px;
+  }
+  .alerts-section__title {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .alerts-section__count {
+    background: rgba(255,255,255,0.08);
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: auto;
+  }
+
+  .alerts-empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 13px;
+  }
+
+  .alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .alert-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    transition: border-color 0.15s;
+  }
+  .alert-card:hover {
+    border-color: var(--color-accent-blue);
+  }
+
+  .alert-card__time {
+    min-width: 70px;
+    text-align: center;
+  }
+  .alert-card__day {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+  }
+  .alert-card__hour {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .alert-card__match {
+    flex: 1;
+    min-width: 0;
+  }
+  .alert-card__teams {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .alert-card__league {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+  }
+
+  .alert-card__stats {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .alert-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    padding: 3px 8px;
+    min-width: 48px;
+  }
+  .alert-pill__label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    letter-spacing: 0.3px;
+  }
+  .alert-pill__value {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .alert-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .alert-badge--fort {
+    background: rgba(29, 158, 117, 0.15);
+    color: var(--color-accent-green);
+  }
+  .alert-badge--moyen {
+    background: rgba(239, 159, 39, 0.15);
+    color: var(--color-signal-moyen);
+  }
+  .alert-badge--faible {
+    background: rgba(255,255,255,0.05);
+    color: var(--color-text-muted);
+  }
+
+  @media (max-width: 640px) {
+    .alert-card {
+      flex-wrap: wrap;
+    }
+    .alert-card__stats {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
