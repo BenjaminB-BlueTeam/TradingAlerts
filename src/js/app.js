@@ -35,13 +35,6 @@ export async function init() {
   setState({ isDemo: !apiStatus.success, apiConnected: apiStatus.success });
 
   const { prefs } = getState();
-  if (!apiStatus.success && !prefs.demoBannerClosed) {
-    document.getElementById('demo-banner')?.classList.remove('hidden');
-    document.getElementById('demo-banner-close')?.addEventListener('click', () => {
-      document.getElementById('demo-banner')?.classList.add('hidden');
-      savePrefs({ demoBannerClosed: true });
-    });
-  }
 
   // 4. Charger les données (matchs + trades Supabase en parallèle)
   await Promise.all([
