@@ -141,17 +141,19 @@
                       </thead>
                       <tbody>
                         {#each leagueTable as team, i}
+                          {@const gf = team.seasonGoals ?? 0}
+                          {@const ga = team.seasonConceded ?? 0}
                           <tr>
-                            <td>{team.position || team.tablePosition || i + 1}</td>
-                            <td class="explore-team-name">{team.name || team.cleanName || team.team_name || '—'}</td>
-                            <td>{team.matchesPlayed ?? team.matches_played ?? team.seasonMatchesPlayed_overall ?? '—'}</td>
-                            <td>{team.seasonWins_overall ?? team.wins ?? team.W ?? '—'}</td>
-                            <td>{team.seasonDraws_overall ?? team.draws ?? team.D ?? '—'}</td>
-                            <td>{team.seasonLosses_overall ?? team.losses ?? team.L ?? '—'}</td>
-                            <td>{team.seasonGoals_overall ?? team.goals_scored ?? team.F ?? '—'}</td>
-                            <td>{team.seasonConceded_overall ?? team.goals_conceded ?? team.A ?? '—'}</td>
-                            <td>{team.seasonGoalDifference_overall ?? (team.seasonGoals_overall != null && team.seasonConceded_overall != null ? team.seasonGoals_overall - team.seasonConceded_overall : '—')}</td>
-                            <td class="explore-pts"><strong>{team.points ?? team.seasonPts_overall ?? team.pts ?? '—'}</strong></td>
+                            <td>{team.position ?? i + 1}</td>
+                            <td class="explore-team-name">{team.cleanName || team.name || '—'}</td>
+                            <td>{team.matchesPlayed ?? '—'}</td>
+                            <td>{team.seasonWins_overall ?? '—'}</td>
+                            <td>{team.seasonDraws_overall ?? '—'}</td>
+                            <td>{team.seasonLosses_overall ?? '—'}</td>
+                            <td>{gf}</td>
+                            <td>{ga}</td>
+                            <td>{team.seasonGoalDifference ?? gf - ga}</td>
+                            <td class="explore-pts"><strong>{team.points ?? '—'}</strong></td>
                           </tr>
                         {/each}
                       </tbody>

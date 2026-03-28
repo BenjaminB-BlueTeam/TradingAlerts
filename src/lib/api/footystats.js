@@ -139,7 +139,7 @@ export async function getLeagueTable(leagueId) {
   const isDemo = getIsDemo();
   if (isDemo) return [];
   const data = await apiRequest('league-tables', { season_id: leagueId });
-  return data?.data || data?.league_table || [];
+  return data?.data?.league_table || [];
 }
 
 export async function rawApiCall(endpoint, params = {}) {

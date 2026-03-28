@@ -165,21 +165,21 @@
                   </thead>
                   <tbody>
                     {#each leagueTable as team, i}
-                      {@const gf = team.seasonGoals_overall ?? team.goals_scored ?? 0}
-                      {@const ga = team.seasonConceded_overall ?? team.goals_conceded ?? 0}
+                      {@const gf = team.seasonGoals ?? team.seasonGoals_overall ?? 0}
+                      {@const ga = team.seasonConceded ?? 0}
                       <tr>
-                        <td>{team.position || team.tablePosition || i + 1}</td>
-                        <td class="league-table__team">{team.name || team.cleanName || team.team_name || '—'}</td>
-                        <td>{team.matchesPlayed ?? team.matches_played ?? team.seasonMatchesPlayed_overall ?? '—'}</td>
-                        <td>{team.seasonWins_overall ?? team.wins ?? '—'}</td>
-                        <td>{team.seasonDraws_overall ?? team.draws ?? '—'}</td>
-                        <td>{team.seasonLosses_overall ?? team.losses ?? '—'}</td>
+                        <td>{team.position ?? i + 1}</td>
+                        <td class="league-table__team">{team.cleanName || team.name || '—'}</td>
+                        <td>{team.matchesPlayed ?? '—'}</td>
+                        <td>{team.seasonWins_overall ?? '—'}</td>
+                        <td>{team.seasonDraws_overall ?? '—'}</td>
+                        <td>{team.seasonLosses_overall ?? '—'}</td>
                         <td>{gf}</td>
                         <td>{ga}</td>
                         <td class:league-table__diff--pos={gf - ga > 0} class:league-table__diff--neg={gf - ga < 0}>
                           {gf - ga > 0 ? '+' : ''}{gf - ga}
                         </td>
-                        <td class="league-table__pts"><strong>{team.points ?? team.seasonPts_overall ?? team.pts ?? '—'}</strong></td>
+                        <td class="league-table__pts"><strong>{team.points ?? '—'}</strong></td>
                       </tr>
                     {/each}
                   </tbody>
