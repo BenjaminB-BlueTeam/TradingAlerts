@@ -44,6 +44,7 @@ src/
     +layout.svelte      ← layout global (Sidebar, Toast, init)
     +layout.js           ← ssr: false, prerender: false
     +page.svelte         ← Dashboard signaux FHG
+    dc/+page.svelte      ← Double Chance — analyse H2H (3 jours)
     matches/+page.svelte ← Matchs à venir (table)
     leagues/+page.svelte ← Ligues actives (toggle, stats, classement)
     explore/+page.svelte ← Explorer toutes les ligues (par pays, stats, classement)
@@ -67,6 +68,7 @@ src/
       appStore.js       ← stores Svelte (config, leagues, trades, etc.)
     core/
       scoring.js        ← algorithme FHG + DC
+      doubleChance.js   ← analyse DC basée H2H (% défaite, comeback, MT≠FT)
       h2h.js            ← analyse head-to-head
       filters.js        ← filtrage/tri des signaux
       mockData.js       ← données démo (sans clé API)
@@ -128,11 +130,12 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - Proxy Netlify sécurisé (clé API en env var)
 - Journal trades : stats, export CSV, calcul bankroll
 - Goal Timeline H2H — barre de timing des buts style FootyStats
+- **Page Double Chance** (`/dc`) — analyse H2H pure sur 3 jours : % défaite H2H, buts moy., forme récente, MT≠FT, historique détaillé avec tags Comeback/MT≠FT
 - **Page Ligues actives** — 50 ligues API, toggle actif, stats (1MT%, Avg, BTTS%, O2.5%), classement expand
 - **Page Explorer** — ligues groupées par pays, mêmes stats, classement expand
 - **Page Debug** — test API/Supabase, stats cache, seed data, testeur API brut avec copie JSON
 - **Seed Data** — Netlify Function seed-data.js, orchestration client ligue par ligue
-- **Sidebar avec section Admin** — Ligues actives, Explorer, Debug regroupées
+- **Sidebar** — nav principale (Dashboard, DC, Matchs, Alertes, Paramètres) + section Admin repliable (Ligues, Explorer, Debug) + bouton Refresh (vide cache + reload)
 
 ---
 
@@ -151,6 +154,7 @@ Ces décisions sont actées, ne pas remettre en question sauf si Benjamin le dem
 - [x] Refonte DB Supabase — tables team_seasons, h2h_matches, seed_jobs
 - [x] Seed FootyStats → Supabase via Netlify Function
 - [x] Pages Admin (Debug, Ligues, Explorer)
+- [x] Page Double Chance — analyse H2H pure (% défaite, buts moy., forme, MT≠FT)
 - [ ] Refonte algo — % bruts sans scoring
 - [ ] Refonte cartes — badges FHG + DC indépendants, bouton "Analyse IA"
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API en prod
