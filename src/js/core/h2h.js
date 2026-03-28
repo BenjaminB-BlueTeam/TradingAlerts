@@ -82,11 +82,13 @@ export function analyserH2H(h2h = [], equipeNom = '', minH2H = 3) {
  */
 export function formaterH2HTimeline(h2h = [], equipeNom = '') {
   return h2h.slice(-5).map(m => ({
-    date:     formatDate(m.date),
-    score:    `${m.homeGoals}-${m.awayGoals}`,
-    htScore:  `MT: ${m.homeGoals_HT}-${m.awayGoals_HT}`,
-    butMT:    m.equipe_ciblee_but_avant_45min === true,
-    raw:      m,
+    date:   formatDate(m.date),
+    score:  `${m.homeGoals}-${m.awayGoals}`,
+    htScore:`MT: ${m.homeGoals_HT}-${m.awayGoals_HT}`,
+    butMT:  m.equipe_ciblee_but_avant_45min === true,
+    goals:  m.goals || [],
+    total:  (m.homeGoals || 0) + (m.awayGoals || 0),
+    raw:    m,
   }));
 }
 

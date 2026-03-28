@@ -218,7 +218,8 @@ function renderMatchDetail(m) {
             ${h2hTimeline.map(h => `
               <div class="h2h-item">
                 <span class="h2h-item__date">${h.date}</span>
-                <span class="h2h-item__score">${h.score} <span style="color:var(--color-text-muted);font-size:11px;">(${h.htScore})</span></span>
+                <span class="h2h-item__score">${h.score}</span>
+                ${renderGoalTimeline(h.goals, h.total)}
                 <span class="h2h-item__result">${h.butMT ? '✅' : '❌'}</span>
               </div>
             `).join('')}
@@ -282,6 +283,39 @@ function renderMatchDetail(m) {
       <button class="btn btn--primary btn--full" data-fiche="${m.id}">
         📋 Fiche rapide trade
       </button>
+    </div>
+  `;
+}
+
+// ============================================================
+// GOAL TIMELINE (style FootyStats)
+// ============================================================
+
+/**
+ * Génère la barre de timing des buts, inspirée de FootyStats.
+ * ⚽ coloré = but marqué par l'équipe ciblée
+ * ⚽ grisé  = but encaissé (adversaire)
+ *
+ * @param {Array}  goals  — [{minute: Number, scored: Boolean}]
+ * @param {number} total  — nb total de buts dans le match
+ */
+function renderGoalTimeline(goals = [], total = 0) {
+  const MAX_MIN = 95;
+
+  const balls = goals.map(g => {
+    const pct = Math.min((g.minute / MAX_MIN) * 100, 97).toFixed(1);
+    const cls = g.scored ? '' : 'goal-timeline__ball--conceded';
+    return `<span class="goal-timeline__ball ${cls}" style="left:${pct}%" title="${g.minute}'">⚽</span>`;
+  }).join('');
+
+  return `
+    <div class="goal-timeline">
+      <div class="goal-timeline__bar">
+        ${balls}
+        <span class="goal-timeline__marker">HT</span>
+        <span class="goal-timeline__ft">FT</span>
+      </div>
+      <span class="goal-timeline__total">${total}</span>
     </div>
   `;
 }
