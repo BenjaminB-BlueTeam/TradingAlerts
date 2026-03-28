@@ -159,13 +159,18 @@ Ces décisions sont actées, ne pas remettre en question sauf si Benjamin le dem
 - [x] Seed FootyStats → Supabase via Netlify Function
 - [x] Pages Admin (Debug, Ligues, Explorer)
 - [x] Page Double Chance — analyse H2H pure (% défaite, buts moy., forme, MT≠FT)
+- [ ] **Système d'alertes autonome** — génération auto toutes les 12h via tâche planifiée :
+  - FHG : analyse comportementale par équipe (récurrence buts 31-45 min, 2+ buts 1MT, réaction au but adverse, clean sheet H2H)
+  - DC : analyse H2H (% défaite ≤ 20-30%, min 5 H2H)
+  - Tags FHG / DC / FHG+DC, confiance fort/moyen
+  - Table Supabase `alerts` avec résultat vérifié
+- [ ] **Vérification auto résultats** — check à la MT (FHG) et fin de match (DC), statut Validé/Perdu
+- [ ] **Page Historique des Alertes** — toutes les alertes passées + stats performance (taux réussite par type, ligue, confiance)
 - [ ] Refonte algo — % bruts sans scoring
 - [ ] Refonte cartes — badges FHG + DC indépendants, bouton "Analyse IA"
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API en prod
-- [ ] Page Historique des Alertes
-- [x] Page Live — surveillance matchs alertés en temps réel (refresh 10s), scores live, 3 sections (en cours/à venir/terminés)
-- [ ] Vérification auto des résultats — après chaque match, vérifier si l'alerte FHG/DC était un succès ou un échec (goal_minute, fenêtre validée, etc.) et stocker le résultat en Supabase
-- [ ] Compteur requêtes API FootyStats — afficher dans la sidebar le nombre de req/heure restantes
+- [x] Page Live — surveillance matchs alertés en temps réel (refresh 10s, uniquement matchs en cours)
+- [x] Compteur requêtes API FootyStats — afficher dans la sidebar le nombre de req/heure restantes
 
 ---
 
