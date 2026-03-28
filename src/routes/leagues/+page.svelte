@@ -55,7 +55,9 @@
         leagueStats[seasonId] = stats;
         leagueStats = leagueStats;
       }
-    } catch {}
+    } catch (e) {
+      console.warn(`Stats ligue ${seasonId} :`, e.message);
+    }
     statsLoading[seasonId] = false;
     statsLoading = statsLoading;
   }

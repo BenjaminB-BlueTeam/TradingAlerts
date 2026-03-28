@@ -139,9 +139,12 @@ export async function getH2H(homeId, awayId, leagueId) {
 export async function getLeagueSeason(seasonId) {
   const isDemo = getIsDemo();
   if (isDemo) return null;
-  const data = await apiRequest('league-season', { season_id: seasonId });
-  const d = data?.data;
-  if (!d) return null;
+  const raw = await apiRequest('league-season', { season_id: seasonId });
+  // L'API peut retourner { data: {...} }, un objet direct, ou un tableau
+  const d = raw?.data || (Array.isArray(raw) ? raw[0] : raw);
+  if (!d || typeof d !== 'object') return null;
+  // Vérifier qu'on a au moins un champ attendu
+  if (!d.matchesCompleted && !d.totalMatches && !d.seasonAVG_overall) return null;
   return {
     matchesPlayed: d.matchesCompleted || 0,
     totalMatches: d.totalMatches || 0,
