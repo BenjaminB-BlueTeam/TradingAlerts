@@ -1,15 +1,15 @@
 <script>
   import { onMount } from 'svelte';
   import { isDemo, leagues, saveWatchlist } from '$lib/stores/appStore.js';
-  import { getTodaysMatches, getLeagueMatches, getAllLeagues } from '$lib/api/footystats.js';
+  import { getTodaysMatches } from '$lib/api/footystats.js';
+  import { getH2HForAnalysis } from '$lib/api/supabase.js';
   import { analyserDC, resultIcon } from '$lib/core/doubleChance.js';
 
   let loading = true;
   let selectedDay = -1; // -1 = tous, 0/1/2 = jour
   let fhgAlerts = [];
   let dcAlerts = [];
-
-  const MAX_SEASONS = 5;
+  let useDB = true; // Utiliser Supabase pour les H2H
 
   const days = [
     { label: "Aujourd'hui", offset: 0 },
@@ -33,18 +33,6 @@
     fhgAlerts = [];
     dcAlerts = [];
 
-    // Charger les ligues pour les saisons historiques
-    const allLeagues = await getAllLeagues();
-    const seasonsByCurrentId = {};
-    for (const league of allLeagues) {
-      if (!league.seasons) continue;
-      const sorted = [...league.seasons].sort((a, b) => String(b.year).localeCompare(String(a.year)));
-      const last = sorted.slice(0, MAX_SEASONS).map(s => s.id);
-      for (const s of sorted) {
-        seasonsByCurrentId[s.id] = last;
-      }
-    }
-
     // Charger les matchs des 3 jours
     const allMatches = [];
     for (let i = 0; i <= 2; i++) {
@@ -60,52 +48,30 @@
 
     // Filtrer : uniquement les matchs des ligues actives
     const activeIds = new Set($leagues.filter(l => l.active).map(l => l.leagueId || l.id));
-    // Aussi matcher par nom de ligue
     const activeNames = new Set($leagues.filter(l => l.active).map(l => l.name));
 
     const relevantMatches = allMatches.filter(m => {
       const compId = m.competition_id || m.league_id;
       if (activeIds.has(compId)) return true;
-      // Fallback name match
       const compName = m.competition_name || m.league_name || '';
       return [...activeNames].some(n => compName.includes(n) || n.includes(compName));
     });
 
-    // Analyser DC + FHG pour chaque match
-    const leagueMatchesCache = {};
+    // Analyser DC + FHG pour chaque match (H2H depuis Supabase)
     const fhgResults = [];
     const dcResults = [];
+    const h2hCache = {}; // cache par paire d'équipes
 
     for (const m of relevantMatches) {
       try {
-        const leagueId = m.competition_id || m.league_id;
-        if (!leagueId) continue;
+        if (!m.homeID || !m.awayID) continue;
 
-        // H2H multi-saisons
-        const seasonIds = seasonsByCurrentId[leagueId] || [leagueId];
-        let allLeagueMatches = [];
-        for (const sid of seasonIds) {
-          if (!leagueMatchesCache[sid]) {
-            try { leagueMatchesCache[sid] = await getLeagueMatches(sid); } catch { leagueMatchesCache[sid] = []; }
-          }
-          allLeagueMatches.push(...(leagueMatchesCache[sid] || []));
+        // H2H depuis Supabase (toutes saisons, instantané)
+        const cacheKey = [m.homeID, m.awayID].sort().join('_');
+        if (!h2hCache[cacheKey]) {
+          h2hCache[cacheKey] = await getH2HForAnalysis(m.homeID, m.awayID);
         }
-
-        const h2h = allLeagueMatches.filter(lm =>
-          lm.status === 'complete' && (
-            (lm.homeID === m.homeID && lm.awayID === m.awayID) ||
-            (lm.homeID === m.awayID && lm.awayID === m.homeID)
-          )
-        );
-
-        // Dédupliquer
-        const seen = new Set();
-        const uniqueH2H = h2h.filter(lm => {
-          const key = lm.id || `${lm.date_unix}_${lm.homeID}_${lm.awayID}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+        const uniqueH2H = h2hCache[cacheKey];
 
         const dc = analyserDC(uniqueH2H, m.homeID, m.awayID);
 

@@ -1,7 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import { isDemo } from '$lib/stores/appStore.js';
-  import { getTodaysMatches, getLeagueMatches, getAllLeagues } from '$lib/api/footystats.js';
+  import { getTodaysMatches } from '$lib/api/footystats.js';
+  import { getH2HForAnalysis } from '$lib/api/supabase.js';
   import { analyserDC, resultIcon } from '$lib/core/doubleChance.js';
 
   let matches = [];
@@ -10,8 +11,6 @@
   let selectedDay = 0; // 0 = aujourd'hui, 1 = demain, 2 = après-demain
   let minH2H = 3;
   let filterSignal = 'all'; // all | fort | moyen
-
-  const MAX_SEASONS = 5; // Nombre de saisons à vérifier pour les H2H
 
   const days = [
     { label: "Aujourd'hui", offset: 0 },
@@ -28,23 +27,6 @@
   async function loadMatches() {
     loading = true;
     analyses = [];
-
-    // Charger la liste des ligues pour avoir les season IDs historiques
-    const leagues = await getAllLeagues();
-    // Map : seasonId courant → liste des season IDs (3 dernières)
-    const seasonsByCurrentId = {};
-    for (const league of leagues) {
-      if (!league.seasons) continue;
-      const sorted = [...league.seasons].sort((a, b) => {
-        const ya = String(a.year), yb = String(b.year);
-        return yb.localeCompare(ya);
-      });
-      const last3 = sorted.slice(0, MAX_SEASONS).map(s => s.id);
-      // Mapper chaque season ID vers la liste complète (pour lookup par competition_id)
-      for (const s of sorted) {
-        seasonsByCurrentId[s.id] = last3;
-      }
-    }
 
     // Charger les matchs des 3 jours
     const allMatches = [];
@@ -63,47 +45,20 @@
     }
     matches = allMatches;
 
-    // Analyser les H2H pour chaque match (sur 3 saisons)
+    // Analyser les H2H pour chaque match (depuis Supabase)
     const results = [];
-    const leagueMatchesCache = {};
+    const h2hCache = {};
 
     for (const m of matches) {
       try {
-        const leagueId = m.competition_id || m.league_id;
-        if (!leagueId) continue;
+        if (!m.homeID || !m.awayID) continue;
 
-        // Récupérer les season IDs des 3 dernières saisons
-        const seasonIds = seasonsByCurrentId[leagueId] || [leagueId];
-
-        // Charger les matchs de chaque saison (caché)
-        let allLeagueMatches = [];
-        for (const sid of seasonIds) {
-          if (!leagueMatchesCache[sid]) {
-            try {
-              leagueMatchesCache[sid] = await getLeagueMatches(sid);
-            } catch {
-              leagueMatchesCache[sid] = [];
-            }
-          }
-          allLeagueMatches.push(...(leagueMatchesCache[sid] || []));
+        // H2H depuis Supabase (toutes saisons, instantané)
+        const cacheKey = [m.homeID, m.awayID].sort().join('_');
+        if (!h2hCache[cacheKey]) {
+          h2hCache[cacheKey] = await getH2HForAnalysis(m.homeID, m.awayID);
         }
-
-        // Filtrer les H2H sur les 3 saisons
-        const h2h = allLeagueMatches.filter(lm =>
-          lm.status === 'complete' && (
-            (lm.homeID === m.homeID && lm.awayID === m.awayID) ||
-            (lm.homeID === m.awayID && lm.awayID === m.homeID)
-          )
-        );
-
-        // Dédupliquer par match ID (un même match peut apparaître dans 2 saisons)
-        const seen = new Set();
-        const uniqueH2H = h2h.filter(lm => {
-          const key = lm.id || `${lm.date_unix}_${lm.homeID}_${lm.awayID}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+        const uniqueH2H = h2hCache[cacheKey];
 
         const dc = analyserDC(uniqueH2H, m.homeID, m.awayID);
 
@@ -173,7 +128,7 @@
 
 <div class="page-title">🎯 Double Chance — Analyse H2H</div>
 <div class="page-subtitle">
-  H2H sur 5 saisons — matchs des 3 prochains jours
+  H2H depuis Supabase (toutes saisons) — matchs des 3 prochains jours
   {#if !loading} — {totalWithH2H} match{totalWithH2H > 1 ? 's' : ''} avec H2H{/if}
 </div>
 

@@ -104,6 +104,55 @@ export async function deleteTradeFromDB(id) {
 // ============================================================
 
 // ============================================================
+// H2H QUERIES (pour Alertes et DC)
+// ============================================================
+
+/**
+ * Récupère les H2H entre deux équipes depuis Supabase (toutes saisons).
+ * Retourne les matchs terminés triés par date.
+ */
+export async function getH2HFromDB(teamAId, teamBId) {
+  const { data, error } = await supabase
+    .from('h2h_matches')
+    .select('*')
+    .or(
+      `and(home_team_id.eq.${teamAId},away_team_id.eq.${teamBId}),and(home_team_id.eq.${teamBId},away_team_id.eq.${teamAId})`
+    )
+    .order('match_date', { ascending: true })
+  if (error) { console.error('getH2HFromDB:', error); return [] }
+  return data || []
+}
+
+/**
+ * Convertit un row h2h_matches Supabase au format attendu par analyserDC.
+ */
+export function h2hRowToApiFormat(row) {
+  return {
+    id: row.match_id,
+    homeID: row.home_team_id,
+    awayID: row.away_team_id,
+    home_name: row.home_team_name,
+    away_name: row.away_team_name,
+    homeGoalCount: row.home_goals,
+    awayGoalCount: row.away_goals,
+    ht_goals_team_a: row.home_goals_ht,
+    ht_goals_team_b: row.away_goals_ht,
+    date_unix: row.match_date ? new Date(row.match_date).getTime() / 1000 : null,
+    status: 'complete',
+    goalscorer: row.goal_events || [],
+    season: row.season_id,
+  }
+}
+
+/**
+ * Récupère les H2H formatés pour analyserDC.
+ */
+export async function getH2HForAnalysis(teamAId, teamBId) {
+  const rows = await getH2HFromDB(teamAId, teamBId)
+  return rows.map(h2hRowToApiFormat)
+}
+
+// ============================================================
 // HELPERS DEBUG / SEED
 // ============================================================
 

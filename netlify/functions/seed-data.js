@@ -74,9 +74,9 @@ function respond(statusCode, body) {
 
 // --- Actions ---
 
-async function startFull() {
+async function startFull(maxSeasons = 5) {
   // Créer un seed_job
-  const jobRows = await supabaseRequest('seed_jobs', 'POST',
+  await supabaseRequest('seed_jobs', 'POST',
     { status: 'in_progress', progress: {} },
     '?select=id'
   );
@@ -90,136 +90,134 @@ async function startFull() {
   const rawLeagues = leaguesData?.data || [];
   const leagues = rawLeagues.map(l => {
     const seasons = l.season || [];
-    const latest = seasons.reduce((a, b) => (b.year > a.year ? b : a), seasons[0] || {});
+    const sorted = [...seasons].sort((a, b) => {
+      return String(b.year).localeCompare(String(a.year));
+    });
+    const last = sorted.slice(0, maxSeasons);
     return {
-      id: latest.id,       // season_id de la saison courante
+      id: last[0]?.id,                          // season_id de la saison courante
       name: l.name || 'Unknown',
       country: l.country || '',
+      season_ids: last.map(s => s.id),           // IDs des N dernières saisons
     };
   }).filter(l => l.id);
 
   return respond(200, { job_id: jobId, leagues, total: leagues.length });
 }
 
-async function seedLeague(leagueId, jobId, seasonsCount) {
-  const results = { teams: 0, matches: 0, errors: [] };
+async function seedLeague(seasonIdsStr, jobId) {
+  // seasonIdsStr peut être un seul ID ou plusieurs séparés par des virgules
+  const seasonIds = seasonIdsStr.split(',').map(s => s.trim()).filter(Boolean);
+  const results = { teams: 0, matches: 0, seasons_done: 0, errors: [] };
 
-  try {
-    // 1. Récupérer les équipes de la ligue
-    const teamsData = await footyRequest('league-teams', { season_id: leagueId, include: 'stats' });
-    const teams = teamsData?.data || [];
+  for (const seasonId of seasonIds) {
+    try {
+      // 1. Récupérer les équipes de la saison
+      const teamsData = await footyRequest('league-teams', { season_id: seasonId, include: 'stats' });
+      const teams = teamsData?.data || [];
 
-    // Upsert team_seasons
-    for (const team of teams) {
-      try {
-        const row = {
-          team_id: team.id,
-          team_name: team.name || team.cleanName || 'Unknown',
-          league_id: Number(leagueId),
-          league_name: team.competition?.name || null,
-          season_id: team.season || 0,
-          season_label: team.seasonLabel || null,
-          country: team.country || null,
-          matches_played: team.matches_played || team.seasonMatchesPlayed_overall || 0,
-          goals_scored: team.goals_scored || team.seasonGoals_overall || 0,
-          goals_conceded: team.goals_conceded || team.seasonConceded_overall || 0,
-          goals_scored_0_15: team.goals_scored_min_0_to_15 || 0,
-          goals_scored_16_30: team.goals_scored_min_16_to_30 || 0,
-          goals_scored_31_45: team.goals_scored_min_31_to_45 || 0,
-          goals_scored_46_60: team.goals_scored_min_46_to_60 || 0,
-          goals_scored_61_75: team.goals_scored_min_61_to_75 || 0,
-          goals_scored_76_90: team.goals_scored_min_76_to_90 || 0,
-          goals_conceded_0_15: team.goals_conceded_min_0_to_15 || 0,
-          goals_conceded_16_30: team.goals_conceded_min_16_to_30 || 0,
-          goals_conceded_31_45: team.goals_conceded_min_31_to_45 || 0,
-          goals_conceded_46_60: team.goals_conceded_min_46_to_60 || 0,
-          goals_conceded_61_75: team.goals_conceded_min_61_to_75 || 0,
-          goals_conceded_76_90: team.goals_conceded_min_76_to_90 || 0,
-          first_half_goals_scored: (team.goals_scored_min_0_to_15 || 0) + (team.goals_scored_min_16_to_30 || 0) + (team.goals_scored_min_31_to_45 || 0),
-          first_half_goals_conceded: (team.goals_conceded_min_0_to_15 || 0) + (team.goals_conceded_min_16_to_30 || 0) + (team.goals_conceded_min_31_to_45 || 0),
-          matches_scored_first_half: team.matches_scored_first_half || 0,
-          comeback_rate: team.pct_retour_si_encaisse || 0,
-          home_win_rate: team.pct_victoire_domicile || team.seasonWinsPercentage_home || 0,
-          away_win_rate: team.seasonWinsPercentage_away || 0,
-          last_updated: new Date().toISOString(),
-          raw_data: team,
-        };
-        await supabaseRequest('team_seasons', 'POST', row, '?on_conflict=team_id,season_id');
-        results.teams++;
-      } catch (e) {
-        results.errors.push(`team ${team.id}: ${e.message}`);
-      }
-    }
-
-    // 2. Récupérer les matchs de la ligue
-    const matchesData = await footyRequest('league-matches', { season_id: leagueId });
-    const matches = matchesData?.data || [];
-
-    for (const m of matches) {
-      try {
-        // Extraire goal_events depuis goalscorer si disponible
-        let goalEvents = [];
-        if (m.goalscorer && Array.isArray(m.goalscorer)) {
-          goalEvents = m.goalscorer.map(g => ({
-            minute: g.time || g.minute || null,
-            team: g.team || null,
-            player: g.player || null,
-            home: g.home_or_away === 'home' || g.team_id === m.homeID,
-          }));
+      for (const team of teams) {
+        try {
+          const row = {
+            team_id: team.id,
+            team_name: team.name || team.cleanName || 'Unknown',
+            league_id: Number(seasonId),
+            league_name: team.competition?.name || null,
+            season_id: team.season || 0,
+            season_label: team.seasonLabel || null,
+            country: team.country || null,
+            matches_played: team.matches_played || team.seasonMatchesPlayed_overall || 0,
+            goals_scored: team.goals_scored || team.seasonGoals_overall || 0,
+            goals_conceded: team.goals_conceded || team.seasonConceded_overall || 0,
+            goals_scored_0_15: team.goals_scored_min_0_to_15 || 0,
+            goals_scored_16_30: team.goals_scored_min_16_to_30 || 0,
+            goals_scored_31_45: team.goals_scored_min_31_to_45 || 0,
+            goals_scored_46_60: team.goals_scored_min_46_to_60 || 0,
+            goals_scored_61_75: team.goals_scored_min_61_to_75 || 0,
+            goals_scored_76_90: team.goals_scored_min_76_to_90 || 0,
+            goals_conceded_0_15: team.goals_conceded_min_0_to_15 || 0,
+            goals_conceded_16_30: team.goals_conceded_min_16_to_30 || 0,
+            goals_conceded_31_45: team.goals_conceded_min_31_to_45 || 0,
+            goals_conceded_46_60: team.goals_conceded_min_46_to_60 || 0,
+            goals_conceded_61_75: team.goals_conceded_min_61_to_75 || 0,
+            goals_conceded_76_90: team.goals_conceded_min_76_to_90 || 0,
+            first_half_goals_scored: (team.goals_scored_min_0_to_15 || 0) + (team.goals_scored_min_16_to_30 || 0) + (team.goals_scored_min_31_to_45 || 0),
+            first_half_goals_conceded: (team.goals_conceded_min_0_to_15 || 0) + (team.goals_conceded_min_16_to_30 || 0) + (team.goals_conceded_min_31_to_45 || 0),
+            matches_scored_first_half: team.matches_scored_first_half || 0,
+            comeback_rate: team.pct_retour_si_encaisse || 0,
+            home_win_rate: team.pct_victoire_domicile || team.seasonWinsPercentage_home || 0,
+            away_win_rate: team.seasonWinsPercentage_away || 0,
+            last_updated: new Date().toISOString(),
+            raw_data: team,
+          };
+          await supabaseRequest('team_seasons', 'POST', row, '?on_conflict=team_id,season_id');
+          results.teams++;
+        } catch (e) {
+          results.errors.push(`team ${team.id} (season ${seasonId}): ${e.message}`);
         }
-
-        const row = {
-          home_team_id: m.homeID,
-          away_team_id: m.awayID,
-          home_team_name: m.home_name || null,
-          away_team_name: m.away_name || null,
-          league_id: Number(leagueId),
-          season_id: m.season || null,
-          match_id: m.id,
-          match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : m.date || '1970-01-01',
-          home_goals: m.homeGoalCount ?? m.homeGoals ?? 0,
-          away_goals: m.awayGoalCount ?? m.awayGoals ?? 0,
-          home_goals_ht: m.team_a_ht_score ?? m.ht_goals_team_a ?? 0,
-          away_goals_ht: m.team_b_ht_score ?? m.ht_goals_team_b ?? 0,
-          goal_events: goalEvents,
-          last_updated: new Date().toISOString(),
-        };
-        await supabaseRequest('h2h_matches', 'POST', row, '?on_conflict=match_id');
-        results.matches++;
-      } catch (e) {
-        results.errors.push(`match ${m.id}: ${e.message}`);
       }
-    }
 
-    // Mettre à jour le job progress
-    if (jobId) {
-      try {
-        const jobs = await supabaseSelect('seed_jobs', `id=eq.${jobId}`);
-        const job = jobs[0];
-        const progress = job?.progress || {};
-        progress[leagueId] = {
-          status: 'done',
-          teams: results.teams,
-          matches: results.matches,
-          errors: results.errors.length,
-        };
-        await supabaseRequest('seed_jobs', 'PATCH', { progress }, `?id=eq.${jobId}`);
-      } catch (e) {
-        results.errors.push(`job update: ${e.message}`);
+      // 2. Récupérer les matchs de la saison
+      const matchesData = await footyRequest('league-matches', { season_id: seasonId });
+      const matches = matchesData?.data || [];
+
+      for (const m of matches) {
+        try {
+          let goalEvents = [];
+          if (m.goalscorer && Array.isArray(m.goalscorer)) {
+            goalEvents = m.goalscorer.map(g => ({
+              minute: g.time || g.minute || null,
+              team: g.team || null,
+              player: g.player || null,
+              home: g.home_or_away === 'home' || g.team_id === m.homeID,
+            }));
+          }
+
+          const row = {
+            home_team_id: m.homeID,
+            away_team_id: m.awayID,
+            home_team_name: m.home_name || null,
+            away_team_name: m.away_name || null,
+            league_id: Number(seasonId),
+            season_id: m.season || null,
+            match_id: m.id,
+            match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : m.date || '1970-01-01',
+            home_goals: m.homeGoalCount ?? m.homeGoals ?? 0,
+            away_goals: m.awayGoalCount ?? m.awayGoals ?? 0,
+            home_goals_ht: m.team_a_ht_score ?? m.ht_goals_team_a ?? 0,
+            away_goals_ht: m.team_b_ht_score ?? m.ht_goals_team_b ?? 0,
+            goal_events: goalEvents,
+            last_updated: new Date().toISOString(),
+          };
+          await supabaseRequest('h2h_matches', 'POST', row, '?on_conflict=match_id');
+          results.matches++;
+        } catch (e) {
+          results.errors.push(`match ${m.id} (season ${seasonId}): ${e.message}`);
+        }
       }
-    }
 
-  } catch (e) {
-    results.errors.push(e.message);
-    // Marquer l'erreur dans le job
-    if (jobId) {
-      try {
-        const jobs = await supabaseSelect('seed_jobs', `id=eq.${jobId}`);
-        const job = jobs[0];
-        const progress = job?.progress || {};
-        progress[leagueId] = { status: 'error', error: e.message };
-        await supabaseRequest('seed_jobs', 'PATCH', { progress }, `?id=eq.${jobId}`);
-      } catch {}
+      results.seasons_done++;
+    } catch (e) {
+      results.errors.push(`season ${seasonId}: ${e.message}`);
+    }
+  }
+
+  // Mettre à jour le job progress
+  if (jobId) {
+    try {
+      const jobs = await supabaseSelect('seed_jobs', `id=eq.${jobId}`);
+      const job = jobs[0];
+      const progress = job?.progress || {};
+      progress[seasonIdsStr] = {
+        status: results.errors.length > 0 ? 'partial' : 'done',
+        teams: results.teams,
+        matches: results.matches,
+        seasons_done: results.seasons_done,
+        errors: results.errors.length,
+      };
+      await supabaseRequest('seed_jobs', 'PATCH', { progress }, `?id=eq.${jobId}`);
+    } catch (e) {
+      results.errors.push(`job update: ${e.message}`);
     }
   }
 
@@ -247,7 +245,7 @@ exports.handler = async (event) => {
         return await startFull();
       case 'seed_league':
         if (!league_id) return respond(400, { error: 'league_id requis' });
-        return await seedLeague(league_id, job_id, parseInt(seasons) || 3);
+        return await seedLeague(league_id, job_id);
       case 'status':
         if (!job_id) return respond(400, { error: 'job_id requis' });
         return await getStatus(job_id);

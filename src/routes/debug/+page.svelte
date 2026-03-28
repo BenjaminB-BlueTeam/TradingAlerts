@@ -72,12 +72,14 @@
       seedTotal = seedLeagues.length;
 
       for (const league of seedLeagues) {
-        seedCurrentLeague = league.name || league.id;
+        // Passer tous les season_ids (5 saisons) séparés par des virgules
+        const ids = league.season_ids ? league.season_ids.join(',') : String(league.id);
+        seedCurrentLeague = `${league.name || league.id} (${league.season_ids?.length || 1} saisons)`;
         seedProgress[league.id] = 'en cours...';
         seedProgress = seedProgress; // trigger reactivity
         try {
-          const result = await seedLeague(league.id, seedJobId);
-          seedProgress[league.id] = `${result.teams || 0} equipes, ${result.matches || 0} matchs`;
+          const result = await seedLeague(ids, seedJobId);
+          seedProgress[league.id] = `${result.teams || 0} equipes, ${result.matches || 0} matchs (${result.seasons_done || 1} saisons)`;
           if (result.errors?.length) {
             seedProgress[league.id] += ` (${result.errors.length} erreurs)`;
           }

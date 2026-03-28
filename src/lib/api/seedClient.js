@@ -23,17 +23,15 @@ export async function startFullSeed() {
 }
 
 /**
- * Seed une seule ligue (toutes ses saisons).
- * @param {number} leagueId
+ * Seed une ligue (toutes ses saisons).
+ * @param {string|number} leagueIdOrIds — un ID ou plusieurs IDs séparés par des virgules
  * @param {number} jobId
- * @param {number} seasons — nombre de saisons (défaut 3)
  */
-export async function seedLeague(leagueId, jobId, seasons = 3) {
+export async function seedLeague(leagueIdOrIds, jobId) {
   return await seedRequest({
     action: 'seed_league',
-    league_id: leagueId,
+    league_id: String(leagueIdOrIds),
     job_id: jobId,
-    seasons,
   });
 }
 

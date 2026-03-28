@@ -165,6 +165,7 @@ Ces décisions sont actées, ne pas remettre en question sauf si Benjamin le dem
 - [ ] Page Historique des Alertes
 - [x] Page Live — surveillance matchs alertés en temps réel (refresh 10s), scores live, 3 sections (en cours/à venir/terminés)
 - [ ] Vérification auto des résultats — après chaque match, vérifier si l'alerte FHG/DC était un succès ou un échec (goal_minute, fenêtre validée, etc.) et stocker le résultat en Supabase
+- [ ] Compteur requêtes API FootyStats — afficher dans la sidebar le nombre de req/heure restantes
 
 ---
 
