@@ -11,6 +11,7 @@ const STORAGE_KEYS = {
   LEAGUES:       'fhg_leagues',
   PREFERENCES:   'fhg_prefs',
   PAUSE_SESSION: 'fhg_pause',
+  WATCHLIST:     'fhg_watchlist',
 };
 
 // ---- Valeurs par défaut ----
@@ -60,6 +61,7 @@ export const loading         = writable(false);
 export const lastUpdate      = writable(null);
 export const pauseSession    = writable(false);
 export const alertesActives  = writable([]);
+export const watchlist       = writable([]);  // Matchs pris (cochés dans l'historique)
 
 // Helper pour footystats.js (lit isDemo de façon synchrone)
 export function getIsDemo() {
@@ -74,11 +76,13 @@ export function loadFromStorage() {
     const savedTrades  = JSON.parse(localStorage.getItem(STORAGE_KEYS.TRADES)      || '[]');
     const savedLeagues = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAGUES)     || 'null');
     const savedPrefs   = JSON.parse(localStorage.getItem(STORAGE_KEYS.PREFERENCES) || 'null');
+    const savedWatch   = JSON.parse(localStorage.getItem(STORAGE_KEYS.WATCHLIST)   || '[]');
 
     config.set(savedConfig  ? { ...defaultConfig, ...savedConfig }  : { ...defaultConfig });
     trades.set(Array.isArray(savedTrades) ? savedTrades : []);
     leagues.set(savedLeagues || getDefaultLeagues());
     prefs.set(savedPrefs ? { ...defaultPrefs, ...savedPrefs } : { ...defaultPrefs });
+    watchlist.set(Array.isArray(savedWatch) ? savedWatch : []);
     isDemo.set(true); // Sera mis à jour après testApiConnection dans +layout.svelte
 
     return true;
@@ -162,6 +166,30 @@ export function deleteTrade(id) {
 
   import('$lib/api/supabase.js').then(({ deleteTradeFromDB }) => {
     deleteTradeFromDB(id);
+  });
+}
+
+// ---- Watchlist (matchs alertes pour le Live) ----
+
+export function saveWatchlist(items) {
+  localStorage.setItem(STORAGE_KEYS.WATCHLIST, JSON.stringify(items));
+  watchlist.set(items);
+}
+
+export function addToWatchlist(match) {
+  watchlist.update(list => {
+    if (list.find(m => m.id === match.id)) return list;
+    const updated = [...list, match];
+    localStorage.setItem(STORAGE_KEYS.WATCHLIST, JSON.stringify(updated));
+    return updated;
+  });
+}
+
+export function removeFromWatchlist(matchId) {
+  watchlist.update(list => {
+    const updated = list.filter(m => m.id !== matchId);
+    localStorage.setItem(STORAGE_KEYS.WATCHLIST, JSON.stringify(updated));
+    return updated;
   });
 }
 

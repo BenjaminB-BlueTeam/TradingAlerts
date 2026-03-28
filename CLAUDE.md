@@ -49,6 +49,7 @@ src/
     leagues/+page.svelte ← Ligues actives (toggle, stats, classement)
     explore/+page.svelte ← Explorer toutes les ligues (par pays, stats, classement)
     alerts/+page.svelte  ← Alertes FHG + DC (matchs pertinents à surveiller)
+    live/+page.svelte    ← Live — matchs alertés en cours, scores temps réel (refresh 10s)
     config/+page.svelte  ← Configuration algo (profil, seuils, trades)
     settings/+page.svelte← Paramètres, journal trades, bankroll
     debug/+page.svelte   ← Debug (test API/Supabase, seed, testeur API brut)
@@ -136,8 +137,9 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - **Page Explorer** — ligues groupées par pays, mêmes stats, classement expand
 - **Page Debug** — test API/Supabase, stats cache, seed data, testeur API brut avec copie JSON
 - **Seed Data** — Netlify Function seed-data.js, orchestration client ligue par ligue
-- **Page Alertes** (`/alerts`) — matchs à surveiller, 2 sections FHG (but 1MT ≥60%) et DC (défaite H2H ≤35%), H2H sur 5 saisons, ligues actives uniquement
-- **Sidebar** — nav principale (Dashboard, Alertes, DC, Matchs, Paramètres) + section Admin repliable (Ligues, Explorer, Configuration, Debug) + bouton Refresh (vide cache + reload)
+- **Page Alertes** (`/alerts`) — matchs à surveiller, 2 sections FHG (but 1MT ≥60%) et DC (défaite H2H ≤35%), H2H sur 5 saisons, ligues actives uniquement. Sauvegarde auto les matchs alertés dans la watchlist pour le Live.
+- **Page Live** (`/live`) — surveillance temps réel des matchs alertés. 3 sections : en cours (refresh 10s), à venir, terminés. Scores live, badges FHG/DC, minute estimée.
+- **Sidebar** — nav principale (Dashboard, Alertes, Live, DC, Matchs, Paramètres) + section Admin repliable (Ligues, Explorer, Configuration, Debug) + bouton Refresh (vide cache + reload)
 
 ---
 
@@ -161,7 +163,7 @@ Ces décisions sont actées, ne pas remettre en question sauf si Benjamin le dem
 - [ ] Refonte cartes — badges FHG + DC indépendants, bouton "Analyse IA"
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API en prod
 - [ ] Page Historique des Alertes
-- [ ] Page Live — surveillance matchs en temps réel (refresh auto 10-20s), suivi des alertes en cours
+- [x] Page Live — surveillance matchs alertés en temps réel (refresh 10s), scores live, 3 sections (en cours/à venir/terminés)
 - [ ] Vérification auto des résultats — après chaque match, vérifier si l'alerte FHG/DC était un succès ou un échec (goal_minute, fenêtre validée, etc.) et stocker le résultat en Supabase
 
 ---

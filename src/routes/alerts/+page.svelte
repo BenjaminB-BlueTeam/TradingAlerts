@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { isDemo, leagues } from '$lib/stores/appStore.js';
+  import { isDemo, leagues, saveWatchlist } from '$lib/stores/appStore.js';
   import { getTodaysMatches, getLeagueMatches, getAllLeagues } from '$lib/api/footystats.js';
   import { analyserDC, resultIcon } from '$lib/core/doubleChance.js';
 
@@ -156,6 +156,34 @@
       const minB = Math.min(b.dc.teamA.defeatPct, b.dc.teamB.defeatPct);
       return minA - minB;
     });
+
+    // Sauvegarder tous les matchs alertés dans la watchlist (pour la page Live)
+    const allAlertMatches = [...fhgResults, ...dcResults];
+    const seen = new Set();
+    const watchItems = allAlertMatches.filter(a => {
+      if (seen.has(a.match.id)) return false;
+      seen.add(a.match.id);
+      return true;
+    }).map(a => ({
+      id: a.match.id,
+      homeID: a.match.homeID,
+      awayID: a.match.awayID,
+      home_name: a.homeName,
+      away_name: a.awayName,
+      league_name: a.leagueName,
+      date_unix: a.match.date_unix,
+      dayOffset: a.dayOffset,
+      dateStr: a.dateStr,
+      signals: [
+        ...(fhgResults.find(f => f.match.id === a.match.id) ? ['FHG'] : []),
+        ...(dcResults.find(d => d.match.id === a.match.id) ? ['DC'] : []),
+      ],
+      fhgPct: fhgResults.find(f => f.match.id === a.match.id)?.fhgPct || null,
+      dcDefeatPct: dcResults.find(d => d.match.id === a.match.id)
+        ? Math.min(dcResults.find(d => d.match.id === a.match.id).dc.teamA.defeatPct, dcResults.find(d => d.match.id === a.match.id).dc.teamB.defeatPct)
+        : null,
+    }));
+    saveWatchlist(watchItems);
 
     loading = false;
   }
