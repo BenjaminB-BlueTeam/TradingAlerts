@@ -64,10 +64,33 @@ export async function testApiConnection() {
   }
 }
 
+/**
+ * Normalise les données league-list : extrait la saison la plus récente
+ * pour chaque ligue et retourne un tableau plat utilisable partout.
+ * Retourne: [{ id (season_id), name, country, image, year, seasons }]
+ */
+export function normalizeLeagues(raw) {
+  const data = raw?.data || raw || [];
+  if (!Array.isArray(data)) return [];
+  return data.map(l => {
+    const seasons = l.season || [];
+    const latest = seasons.reduce((a, b) => (b.year > a.year ? b : a), seasons[0] || {});
+    return {
+      id: latest.id,
+      name: l.name || 'Unknown',
+      country: l.country || latest.country || '',
+      image: l.image || '',
+      year: latest.year,
+      seasons: seasons.map(s => ({ id: s.id, year: s.year })),
+    };
+  }).filter(l => l.id);
+}
+
 export async function getAllLeagues() {
   const isDemo = getIsDemo();
   if (isDemo) return MOCK_DATA.leagues;
-  return await apiRequest('league-list', { chosen_leagues_only: 'true' });
+  const raw = await apiRequest('league-list', { chosen_leagues_only: 'true' });
+  return normalizeLeagues(raw);
 }
 
 export async function getLeagueTeams(leagueId) {

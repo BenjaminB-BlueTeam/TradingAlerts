@@ -13,7 +13,7 @@
   $: grouped = groupByCountry(filtered);
   $: filtered = searchQuery
     ? allLeagues.filter(l =>
-        (l.name || l.league_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (l.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (l.country || '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : allLeagues;
@@ -51,7 +51,7 @@
   onMount(async () => {
     try {
       const data = await getAllLeagues();
-      allLeagues = Array.isArray(data) ? data : (data?.data || []);
+      allLeagues = Array.isArray(data) ? data : [];
     } catch (e) {
       allLeagues = [];
       if (window.showToast) window.showToast(`Erreur chargement ligues : ${e.message}`, 'error');

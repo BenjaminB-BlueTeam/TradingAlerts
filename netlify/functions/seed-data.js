@@ -87,11 +87,16 @@ async function startFull() {
 
   // Récupérer les ligues actives depuis FootyStats
   const leaguesData = await footyRequest('league-list', { chosen_leagues_only: 'true' });
-  const leagues = (leaguesData?.data || leaguesData || []).map(l => ({
-    id: l.id || l.league_id,
-    name: l.name || l.league_name,
-    country: l.country || '',
-  }));
+  const rawLeagues = leaguesData?.data || [];
+  const leagues = rawLeagues.map(l => {
+    const seasons = l.season || [];
+    const latest = seasons.reduce((a, b) => (b.year > a.year ? b : a), seasons[0] || {});
+    return {
+      id: latest.id,       // season_id de la saison courante
+      name: l.name || 'Unknown',
+      country: l.country || '',
+    };
+  }).filter(l => l.id);
 
   return respond(200, { job_id: jobId, leagues, total: leagues.length });
 }

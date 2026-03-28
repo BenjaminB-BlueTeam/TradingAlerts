@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { testApiConnection, rawApiCall } from '$lib/api/footystats.js';
+  import { testApiConnection, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
   import { testSupabaseConnection, getTableCounts } from '$lib/api/supabase.js';
   import { cacheStats, cacheClear } from '$lib/api/cache.js';
   import { startFullSeed, seedLeague, getSeedStatus } from '$lib/api/seedClient.js';
@@ -161,13 +161,8 @@
 
   async function loadLeaguesList() {
     try {
-      const res = await rawApiCall('country-leagues', {});
-      const data = res.data?.data || res.data || [];
-      availableLeagues = Array.isArray(data) ? data.map(l => ({
-        id: l.id || l.league_id,
-        name: l.name || l.league_name || 'Unknown',
-        country: l.country || '',
-      })) : [];
+      const res = await rawApiCall('league-list', { chosen_leagues_only: 'true' });
+      availableLeagues = normalizeLeagues(res.data);
     } catch {
       availableLeagues = [];
     }
