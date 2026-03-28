@@ -140,6 +140,7 @@ export async function getLeagueSeason(seasonId) {
   const isDemo = getIsDemo();
   if (isDemo) return null;
   const raw = await apiRequest('league-season', { season_id: seasonId });
+  console.log(`[league-season ${seasonId}]`, JSON.stringify(raw).slice(0, 300));
   // L'API peut retourner { data: {...} }, un objet direct, ou un tableau
   const d = raw?.data || (Array.isArray(raw) ? raw[0] : raw);
   if (!d || typeof d !== 'object') return null;
