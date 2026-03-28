@@ -118,7 +118,7 @@ async function seedLeague(seasonId) {
       home_team_name: m.home_name || null,
       away_team_name: m.away_name || null,
       league_id: Number(seasonId),
-      season_id: m.season || null,
+      season_id: Number(seasonId),
       match_id: m.id,
       match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : m.date || '1970-01-01',
       home_goals: m.homeGoalCount ?? m.homeGoals ?? 0,
