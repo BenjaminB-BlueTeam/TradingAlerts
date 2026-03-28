@@ -7,6 +7,7 @@
 
   const navItems = [
     { href: '/',         icon: '📊', label: 'Dashboard'      },
+    { href: '/dc',       icon: '🎯', label: 'Double Chance'  },
     { href: '/matches',  icon: '⚽', label: 'Matchs à venir' },
     { href: '/alerts',   icon: '🔔', label: 'Alertes'        },
     { href: '/settings', icon: '⚙️', label: 'Paramètres'    },
