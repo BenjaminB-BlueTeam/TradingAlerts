@@ -51,12 +51,13 @@
     statsLoading = statsLoading;
     try {
       const stats = await getLeagueSeason(seasonId);
+      console.log(`[loadLeagueStats ${seasonId}]`, stats);
       if (stats) {
         leagueStats[seasonId] = stats;
         leagueStats = leagueStats;
       }
     } catch (e) {
-      console.warn(`Stats ligue ${seasonId} :`, e.message);
+      console.warn(`Stats ligue ${seasonId} ERREUR:`, e.message);
     }
     statsLoading[seasonId] = false;
     statsLoading = statsLoading;
