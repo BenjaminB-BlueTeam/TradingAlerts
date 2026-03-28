@@ -156,8 +156,10 @@
 <div class="leagues-toolbar">
   <input type="text" class="form-input" bind:value={searchQuery}
     placeholder="Rechercher une ligue ou un pays..." />
-  <button class="btn btn--sm btn--outline" on:click={() => setAll(true)}>Tout sélectionner</button>
-  <button class="btn btn--sm btn--outline" on:click={() => setAll(false)}>Tout désélectionner</button>
+  <div class="leagues-toolbar__actions">
+    <button class="btn btn--sm btn--primary" on:click={() => setAll(true)}>Tout sélectionner</button>
+    <button class="btn btn--sm btn--secondary" on:click={() => setAll(false)}>Tout désélectionner</button>
+  </div>
 </div>
 
 {#if loading}
@@ -281,13 +283,19 @@
 <style>
   .leagues-toolbar {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     align-items: center;
     margin-bottom: 16px;
-    max-width: 600px;
+    flex-wrap: wrap;
   }
   .leagues-toolbar .form-input {
     flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+  }
+  .leagues-toolbar__actions {
+    display: flex;
+    gap: 8px;
   }
   .leagues-list {
     display: flex;
