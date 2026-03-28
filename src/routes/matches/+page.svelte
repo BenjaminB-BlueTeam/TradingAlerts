@@ -5,16 +5,22 @@
   let filtrePlage    = 'aujourd_hui';
   let filtreLigue    = 'toutes';
   let filtreSignal   = 0;
-  let filtreContexte = 'tous';
   let filtre1MT      = false;
-  $: allMatches = [...$signaux];
-  $: filteredMatches = filtrerMatchsUpcoming(allMatches, {
-    plage:         filtrePlage,
-    ligue:         filtreLigue,
-    signalMin:     filtreSignal,
-    contexte:      filtreContexte,
-    seuil1MTOnly:  filtre1MT,
-  });
+  let filteredMatches = [];
+
+  function rechercher() {
+    const allMatches = [...$signaux];
+    filteredMatches = filtrerMatchsUpcoming(allMatches, {
+      plage:         filtrePlage,
+      ligue:         filtreLigue,
+      signalMin:     filtreSignal,
+      contexte:      'tous',
+      seuil1MTOnly:  filtre1MT,
+    });
+  }
+
+  // Recherche initiale au chargement
+  $: if ($signaux) rechercher();
 
   $: activeLeagues = $leagues.filter(l => l.active);
 
@@ -61,16 +67,12 @@
     <option value={75}>Signal ≥ 75</option>
   </select>
 
-  <select class="filter-select" bind:value={filtreContexte}>
-    <option value="tous">Contexte: tous</option>
-    <option value="domicile">Domicile</option>
-    <option value="exterieur">Exterieur</option>
-  </select>
-
   <label class="filter-toggle">
     <input type="checkbox" bind:checked={filtre1MT} />
     <span>1MT 50%+</span>
   </label>
+
+  <button class="btn btn--primary btn--sm" on:click={rechercher}>Rechercher</button>
 </div>
 
 <!-- TABLE -->
