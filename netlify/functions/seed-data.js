@@ -105,15 +105,14 @@ async function startFull(maxSeasons = 5) {
   return respond(200, { job_id: jobId, leagues, total: leagues.length });
 }
 
-async function seedLeague(seasonId, jobId) {
-  const results = { matches: 0, errors: [] };
-
+async function seedLeague(seasonId) {
+  // Récupère les matchs depuis FootyStats et retourne les rows formatées
+  // L'insert Supabase est fait côté client pour éviter le timeout
   try {
-    // Récupérer les matchs de la saison
     const matchesData = await footyRequest('league-matches', { season_id: seasonId });
     const matches = matchesData?.data || [];
 
-    const matchRows = matches.map(m => ({
+    const rows = matches.map(m => ({
       home_team_id: m.homeID,
       away_team_id: m.awayID,
       home_team_name: m.home_name || null,
@@ -129,18 +128,10 @@ async function seedLeague(seasonId, jobId) {
       last_updated: new Date().toISOString(),
     }));
 
-    // Batch insert par lots de 200 pour rester dans le timeout
-    for (let i = 0; i < matchRows.length; i += 200) {
-      const batch = matchRows.slice(i, i + 200);
-      await supabaseRequest('h2h_matches', 'POST', batch, '?on_conflict=match_id');
-    }
-    results.matches = matchRows.length;
-
+    return respond(200, { matches: rows.length, rows });
   } catch (e) {
-    results.errors.push(e.message);
+    return respond(200, { matches: 0, rows: [], errors: [e.message] });
   }
-
-  return respond(200, results);
 }
 
 async function getStatus(jobId) {
@@ -164,7 +155,7 @@ exports.handler = async (event) => {
         return await startFull();
       case 'seed_league':
         if (!league_id) return respond(400, { error: 'league_id requis' });
-        return await seedLeague(league_id, job_id);
+        return await seedLeague(league_id);
       case 'status':
         if (!job_id) return respond(400, { error: 'job_id requis' });
         return await getStatus(job_id);
