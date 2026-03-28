@@ -77,7 +77,7 @@
         seedProgress[league.id] = `0/${seasonIds.length} saisons...`;
         seedProgress = seedProgress;
 
-        let totalTeams = 0, totalMatches = 0, totalErrors = 0;
+        let totalMatches = 0, totalErrors = 0;
 
         // Seeder une saison à la fois pour éviter le timeout Netlify
         for (let s = 0; s < seasonIds.length; s++) {
@@ -85,19 +85,18 @@
           seedProgress = seedProgress;
           try {
             const result = await seedLeague(String(seasonIds[s]), seedJobId);
-            totalTeams += result.teams || 0;
             totalMatches += result.matches || 0;
             totalErrors += result.errors?.length || 0;
           } catch (e) {
             totalErrors++;
           }
-          // Pause 2s entre chaque saison
+          // Pause 1s entre chaque saison
           if (s < seasonIds.length - 1) {
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise(r => setTimeout(r, 1000));
           }
         }
 
-        seedProgress[league.id] = `${totalTeams} equipes, ${totalMatches} matchs (${seasonIds.length} saisons)`;
+        seedProgress[league.id] = `${totalMatches} matchs (${seasonIds.length} saisons)`;
         if (totalErrors > 0) seedProgress[league.id] += ` (${totalErrors} erreurs)`;
         seedDone++;
         seedProgress = seedProgress;
