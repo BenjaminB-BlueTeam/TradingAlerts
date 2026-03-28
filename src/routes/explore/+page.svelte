@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { isDemo } from '$lib/stores/appStore.js';
-  import { getAllLeagues, getLeagueTable, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
+  import { getAllLeagues, getLeagueTable, getLeagueSeason, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
 
   let allLeagues = [];
   let loading = true;
@@ -11,6 +11,10 @@
   let tableLoading = false;
   let loaded = false;
 
+  // Stats par ligue
+  let leagueStats = {};
+  let statsLoading = {};
+
   async function loadLeagues() {
     if (loaded && allLeagues.length > 10) return;
     loading = true;
@@ -19,6 +23,7 @@
       if (res.status === 200) {
         allLeagues = normalizeLeagues(res.data);
         loaded = true;
+        loadAllStats();
       } else {
         allLeagues = await getAllLeagues();
       }
@@ -26,6 +31,31 @@
       allLeagues = await getAllLeagues();
     }
     loading = false;
+  }
+
+  async function loadAllStats() {
+    for (let i = 0; i < allLeagues.length; i += 3) {
+      const batch = allLeagues.slice(i, i + 3);
+      await Promise.all(batch.map(l => loadLeagueStats(l.id)));
+      if (i + 3 < allLeagues.length) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+  }
+
+  async function loadLeagueStats(seasonId) {
+    if (leagueStats[seasonId]) return;
+    statsLoading[seasonId] = true;
+    statsLoading = statsLoading;
+    try {
+      const stats = await getLeagueSeason(seasonId);
+      if (stats) {
+        leagueStats[seasonId] = stats;
+        leagueStats = leagueStats;
+      }
+    } catch {}
+    statsLoading[seasonId] = false;
+    statsLoading = statsLoading;
   }
 
   $: if (!$isDemo && !loaded) loadLeagues();
@@ -46,7 +76,6 @@
       if (!map[country]) map[country] = [];
       map[country].push(l);
     }
-    // Trier par nombre de ligues décroissant
     return Object.entries(map)
       .sort(([, a], [, b]) => b.length - a.length);
   }
@@ -67,6 +96,12 @@
       if (window.showToast) window.showToast(`Erreur : ${e.message}`, 'error');
     }
     tableLoading = false;
+  }
+
+  function statColor(val, green, orange) {
+    if (val >= green) return 'var(--color-accent-green)';
+    if (val >= orange) return 'var(--color-signal-moyen)';
+    return 'var(--color-text-muted)';
   }
 
   onMount(() => {
@@ -102,21 +137,46 @@
         {country} <span class="explore-country__count">({leagues.length})</span>
       </div>
       <div class="explore-leagues-grid">
-        {#each leagues as league (league.id || league.league_id)}
-          {@const lid = league.id || league.league_id}
-          <div class="explore-league-card" class:expanded={expandedLeague === lid}>
+        {#each leagues as league (league.id)}
+          {@const stats = leagueStats[league.id]}
+          <div class="explore-league-card" class:expanded={expandedLeague === league.id}>
             <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <div class="explore-league-card__header" on:click={() => toggleLeague(lid)} role="button" tabindex="0">
+            <div class="explore-league-card__header" on:click={() => toggleLeague(league.id)} role="button" tabindex="0">
               <div class="explore-league-card__info">
-                <div class="explore-league-card__name">{league.name || league.league_name}</div>
+                <div class="explore-league-card__name">{league.name}</div>
                 <div class="explore-league-card__meta">
-                  {#if league.season}Saison {league.season}{/if}
+                  {#if league.year}Saison {league.year}{/if}
+                  {#if stats} · {stats.matchesPlayed}/{stats.totalMatches} matchs{/if}
                 </div>
               </div>
-              <span class="explore-league-card__arrow">{expandedLeague === lid ? '▼' : '▶'}</span>
+
+              {#if stats}
+                <div class="explore-stats">
+                  <div class="explore-stat" title="But en 1MT (Over 0.5 FHG)">
+                    <span class="explore-stat__label">1MT</span>
+                    <span class="explore-stat__value" style:color={statColor(stats.over05FHG, 75, 60)}>{stats.over05FHG}%</span>
+                  </div>
+                  <div class="explore-stat" title="Moyenne buts/match">
+                    <span class="explore-stat__label">Avg</span>
+                    <span class="explore-stat__value" style:color={statColor(stats.avgGoals * 25, 75, 60)}>{stats.avgGoals}</span>
+                  </div>
+                  <div class="explore-stat" title="BTTS">
+                    <span class="explore-stat__label">BTTS</span>
+                    <span class="explore-stat__value" style:color={statColor(stats.btts, 55, 45)}>{stats.btts}%</span>
+                  </div>
+                  <div class="explore-stat" title="Over 2.5 buts">
+                    <span class="explore-stat__label">O2.5</span>
+                    <span class="explore-stat__value" style:color={statColor(stats.over25, 60, 45)}>{stats.over25}%</span>
+                  </div>
+                </div>
+              {:else if statsLoading[league.id]}
+                <span class="explore-stats-loading">...</span>
+              {/if}
+
+              <span class="explore-league-card__arrow">{expandedLeague === league.id ? '▼' : '▶'}</span>
             </div>
 
-            {#if expandedLeague === lid}
+            {#if expandedLeague === league.id}
               <div class="explore-league-card__body">
                 {#if tableLoading}
                   <div style="padding:16px;text-align:center;color:var(--color-text-muted);font-size:13px;">
@@ -212,13 +272,17 @@
   .explore-league-card__header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 10px;
     padding: 10px 14px;
     cursor: pointer;
     transition: background 0.15s;
   }
   .explore-league-card__header:hover {
     background: rgba(255,255,255,0.03);
+  }
+  .explore-league-card__info {
+    flex: 1;
+    min-width: 0;
   }
   .explore-league-card__name {
     font-size: 14px;
@@ -228,9 +292,40 @@
     font-size: 11px;
     color: var(--color-text-muted);
   }
+  .explore-stats {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .explore-stats-loading {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+  .explore-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    padding: 3px 8px;
+    min-width: 42px;
+  }
+  .explore-stat__label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    letter-spacing: 0.3px;
+  }
+  .explore-stat__value {
+    font-size: 13px;
+    font-weight: 700;
+  }
   .explore-league-card__arrow {
     font-size: 11px;
     color: var(--color-text-muted);
+    flex-shrink: 0;
   }
   .explore-league-card__body {
     border-top: 1px solid var(--color-border);
@@ -253,5 +348,11 @@
   }
   .explore-pts {
     color: var(--color-accent-green);
+  }
+
+  @media (max-width: 640px) {
+    .explore-stats {
+      display: none;
+    }
   }
 </style>

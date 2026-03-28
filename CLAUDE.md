@@ -6,10 +6,10 @@ Fichier chargé automatiquement par Claude à chaque session. Contient tout le c
 
 ## Projet
 
-App SPA vanilla JS de **trading sportif football**. Identifie les matchs avec fort potentiel de but entre la **31e et 45e minute** (FHG = First Half Goal).
+App **SvelteKit** de **trading sportif football**. Identifie les matchs avec fort potentiel de but entre la **31e et 45e minute** (FHG = First Half Goal).
 
 - **Repo GitHub** : BenjaminB-BlueTeam/TradingAlerts
-- **Déploiement** : Netlify (SPA redirect configuré)
+- **Déploiement** : Netlify → https://tradingfootalerts.netlify.app/
 - **Utilisateur** : Benjamin — usage solo, francophone
 
 ---
@@ -18,49 +18,90 @@ App SPA vanilla JS de **trading sportif football**. Identifie les matchs avec fo
 
 | Couche | Tech |
 |--------|------|
-| Frontend | HTML / CSS / JS ES Modules (vanilla, sans framework) |
-| Déploiement | Netlify + Netlify Functions |
+| Frontend | SvelteKit 2 + Svelte 5 (SPA, ssr: false) |
+| Build | Vite 6 |
+| Déploiement | Netlify (adapter-netlify) + Netlify Functions |
 | Données | API FootyStats (`football-data-api.com`) via proxy Netlify sécurisé |
-| Persistance | Supabase (PostgreSQL) — trades, historique |
+| Persistance | Supabase (PostgreSQL) — trades, team_seasons, h2h_matches, seed_jobs |
 | Charts | Chart.js 4.4 |
 | Clé API | `FOOTYSTATS_API_KEY` en variable d'env Netlify (jamais côté browser) |
+| Supabase (serveur) | `SUPABASE_URL` + `SUPABASE_ANON_KEY` en env vars Netlify (pour seed-data function) |
 
 ---
 
 ## Architecture des fichiers
 
 ```
-index.html
+package.json / svelte.config.js / vite.config.js
 netlify.toml
-netlify/functions/footystats.js   ← proxy sécurisé API
+netlify/functions/
+  footystats.js         ← proxy sécurisé API FootyStats
+  seed-data.js          ← seed Supabase (team_seasons, h2h_matches)
 src/
-  css/
-    main.css          — variables CSS, reset, layout
-    components.css    — composants UI
-    responsive.css    — media queries
-  js/
-    app.js            — point d'entrée, routing, refresh auto 10min
-    store/store.js    — état global pub/sub + localStorage
+  app.css               ← styles globaux (variables CSS, composants, responsive)
+  app.html              ← template HTML
+  routes/
+    +layout.svelte      ← layout global (Sidebar, Toast, init)
+    +layout.js           ← ssr: false, prerender: false
+    +page.svelte         ← Dashboard signaux FHG
+    matches/+page.svelte ← Matchs à venir (table)
+    leagues/+page.svelte ← Ligues actives (toggle, stats, classement)
+    explore/+page.svelte ← Explorer toutes les ligues (par pays, stats, classement)
+    alerts/+page.svelte  ← Alertes + config algo
+    settings/+page.svelte← Paramètres, journal trades, bankroll
+    debug/+page.svelte   ← Debug (test API/Supabase, seed, testeur API brut)
+  lib/
     api/
-      footystats.js   — appels API via proxy, cache TTL
-      cache.js        — cache mémoire TTL par endpoint
-    core/
-      scoring.js      — algorithme FHG + DC
-      h2h.js          — analyse head-to-head
-      filters.js      — filtrage/tri des signaux
-      mockData.js     — données démo (sans clé API)
+      footystats.js     ← appels API via proxy, cache TTL, normalizeLeagues
+      cache.js          ← cache localStorage TTL par endpoint
+      supabase.js       ← client Supabase + CRUD trades + helpers debug
+      seedClient.js     ← client seed (orchestre seed ligue par ligue)
     components/
-      matchCard.js    — carte match (résumé + détail dépliable)
-      charts.js       — graphiques Chart.js
-      modal.js        — modale globale
-      sidebar.js      — navigation
-    pages/
-      dashboard.js    — signaux du jour
-      matches.js      — matchs à venir
-      leagues.js      — ligues actives
-      alerts.js       — alertes + paramètres algo
-      settings.js     — config clé API, profil
+      Sidebar.svelte    ← navigation (section principale + section Admin)
+      MatchCard.svelte  ← carte match (résumé + détail dépliable)
+      GoalTimeline.svelte← barre timing buts H2H
+      Toast.svelte      ← notifications toast
+      Modal.svelte      ← modale globale
+      charts.js         ← graphiques Chart.js
+    stores/
+      appStore.js       ← stores Svelte (config, leagues, trades, etc.)
+    core/
+      scoring.js        ← algorithme FHG + DC
+      h2h.js            ← analyse head-to-head
+      filters.js        ← filtrage/tri des signaux
+      mockData.js       ← données démo (sans clé API)
+    data.js             ← orchestration chargement données
 ```
+
+---
+
+## Endpoints API FootyStats (vrais noms)
+
+| Endpoint | Param clé | Usage |
+|----------|-----------|-------|
+| `league-list` | `chosen_leagues_only=true` | Liste des 50 ligues choisies |
+| `league-teams` | `season_id`, `include=stats` | Équipes + stats d'une saison |
+| `league-matches` | `season_id` | Tous les matchs d'une saison |
+| `league-tables` | `season_id` | Classement (data.data.league_table) |
+| `league-season` | `season_id` | Stats agrégées ligue (FHG%, BTTS, O2.5...) |
+| `todays-matches` | `date` | Matchs du jour |
+| `match` | `match_id` | Détail d'un match |
+| `team` | `team_id` | Stats d'une équipe |
+| `lastx` | `team_id` | Last 5/6/10 matchs |
+| `country-list` | — | Liste des pays |
+
+> **Important** : `league-list` retourne une structure imbriquée `{ name, country, season: [{id, year}] }`. Le `season[].id` = `season_id` à passer aux autres endpoints. Utiliser `normalizeLeagues()` pour aplatir.
+
+---
+
+## Tables Supabase
+
+| Table | Rôle | RLS |
+|-------|------|-----|
+| `trades` | Journal des trades | OFF |
+| `team_seasons` | Stats équipes par saison (3 ans, buts/min) | OFF |
+| `h2h_matches` | Historique matchs H2H avec goal_events | OFF |
+| `seed_jobs` | Suivi progression seed | OFF |
 
 ---
 
@@ -76,8 +117,6 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 
 **Seuils** : Fort ≥75 | Moyen ≥60 | Faible <60
 
-**Score DC** : calculé si FHG ≥60, basé sur pct retour si encaisse + force FHG + avantage domicile.
-
 > ⚠ Ce système de scoring est **prévu pour être remplacé** par des % bruts — voir roadmap.
 
 ---
@@ -85,15 +124,15 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 ## Ce qui est implémenté
 
 - Dashboard signaux FHG, filtre H2H Clean Sheet, mode Focus
-- Supabase connecté (persistance trades)
+- Supabase connecté (persistance trades + tables team_seasons, h2h_matches, seed_jobs)
 - Proxy Netlify sécurisé (clé API en env var)
 - Journal trades : stats, export CSV, calcul bankroll
-- **Goal Timeline H2H** — barre de timing des buts style FootyStats dans la section H2H des cartes match :
-  - ⚽ coloré = but marqué par l'équipe ciblée
-  - ⚽ grisé = but encaissé (adversaire)
-  - Marqueurs HT et FT sur la barre
-  - Données `goals: [{minute, scored}]` dans mockData
-  - En prod : mapper depuis le champ `goalscorer` de l'endpoint `match` FootyStats (structure à vérifier en loggant une vraie réponse)
+- Goal Timeline H2H — barre de timing des buts style FootyStats
+- **Page Ligues actives** — 50 ligues API, toggle actif, stats (1MT%, Avg, BTTS%, O2.5%), classement expand
+- **Page Explorer** — ligues groupées par pays, mêmes stats, classement expand
+- **Page Debug** — test API/Supabase, stats cache, seed data, testeur API brut avec copie JSON
+- **Seed Data** — Netlify Function seed-data.js, orchestration client ligue par ligue
+- **Sidebar avec section Admin** — Ligues actives, Explorer, Debug regroupées
 
 ---
 
@@ -106,12 +145,12 @@ Ces décisions sont actées, ne pas remettre en question sauf si Benjamin le dem
 3. **Carte avec les 2 badges FHG + DC** apparaît dans les 2 sections du dashboard
 4. **Stats FHG et DC trackées séparément** en Supabase
 5. **Bouton "Analyse IA"** sur chaque carte (Claude API, résultat mis en cache Supabase)
-6. **Table `team_seasons`** à construire en Supabase : 3 saisons de données (buts par minute, comebacks, victoires/défaites)
-7. **Seed FootyStats → Supabase** via Netlify Function
 
 ### Prochaines étapes prioritaires
 
-- [ ] Refonte DB Supabase — table `team_seasons`
+- [x] Refonte DB Supabase — tables team_seasons, h2h_matches, seed_jobs
+- [x] Seed FootyStats → Supabase via Netlify Function
+- [x] Pages Admin (Debug, Ligues, Explorer)
 - [ ] Refonte algo — % bruts sans scoring
 - [ ] Refonte cartes — badges FHG + DC indépendants, bouton "Analyse IA"
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API en prod
@@ -121,15 +160,15 @@ Ces décisions sont actées, ne pas remettre en question sauf si Benjamin le dem
 
 ## Conventions de développement
 
-- **Vanilla JS uniquement** — pas de framework, pas de build step
+- **SvelteKit** — composants .svelte, stores Svelte, routing fichier
 - **Pas de modification du store global** sans vérifier les subscribers existants
 - **Toute nouvelle feature** : légère, compatible Netlify static + Supabase
-- **CSS** : utiliser les variables CSS existantes (`--color-*`, `--radius-*`, etc.) — ne pas coder de couleurs en dur sauf pour des éléments très spécifiques (ex: fond de la goal timeline)
+- **CSS** : utiliser les variables CSS existantes (`--color-*`, `--radius-*`, etc.) — ne pas coder de couleurs en dur
 - **Mode démo** : toute nouvelle feature avec données API doit avoir un fallback dans `mockData.js`
 - **Clé API** : ne jamais l'exposer côté browser — toujours passer par `/.netlify/functions/footystats`
 
 ## Conventions git
 
 - Commit directement sur `main` pour les features solo (pas de PR obligatoire)
-- Toujours pusher `PROJECT_CONTEXT.md` après une session de travail
+- Toujours pusher `CLAUDE.md` à jour après une session de travail
 - Push + merge autonome autorisé si Benjamin le demande explicitement dans la session

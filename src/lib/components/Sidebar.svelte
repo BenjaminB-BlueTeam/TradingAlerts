@@ -6,14 +6,19 @@
   let sidebarOpen = false;
 
   const navItems = [
-    { href: '/',         icon: '📊', label: 'Dashboard'     },
+    { href: '/',         icon: '📊', label: 'Dashboard'      },
     { href: '/matches',  icon: '⚽', label: 'Matchs à venir' },
-    { href: '/leagues',  icon: '🏆', label: 'Ligues actives' },
-    { href: '/explore',  icon: '🌍', label: 'Explorer'       },
     { href: '/alerts',   icon: '🔔', label: 'Alertes'        },
     { href: '/settings', icon: '⚙️', label: 'Paramètres'    },
+  ];
+
+  const adminItems = [
+    { href: '/leagues',  icon: '🏆', label: 'Ligues actives' },
+    { href: '/explore',  icon: '🌍', label: 'Explorer'       },
     { href: '/debug',    icon: '🐛', label: 'Debug'          },
   ];
+
+  let adminOpen = false;
 
   function navigate(href) {
     goto(href);
@@ -33,6 +38,9 @@
   $: apiDotClass = $isDemo ? '' : $apiConnected ? 'connected' : 'error';
   $: apiLabel = $isDemo ? 'Mode démo' : $apiConnected ? 'API connectée' : 'API déconnectée';
   $: alertsBadgeCount = $alertesActives?.length || 0;
+  $: adminHasActive = adminItems.some(i => isActive(i.href));
+  // Auto-ouvrir la section admin si on est sur une page admin
+  $: if (adminHasActive) adminOpen = true;
 </script>
 
 <!-- OVERLAY MOBILE -->
@@ -75,6 +83,36 @@
         {/if}
       </a>
     {/each}
+
+    <!-- Section Admin -->
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div
+      class="sidebar__section-toggle"
+      class:open={adminOpen}
+      on:click={() => adminOpen = !adminOpen}
+      role="button"
+      tabindex="0"
+    >
+      <span class="sidebar__section-icon">🛠</span>
+      <span class="sidebar__section-label">Admin</span>
+      <span class="sidebar__section-arrow">{adminOpen ? '▾' : '▸'}</span>
+    </div>
+
+    {#if adminOpen}
+      <div class="sidebar__section-items">
+        {#each adminItems as item}
+          <a
+            href={item.href}
+            class="sidebar__nav-item sidebar__nav-item--sub"
+            class:active={isActive(item.href)}
+            on:click|preventDefault={() => navigate(item.href)}
+          >
+            <span class="sidebar__nav-icon">{item.icon}</span>
+            <span class="sidebar__nav-label">{item.label}</span>
+          </a>
+        {/each}
+      </div>
+    {/if}
   </div>
 
   <div class="sidebar__footer">
@@ -91,3 +129,42 @@
     </button>
   </div>
 </nav>
+
+<style>
+  .sidebar__section-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    margin-top: 8px;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: color 0.15s;
+    user-select: none;
+  }
+  .sidebar__section-toggle:hover,
+  .sidebar__section-toggle.open {
+    color: var(--color-text-primary);
+  }
+  .sidebar__section-icon {
+    font-size: 14px;
+  }
+  .sidebar__section-label {
+    flex: 1;
+  }
+  .sidebar__section-arrow {
+    font-size: 12px;
+  }
+  .sidebar__section-items {
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar__nav-item--sub {
+    padding-left: 40px !important;
+    font-size: 13px;
+  }
+</style>
