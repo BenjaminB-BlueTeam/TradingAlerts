@@ -44,50 +44,39 @@
 
 <!-- FILTERS BAR -->
 <div class="filters-bar">
-  <div class="filter-group">
-    <span class="filter-group__label">Plage</span>
-    <button class="filter-btn" class:active={filtrePlage === 'aujourd_hui'}
-      on:click={() => filtrePlage = 'aujourd_hui'}>Aujourd'hui</button>
-    <button class="filter-btn" class:active={filtrePlage === 'tous'}
-      on:click={() => filtrePlage = 'tous'}>Tous</button>
-  </div>
+  <select class="filter-select" bind:value={filtrePlage}>
+    <option value="aujourd_hui">Aujourd'hui</option>
+    <option value="tous">Tous les jours</option>
+  </select>
 
-  <div class="filter-group">
-    <span class="filter-group__label">Ligue</span>
-    <button class="filter-btn" class:active={filtreLigue === 'toutes'}
-      on:click={() => filtreLigue = 'toutes'}>Toutes</button>
+  <select class="filter-select filter-select--league" bind:value={filtreLigue}>
+    <option value="toutes">Toutes les ligues</option>
     {#each activeLeagues as l}
-      <button class="filter-btn" class:active={filtreLigue === l.id}
-        on:click={() => filtreLigue = l.id}>{l.flag} {l.name}</button>
+      <option value={l.id}>{l.flag} {l.name}</option>
     {/each}
-  </div>
+  </select>
 
-  <div class="filter-group">
-    <span class="filter-group__label">Signal min</span>
-    <button class="filter-btn" class:active={filtreSignal === 0}
-      on:click={() => filtreSignal = 0}>Tous</button>
-    <button class="filter-btn" class:active={filtreSignal === 60}
-      on:click={() => filtreSignal = 60}>≥ 60</button>
-    <button class="filter-btn" class:active={filtreSignal === 75}
-      on:click={() => filtreSignal = 75}>≥ 75</button>
-  </div>
+  <select class="filter-select" bind:value={filtreSignal}>
+    <option value={0}>Signal: tous</option>
+    <option value={60}>Signal ≥ 60</option>
+    <option value={75}>Signal ≥ 75</option>
+  </select>
 
-  <div class="filter-group">
-    <span class="filter-group__label">Contexte</span>
-    <button class="filter-btn" class:active={filtreContexte === 'tous'}
-      on:click={() => filtreContexte = 'tous'}>Tous</button>
-    <button class="filter-btn" class:active={filtreContexte === 'domicile'}
-      on:click={() => filtreContexte = 'domicile'}>DOM</button>
-    <button class="filter-btn" class:active={filtreContexte === 'exterieur'}
-      on:click={() => filtreContexte = 'exterieur'}>EXT</button>
-  </div>
+  <select class="filter-select" bind:value={filtreContexte}>
+    <option value="tous">Contexte: tous</option>
+    <option value="domicile">Domicile</option>
+    <option value="exterieur">Exterieur</option>
+  </select>
 
-  <div class="filter-group">
-    <button class="filter-btn" class:active={filtre1MT}
-      on:click={() => filtre1MT = !filtre1MT}>★ 1MT 50%+</button>
-    <button class="filter-btn" class:active={filtreExclus}
-      on:click={() => filtreExclus = !filtreExclus}>Afficher exclus</button>
-  </div>
+  <label class="filter-toggle">
+    <input type="checkbox" bind:checked={filtre1MT} />
+    <span>1MT 50%+</span>
+  </label>
+
+  <label class="filter-toggle">
+    <input type="checkbox" bind:checked={filtreExclus} />
+    <span>Exclus</span>
+  </label>
 </div>
 
 <!-- TABLE -->

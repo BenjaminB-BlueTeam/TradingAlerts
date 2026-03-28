@@ -369,6 +369,12 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 .filter-btn { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--color-border); background: transparent; color: var(--color-text-secondary); transition: all var(--transition-fast); }
 .filter-btn:hover { border-color: var(--color-border-hover); color: var(--color-text-primary); }
 .filter-btn.active { background: rgba(29,158,117,0.15); border-color: var(--color-accent-green); color: var(--color-accent-green); }
+.filter-select { padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid var(--color-border); background: var(--color-bg-card); color: var(--color-text-secondary); cursor: pointer; min-width: 120px; }
+.filter-select:focus { border-color: var(--color-accent-blue); outline: none; }
+.filter-select--league { min-width: 180px; max-width: 240px; }
+.filter-toggle { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; white-space: nowrap; padding: 4px 8px; border: 1px solid var(--color-border); border-radius: 6px; }
+.filter-toggle:has(input:checked) { border-color: var(--color-accent-green); color: var(--color-accent-green); }
+.filter-toggle input { accent-color: var(--color-accent-green); margin: 0; }
 
 /* ---- LEAGUE CARD ---- */
 .league-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-card); padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: border-color var(--transition-fast); }
