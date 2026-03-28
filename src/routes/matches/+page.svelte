@@ -1,57 +1,80 @@
 <script>
-  import { signaux, exclus, leagues, config } from '$lib/stores/appStore.js';
-  import { filtrerMatchsUpcoming } from '$lib/core/filters.js';
+  import { onMount } from 'svelte';
+  import { leagues, isDemo } from '$lib/stores/appStore.js';
+  import { getTodaysMatches } from '$lib/api/footystats.js';
 
-  let filtrePlage    = 'aujourd_hui';
-  let filtreLigue    = 'toutes';
-  let filtreSignal   = 0;
-  let filtre1MT      = false;
+  let filtrePlage = 0; // offset jours: 0=aujourd'hui, 1=demain, 2=après-demain
+  let filtreLigue = 'toutes';
+  let allMatches = [];
   let filteredMatches = [];
-
-  function rechercher() {
-    const allMatches = [...$signaux];
-    filteredMatches = filtrerMatchsUpcoming(allMatches, {
-      plage:         filtrePlage,
-      ligue:         filtreLigue,
-      signalMin:     filtreSignal,
-      contexte:      'tous',
-      seuil1MTOnly:  filtre1MT,
-    });
-  }
-
-  // Recherche initiale au chargement
-  $: if ($signaux) rechercher();
+  let loading = false;
 
   $: activeLeagues = $leagues.filter(l => l.active);
 
-  function getSignalLabel(signal) {
-    if (signal === 'fort')  return '🔥 FORT';
-    if (signal === 'moyen') return '⚡ MOY';
-    return '— FAI';
+  function getDateStr(offset) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().split('T')[0];
   }
-  function getScoreClass(score) {
-    if (score >= 75) return 'td-green';
-    if (score >= 60) return 'td-orange';
-    return 'td-grey';
+
+  function formatTime(unix) {
+    if (!unix) return '—';
+    return new Date(unix * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   }
-  function getH2HLabel(warningH2H, butsH2H1MT, nbH2H) {
-    if (warningH2H === 'vert')   return `✓ ${butsH2H1MT}/${nbH2H}`;
-    if (warningH2H === 'orange') return `⚠ ${butsH2H1MT}/${nbH2H}`;
-    if (warningH2H === 'rouge')  return `✗ 0/${nbH2H}`;
-    return `? ${nbH2H || 0}`;
+
+  function formatDate(unix) {
+    if (!unix) return '';
+    return new Date(unix * 1000).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
   }
+
+  async function rechercher() {
+    loading = true;
+    filteredMatches = [];
+
+    // Déterminer quels jours charger
+    const offsets = filtrePlage === -1 ? [0, 1, 2] : [filtrePlage];
+
+    const results = [];
+    for (const offset of offsets) {
+      try {
+        const dateStr = getDateStr(offset);
+        const matches = await getTodaysMatches(dateStr);
+        if (Array.isArray(matches)) {
+          matches.forEach(m => { m._offset = offset; });
+          results.push(...matches);
+        }
+      } catch {}
+    }
+
+    allMatches = results;
+
+    // Filtrer par ligue
+    filteredMatches = allMatches.filter(m => {
+      if (filtreLigue === 'toutes') return true;
+      const compName = m.competition_name || m.league_name || '';
+      const league = activeLeagues.find(l => l.id === filtreLigue);
+      if (!league) return true;
+      return compName.includes(league.name) || league.name.includes(compName);
+    }).sort((a, b) => (a.date_unix || 0) - (b.date_unix || 0));
+
+    loading = false;
+  }
+
+  onMount(() => { rechercher(); });
 </script>
 
 <div class="page-title">⚽ Matchs à venir</div>
-<div class="page-subtitle">Tous les matchs analysés du jour triés par score FHG</div>
+<div class="page-subtitle">
+  {filteredMatches.length} match{filteredMatches.length > 1 ? 's' : ''} trouves
+</div>
 
 <!-- FILTERS BAR -->
 <div class="filters-bar">
   <select class="filter-select" bind:value={filtrePlage}>
-    <option value="aujourd_hui">Aujourd'hui</option>
-    <option value="demain">Demain</option>
-    <option value="apres_demain">Apres-demain</option>
-    <option value="tous">Tous</option>
+    <option value={0}>Aujourd'hui</option>
+    <option value={1}>Demain</option>
+    <option value={2}>Après-demain</option>
+    <option value={-1}>3 jours</option>
   </select>
 
   <select class="filter-select filter-select--league" bind:value={filtreLigue}>
@@ -61,72 +84,53 @@
     {/each}
   </select>
 
-  <select class="filter-select" bind:value={filtreSignal}>
-    <option value={0}>Signal: tous</option>
-    <option value={60}>Signal ≥ 60</option>
-    <option value={75}>Signal ≥ 75</option>
-  </select>
-
-  <label class="filter-toggle">
-    <input type="checkbox" bind:checked={filtre1MT} />
-    <span>1MT 50%+</span>
-  </label>
-
-  <button class="btn btn--primary btn--sm" on:click={rechercher}>Rechercher</button>
+  <button class="btn btn--primary btn--sm" on:click={rechercher} disabled={loading}>
+    {loading ? '⏳' : 'Rechercher'}
+  </button>
 </div>
 
 <!-- TABLE -->
-{#if filteredMatches.length > 0}
+{#if loading}
+  <div class="empty-state">
+    <div class="empty-state__icon">⏳</div>
+    <div class="empty-state__title">Chargement des matchs...</div>
+  </div>
+{:else if filteredMatches.length > 0}
   <div class="table-wrapper">
     <table class="data-table">
       <thead>
         <tr>
+          <th>Date</th>
           <th>Heure</th>
           <th>Match</th>
           <th>Ligue</th>
-          <th>Équipe Signal</th>
-          <th>FHG%</th>
-          <th>Forme 5M</th>
-          <th>1MT%</th>
-          <th>H2H</th>
+          <th>Statut</th>
           <th>Score</th>
-          <th>Signal</th>
-          <th>DC</th>
         </tr>
       </thead>
       <tbody>
         {#each filteredMatches as m (m.id)}
-          {@const sc = m.scoreChoisi || {}}
-          <tr class:row--warning={sc.warningH2H === 'orange'}>
-            <td>{m.time || '—'}</td>
+          <tr>
+            <td>{formatDate(m.date_unix)}</td>
+            <td>{formatTime(m.date_unix)}</td>
+            <td style="font-weight:600;">{m.home_name || '?'} vs {m.away_name || '?'}</td>
+            <td style="font-size:12px;color:var(--color-text-muted);">{m.competition_name || m.league_name || '—'}</td>
             <td>
-              <div style="font-weight:600;">{m.homeName} vs {m.awayName}</div>
-              {#if m.exclu}
-                <div style="font-size:11px;color:var(--color-danger);">{m.raisonExclusion}</div>
-              {/if}
-            </td>
-            <td>{m.leagueFlag || ''} {m.leagueName || ''}</td>
-            <td style="color:var(--color-text-primary);">{m.equipeSignal || '—'}</td>
-            <td class={getScoreClass(sc.tauxN || 0)}>{sc.tauxN || 0}%</td>
-            <td class={getScoreClass((sc.forme5M || 0) / 100 * 60)}>
-              {Math.round((sc.forme5M || 0) / 20)}/5
-            </td>
-            <td class={(sc.pct1MT || 0) >= 50 ? 'td-green' : 'td-grey'}>{sc.pct1MT || 0}%</td>
-            <td class={
-              sc.warningH2H === 'vert' ? 'td-green' :
-              sc.warningH2H === 'orange' ? 'td-orange' : 'td-grey'
-            }>{getH2HLabel(sc.warningH2H, sc.butsH2H1MT, sc.nbH2H)}</td>
-            <td class={getScoreClass(sc.score || 0)}><strong>{sc.score || 0}</strong></td>
-            <td>
-              {#if !m.exclu}
-                <span class="badge badge--{sc.signal || 'faible'}">
-                  {getSignalLabel(sc.signal)}
-                </span>
+              {#if m.status === 'complete' || m.status === 'finished'}
+                <span style="color:var(--color-text-muted);">Termine</span>
+              {:else if m.status === 'inplay' || m.status === 'live'}
+                <span style="color:var(--color-danger);font-weight:600;">En cours</span>
               {:else}
-                <span class="badge badge--exclu">✗ EXCLU</span>
+                <span style="color:var(--color-accent-green);">A venir</span>
               {/if}
             </td>
-            <td>{m.scoreDC ? `${m.scoreDC}pts` : '—'}</td>
+            <td style="font-weight:700;">
+              {#if m.homeGoalCount != null && m.awayGoalCount != null}
+                {m.homeGoalCount} - {m.awayGoalCount}
+              {:else}
+                —
+              {/if}
+            </td>
           </tr>
         {/each}
       </tbody>
@@ -135,7 +139,7 @@
 {:else}
   <div class="empty-state">
     <div class="empty-state__icon">⚽</div>
-    <div class="empty-state__title">Aucun match correspondant</div>
-    <div class="empty-state__desc">Modifiez les filtres pour voir plus de matchs</div>
+    <div class="empty-state__title">Aucun match trouve</div>
+    <div class="empty-state__desc">Changez la date ou la ligue et cliquez sur Rechercher</div>
   </div>
 {/if}
