@@ -84,7 +84,7 @@ async function startFull() {
   const jobId = jobs[0]?.id;
 
   // Récupérer les ligues actives depuis FootyStats
-  const leaguesData = await footyRequest('country-leagues');
+  const leaguesData = await footyRequest('league-list');
   const leagues = (leaguesData?.data || leaguesData || []).map(l => ({
     id: l.id || l.league_id,
     name: l.name || l.league_name,
@@ -99,7 +99,7 @@ async function seedLeague(leagueId, jobId, seasonsCount) {
 
   try {
     // 1. Récupérer les équipes de la ligue
-    const teamsData = await footyRequest('league-teams', { league_id: leagueId });
+    const teamsData = await footyRequest('league-teams', { season_id: leagueId, include: 'stats' });
     const teams = teamsData?.data || [];
 
     // Upsert team_seasons
@@ -145,7 +145,7 @@ async function seedLeague(leagueId, jobId, seasonsCount) {
     }
 
     // 2. Récupérer les matchs de la ligue
-    const matchesData = await footyRequest('league-matches', { league_id: leagueId });
+    const matchesData = await footyRequest('league-matches', { season_id: leagueId });
     const matches = matchesData?.data || [];
 
     for (const m of matches) {

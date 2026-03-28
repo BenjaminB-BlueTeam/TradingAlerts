@@ -13,9 +13,9 @@ const TTL = {
   'todays-matches':  10 * 60 * 1000,
   'league-teams':    60 * 60 * 1000,
   'league-matches':  30 * 60 * 1000,
-  'country-leagues': 24 * 60 * 60 * 1000,
+  'league-list':     24 * 60 * 60 * 1000,
   'match':           15 * 60 * 1000,
-  'league-table':    60 * 60 * 1000,
+  'league-tables':   60 * 60 * 1000,
 };
 
 async function apiRequest(endpoint, params = {}) {
@@ -44,8 +44,8 @@ async function apiRequest(endpoint, params = {}) {
 export async function testApiConnection() {
   try {
     const url = new URL(PROXY_URL, window.location.origin);
-    url.searchParams.set('endpoint', 'country-leagues');
-    url.searchParams.set('country_id', '1');
+    url.searchParams.set('endpoint', 'league-list');
+    url.searchParams.set('chosen_leagues_only', 'true');
 
     const res = await fetch(url.toString());
 
@@ -67,13 +67,13 @@ export async function testApiConnection() {
 export async function getAllLeagues() {
   const isDemo = getIsDemo();
   if (isDemo) return MOCK_DATA.leagues;
-  return await apiRequest('country-leagues');
+  return await apiRequest('league-list');
 }
 
 export async function getLeagueTeams(leagueId) {
   const isDemo = getIsDemo();
   if (isDemo) return MOCK_DATA.teams[leagueId] || [];
-  const data = await apiRequest('league-teams', { league_id: leagueId });
+  const data = await apiRequest('league-teams', { season_id: leagueId, include: 'stats' });
   return data?.data || [];
 }
 
@@ -88,7 +88,7 @@ export async function getTodaysMatches(date) {
 export async function getLeagueMatches(leagueId) {
   const isDemo = getIsDemo();
   if (isDemo) return MOCK_DATA.leagueMatches[leagueId] || [];
-  const data = await apiRequest('league-matches', { league_id: leagueId });
+  const data = await apiRequest('league-matches', { season_id: leagueId });
   return data?.data || [];
 }
 
@@ -115,7 +115,7 @@ export async function getH2H(homeId, awayId, leagueId) {
 export async function getLeagueTable(leagueId) {
   const isDemo = getIsDemo();
   if (isDemo) return [];
-  const data = await apiRequest('league-table', { league_id: leagueId });
+  const data = await apiRequest('league-tables', { season_id: leagueId });
   return data?.data || data?.league_table || [];
 }
 

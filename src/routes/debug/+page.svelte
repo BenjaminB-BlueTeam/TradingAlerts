@@ -119,18 +119,22 @@
   }
 
   // --- Testeur API brut ---
-  let rawEndpoint = 'country-leagues';
+  let rawEndpoint = 'league-list';
   let rawParams = '';
   let rawResult = null;
   let rawLoading = false;
 
   const endpoints = [
-    'country-leagues',
+    'league-list',
+    'country-list',
     'league-teams',
     'league-matches',
-    'league-table',
+    'league-tables',
+    'league-season',
     'todays-matches',
     'match',
+    'team',
+    'lastx',
   ];
 
   async function handleRawCall() {
