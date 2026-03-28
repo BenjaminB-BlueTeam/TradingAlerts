@@ -1,0 +1,21 @@
+# Dépendances
+node_modules/
+
+# Environnement local
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+
+# Claude Code
+.claude/
+
+# Netlify
+.netlify/
