@@ -3,10 +3,10 @@
    FHG Tracker
    ================================================ */
 
-import { loadFromStorage, getState, setState, savePrefs } from './store/store.js';
+import { loadFromStorage, getState, setState, savePrefs, loadTradesFromSupabase } from './store/store.js';
 import { initSidebar, setActivePage } from './components/sidebar.js';
 import { initModal } from './components/modal.js';
-import { getTodaysMatches, getLeagueTeams, getH2H } from './api/footystats.js';
+import { getTodaysMatches, getLeagueTeams, getH2H, testApiConnection } from './api/footystats.js';
 import { analyserMatch } from './core/scoring.js';
 import { analyserH2H } from './core/h2h.js';
 import { filtrerMatchs } from './core/filters.js';
@@ -30,9 +30,12 @@ export async function init() {
   initSidebar(navigateTo);
   initModal();
 
-  // 3. Afficher le bandeau démo si pas de clé API
-  const { isDemo, prefs } = getState();
-  if (isDemo && !prefs.demoBannerClosed) {
+  // 3. Vérifier la disponibilité de l'API via le proxy Netlify
+  const apiStatus = await testApiConnection();
+  setState({ isDemo: !apiStatus.success, apiConnected: apiStatus.success });
+
+  const { prefs } = getState();
+  if (!apiStatus.success && !prefs.demoBannerClosed) {
     document.getElementById('demo-banner')?.classList.remove('hidden');
     document.getElementById('demo-banner-close')?.addEventListener('click', () => {
       document.getElementById('demo-banner')?.classList.add('hidden');
@@ -40,8 +43,11 @@ export async function init() {
     });
   }
 
-  // 4. Charger les données
-  await loadData();
+  // 4. Charger les données (matchs + trades Supabase en parallèle)
+  await Promise.all([
+    loadData(),
+    loadTradesFromSupabase(),
+  ]);
 
   // 5. Naviguer vers la page initiale
   const startPage = prefs.currentPage || 'dashboard';

@@ -1,5 +1,5 @@
 /* ================================================
-   footystats.js — Appels API FootyStats
+   footystats.js — Appels via le proxy Netlify
    FHG Tracker
    ================================================ */
 
@@ -7,7 +7,7 @@ import { cacheGet, cacheSet, cacheKey } from './cache.js';
 import { getState } from '../store/store.js';
 import { MOCK_DATA } from '../core/mockData.js';
 
-const BASE_URL = 'https://api.football-data-api.com';
+const PROXY_URL = '/.netlify/functions/footystats';
 
 // TTL personnalisés par endpoint
 const TTL = {
@@ -19,26 +19,24 @@ const TTL = {
 };
 
 /**
- * Requête générique FootyStats avec cache.
+ * Requête via le proxy Netlify avec cache localStorage.
+ * La clé API n'est jamais manipulée côté navigateur.
  */
 async function apiRequest(endpoint, params = {}) {
-  const { apiKey } = getState();
-  if (!apiKey) throw new Error('NO_API_KEY');
-
   const key = cacheKey(endpoint, params);
   const cached = cacheGet(key);
   if (cached) return cached;
 
-  const url = new URL(`${BASE_URL}/${endpoint}`);
-  url.searchParams.set('key', apiKey);
+  const url = new URL(PROXY_URL, window.location.origin);
+  url.searchParams.set('endpoint', endpoint);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
   const response = await fetch(url.toString());
-  if (!response.ok) {
-    if (response.status === 401) throw new Error('INVALID_API_KEY');
-    if (response.status === 429) throw new Error('RATE_LIMIT');
-    throw new Error(`HTTP_${response.status}`);
-  }
+
+  if (response.status === 503) throw new Error('NO_API_KEY');
+  if (response.status === 401) throw new Error('INVALID_API_KEY');
+  if (response.status === 429) throw new Error('RATE_LIMIT');
+  if (!response.ok) throw new Error(`HTTP_${response.status}`);
 
   const data = await response.json();
   if (data.error) throw new Error(data.error);
@@ -48,21 +46,27 @@ async function apiRequest(endpoint, params = {}) {
 }
 
 // ============================================================
-// ENDPOINTS
+// TEST DE CONNEXION
 // ============================================================
 
 /**
- * Tester la connexion API (liste des ligues)
+ * Vérifie que la Netlify Function est configurée et opérationnelle.
  */
-export async function testApiConnection(key) {
-  if (!key) return { success: false, error: 'Clé API manquante' };
+export async function testApiConnection() {
   try {
-    const url = `${BASE_URL}/country-leagues?key=${encodeURIComponent(key)}&country_id=1`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      if (res.status === 401) return { success: false, error: 'Clé API invalide (401)' };
-      return { success: false, error: `Erreur HTTP ${res.status}` };
-    }
+    const url = new URL(PROXY_URL, window.location.origin);
+    url.searchParams.set('endpoint', 'country-leagues');
+    url.searchParams.set('country_id', '1');
+
+    const res = await fetch(url.toString());
+
+    if (res.status === 503) return {
+      success: false,
+      error: 'Clé API non configurée — ajoutez FOOTYSTATS_API_KEY dans les variables d\'env Netlify',
+    };
+    if (res.status === 401) return { success: false, error: 'Clé API invalide (401)' };
+    if (!res.ok) return { success: false, error: `Erreur HTTP ${res.status}` };
+
     const data = await res.json();
     if (data.error) return { success: false, error: data.error };
     return { success: true, message: 'Connexion réussie ✓' };
@@ -71,18 +75,16 @@ export async function testApiConnection(key) {
   }
 }
 
-/**
- * Lister toutes les ligues disponibles
- */
+// ============================================================
+// ENDPOINTS
+// ============================================================
+
 export async function getAllLeagues() {
   const { isDemo } = getState();
   if (isDemo) return MOCK_DATA.leagues;
   return await apiRequest('country-leagues');
 }
 
-/**
- * Récupérer les équipes d'une ligue (saison N)
- */
 export async function getLeagueTeams(leagueId) {
   const { isDemo } = getState();
   if (isDemo) return MOCK_DATA.teams[leagueId] || [];
@@ -90,9 +92,6 @@ export async function getLeagueTeams(leagueId) {
   return data?.data || [];
 }
 
-/**
- * Récupérer les matchs du jour
- */
 export async function getTodaysMatches(date) {
   const { isDemo } = getState();
   if (isDemo) return MOCK_DATA.matches;
@@ -101,9 +100,6 @@ export async function getTodaysMatches(date) {
   return data?.data || [];
 }
 
-/**
- * Récupérer les matchs d'une ligue (pour calcul 5 derniers)
- */
 export async function getLeagueMatches(leagueId) {
   const { isDemo } = getState();
   if (isDemo) return MOCK_DATA.leagueMatches[leagueId] || [];
@@ -111,53 +107,31 @@ export async function getLeagueMatches(leagueId) {
   return data?.data || [];
 }
 
-/**
- * Récupérer le détail d'un match (avec H2H)
- */
 export async function getMatchDetail(matchId) {
   const { isDemo } = getState();
-  if (isDemo) {
-    return MOCK_DATA.matchDetails[matchId] || null;
-  }
+  if (isDemo) return MOCK_DATA.matchDetails[matchId] || null;
   const data = await apiRequest('match', { match_id: matchId });
   return data?.data || null;
 }
 
-/**
- * Récupérer les H2H pour une paire d'équipes.
- * FootyStats n'a pas d'endpoint H2H direct : on filtre depuis league-matches.
- * On enrichit avec les données match individuelles si besoin.
- */
 export async function getH2H(homeId, awayId, leagueId) {
   const { isDemo } = getState();
   if (isDemo) {
     const key = `${homeId}_${awayId}`;
     return MOCK_DATA.h2h[key] || [];
   }
-
-  // Récupérer les matchs de la ligue et filtrer les H2H
   const matches = await getLeagueMatches(leagueId);
-  const h2h = matches.filter(m =>
+  return matches.filter(m =>
     (m.homeID === homeId && m.awayID === awayId) ||
     (m.homeID === awayId && m.awayID === homeId)
-  ).slice(-5); // 5 derniers
-
-  return h2h;
+  ).slice(-5);
 }
 
-/**
- * Charger toutes les données nécessaires pour un match
- * (équipes + H2H)
- */
 export async function enrichMatch(match, leagueId) {
   try {
     const [homeTeamData, awayTeamData, h2h] = await Promise.all([
-      getLeagueTeams(leagueId).then(teams =>
-        teams.find(t => t.id === match.homeID) || null
-      ),
-      getLeagueTeams(leagueId).then(teams =>
-        teams.find(t => t.id === match.awayID) || null
-      ),
+      getLeagueTeams(leagueId).then(teams => teams.find(t => t.id === match.homeID) || null),
+      getLeagueTeams(leagueId).then(teams => teams.find(t => t.id === match.awayID) || null),
       getH2H(match.homeID, match.awayID, leagueId),
     ]);
     return { homeTeamData, awayTeamData, h2h };

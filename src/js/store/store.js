@@ -152,29 +152,28 @@ export function setState(updates, silent = false) {
  */
 export function loadFromStorage() {
   try {
-    const apiKey = localStorage.getItem(STORAGE_KEYS.API_KEY) || null;
-    const config = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONFIG) || 'null');
-    const trades = JSON.parse(localStorage.getItem(STORAGE_KEYS.TRADES) || '[]');
-    const leagues = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAGUES) || 'null');
-    const prefs = JSON.parse(localStorage.getItem(STORAGE_KEYS.PREFERENCES) || 'null');
+    const config  = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONFIG)      || 'null');
+    const trades  = JSON.parse(localStorage.getItem(STORAGE_KEYS.TRADES)      || '[]');
+    const leagues = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAGUES)     || 'null');
+    const prefs   = JSON.parse(localStorage.getItem(STORAGE_KEYS.PREFERENCES) || 'null');
 
     setState({
-      apiKey,
-      isDemo: !apiKey,
-      config: config ? { ...defaultConfig, ...config } : { ...defaultConfig },
-      trades: Array.isArray(trades) ? trades : [],
+      isDemo:  true, // Sera mis à jour après vérification API dans app.js
+      config:  config  ? { ...defaultConfig, ...config }  : { ...defaultConfig },
+      trades:  Array.isArray(trades) ? trades : [],
       leagues: leagues || getDefaultLeagues(),
-      prefs: prefs ? { ...defaultPrefs, ...prefs } : { ...defaultPrefs },
+      prefs:   prefs   ? { ...defaultPrefs,  ...prefs }   : { ...defaultPrefs },
     }, true);
 
     return true;
   } catch (e) {
     console.warn('Store: erreur chargement localStorage', e);
     setState({
-      config: { ...defaultConfig },
-      trades: [],
+      isDemo:  true,
+      config:  { ...defaultConfig },
+      trades:  [],
       leagues: getDefaultLeagues(),
-      prefs: { ...defaultPrefs },
+      prefs:   { ...defaultPrefs },
     }, true);
     return false;
   }
