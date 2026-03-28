@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
-  import { getAllLeagues, getLeagueTable } from '$lib/api/footystats.js';
+  import { isDemo } from '$lib/stores/appStore.js';
+  import { getAllLeagues, getLeagueTable, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
 
   let allLeagues = [];
   let loading = true;
@@ -8,6 +9,26 @@
   let expandedLeague = null;
   let leagueTable = null;
   let tableLoading = false;
+  let loaded = false;
+
+  async function loadLeagues() {
+    if (loaded && allLeagues.length > 10) return;
+    loading = true;
+    try {
+      const res = await rawApiCall('league-list', { chosen_leagues_only: 'true' });
+      if (res.status === 200) {
+        allLeagues = normalizeLeagues(res.data);
+        loaded = true;
+      } else {
+        allLeagues = await getAllLeagues();
+      }
+    } catch {
+      allLeagues = await getAllLeagues();
+    }
+    loading = false;
+  }
+
+  $: if (!$isDemo && !loaded) loadLeagues();
 
   // Groupement par pays
   $: grouped = groupByCountry(filtered);
@@ -48,15 +69,8 @@
     tableLoading = false;
   }
 
-  onMount(async () => {
-    try {
-      const data = await getAllLeagues();
-      allLeagues = Array.isArray(data) ? data : [];
-    } catch (e) {
-      allLeagues = [];
-      if (window.showToast) window.showToast(`Erreur chargement ligues : ${e.message}`, 'error');
-    }
-    loading = false;
+  onMount(() => {
+    loadLeagues();
   });
 </script>
 

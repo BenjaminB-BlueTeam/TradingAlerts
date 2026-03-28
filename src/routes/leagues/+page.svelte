@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
-  import { leagues, saveLeagues } from '$lib/stores/appStore.js';
-  import { getAllLeagues, getLeagueTable } from '$lib/api/footystats.js';
+  import { leagues, saveLeagues, isDemo } from '$lib/stores/appStore.js';
+  import { getAllLeagues, getLeagueTable, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
 
   let apiLeagues = [];
   let loading = true;
@@ -9,6 +9,29 @@
   let expandedLeague = null;
   let leagueTable = null;
   let tableLoading = false;
+  let loaded = false;
+
+  async function loadLeagues() {
+    if (loaded && apiLeagues.length > 10) return; // déjà chargé avec les vraies données
+    loading = true;
+    try {
+      // Appel direct sans passer par le check isDemo
+      const res = await rawApiCall('league-list', { chosen_leagues_only: 'true' });
+      if (res.status === 200) {
+        apiLeagues = normalizeLeagues(res.data);
+        loaded = true;
+      } else {
+        // Fallback sur getAllLeagues (qui retourne mock en demo)
+        apiLeagues = await getAllLeagues();
+      }
+    } catch (e) {
+      apiLeagues = await getAllLeagues();
+    }
+    loading = false;
+  }
+
+  // Recharger quand l'API se connecte (isDemo passe de true à false)
+  $: if (!$isDemo && !loaded) loadLeagues();
 
   // Set des season_id actifs pour lookup rapide
   $: activeIds = new Set($leagues.filter(l => l.active).map(l => l.leagueId || l.id));
@@ -65,14 +88,8 @@
     tableLoading = false;
   }
 
-  onMount(async () => {
-    try {
-      apiLeagues = await getAllLeagues();
-    } catch (e) {
-      apiLeagues = [];
-      if (window.showToast) window.showToast(`Erreur chargement : ${e.message}`, 'error');
-    }
-    loading = false;
+  onMount(() => {
+    loadLeagues();
   });
 </script>
 
