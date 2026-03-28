@@ -235,23 +235,8 @@
                   </span>
                 </div>
                 <div class="dc-stat-row">
-                  <span class="dc-stat-label">Comeback H2H</span>
-                  <span class="dc-stat-value">
-                    {#if dc.teamA.comebackRate !== null}
-                      <strong style:color={pctColor(dc.teamA.comebackRate)}>{dc.teamA.comebackRate}%</strong>
-                      <small>({dc.teamA.comebacksCount}/{dc.teamA.comebacksFrom})</small>
-                    {:else}
-                      <small>—</small>
-                    {/if}
-                  </span>
-                </div>
-                <div class="dc-stat-row">
                   <span class="dc-stat-label">Buts moy. H2H</span>
                   <span class="dc-stat-value">{dc.teamA.avgGoals}</span>
-                </div>
-                <div class="dc-stat-row">
-                  <span class="dc-stat-label">Clean sheet H2H</span>
-                  <span class="dc-stat-value">{dc.teamA.cleanSheetPct}% <small>({dc.teamA.cleanSheets}/{dc.nbH2H})</small></span>
                 </div>
                 <div class="dc-stat-row">
                   <span class="dc-stat-label">Forme recente</span>
@@ -289,23 +274,8 @@
                   </span>
                 </div>
                 <div class="dc-stat-row">
-                  <span class="dc-stat-label">Comeback H2H</span>
-                  <span class="dc-stat-value">
-                    {#if dc.teamB.comebackRate !== null}
-                      <strong style:color={pctColor(dc.teamB.comebackRate)}>{dc.teamB.comebackRate}%</strong>
-                      <small>({dc.teamB.comebacksCount}/{dc.teamB.comebacksFrom})</small>
-                    {:else}
-                      <small>—</small>
-                    {/if}
-                  </span>
-                </div>
-                <div class="dc-stat-row">
                   <span class="dc-stat-label">Buts moy. H2H</span>
                   <span class="dc-stat-value">{dc.teamB.avgGoals}</span>
-                </div>
-                <div class="dc-stat-row">
-                  <span class="dc-stat-label">Clean sheet H2H</span>
-                  <span class="dc-stat-value">{dc.teamB.cleanSheetPct}% <small>({dc.teamB.cleanSheets}/{dc.nbH2H})</small></span>
                 </div>
                 <div class="dc-stat-row">
                   <span class="dc-stat-label">Forme recente</span>
