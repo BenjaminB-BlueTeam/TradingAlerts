@@ -4,7 +4,7 @@
    ================================================ */
 
 import { cacheGet, cacheSet, cacheKey } from './cache.js';
-import { getIsDemo } from '$lib/stores/appStore.js';
+import { getIsDemo, apiRequestsRemaining } from '$lib/stores/appStore.js';
 import { MOCK_DATA } from '$lib/core/mockData.js';
 
 const PROXY_URL = '/.netlify/functions/footystats';
@@ -37,6 +37,11 @@ async function apiRequest(endpoint, params = {}) {
 
   const data = await response.json();
   if (data.error) throw new Error(data.error);
+
+  // Capturer le compteur de requêtes restantes
+  if (data?.metadata?.request_remaining != null) {
+    apiRequestsRemaining.set(Number(data.metadata.request_remaining));
+  }
 
   cacheSet(key, data, TTL[endpoint] || TTL['league-teams']);
   return data;

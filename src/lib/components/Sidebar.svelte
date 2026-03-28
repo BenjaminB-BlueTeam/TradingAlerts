@@ -1,7 +1,7 @@
 <script>
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { isDemo, apiConnected, alertesActives, pauseSession, savePrefs } from '$lib/stores/appStore.js';
+  import { isDemo, apiConnected, alertesActives, pauseSession, savePrefs, apiRequestsRemaining } from '$lib/stores/appStore.js';
   import { cacheClear } from '$lib/api/cache.js';
 
   let sidebarOpen = false;
@@ -80,6 +80,13 @@
   </div>
 
   <div class="sidebar__nav">
+    {#if $apiRequestsRemaining !== null}
+      <div class="sidebar__api-counter" class:sidebar__api-counter--low={$apiRequestsRemaining < 200}>
+        <span class="sidebar__api-counter-value">{$apiRequestsRemaining}</span>
+        <span class="sidebar__api-counter-label">/ 1800 req/h</span>
+      </div>
+    {/if}
+
     <button class="sidebar__refresh-btn" on:click={handleRefresh} disabled={refreshing} title="Vider le cache et recharger">
       {refreshing ? '⏳' : '🔄'} Refresh
     </button>
@@ -146,6 +153,27 @@
 </nav>
 
 <style>
+  .sidebar__api-counter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin: 4px 12px 2px;
+    padding: 4px 0;
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+  .sidebar__api-counter-value {
+    font-weight: 700;
+    color: var(--color-accent-green);
+    font-size: 13px;
+  }
+  .sidebar__api-counter--low .sidebar__api-counter-value {
+    color: var(--color-danger);
+  }
+  .sidebar__api-counter-label {
+    font-size: 10px;
+  }
   .sidebar__refresh-btn {
     display: flex;
     align-items: center;

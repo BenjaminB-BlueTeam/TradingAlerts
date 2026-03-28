@@ -61,6 +61,7 @@ export const loading         = writable(false);
 export const lastUpdate      = writable(null);
 export const pauseSession    = writable(false);
 export const alertesActives  = writable([]);
+export const apiRequestsRemaining = writable(null); // Requêtes API restantes (sur 1800/h)
 export const watchlist       = writable([]);  // Matchs pris (cochés dans l'historique)
 
 // Helper pour footystats.js (lit isDemo de façon synchrone)
