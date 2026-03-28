@@ -72,26 +72,39 @@
       seedTotal = seedLeagues.length;
 
       for (const league of seedLeagues) {
-        // Passer tous les season_ids (5 saisons) séparés par des virgules
-        const ids = league.season_ids ? league.season_ids.join(',') : String(league.id);
-        seedCurrentLeague = `${league.name || league.id} (${league.season_ids?.length || 1} saisons)`;
-        seedProgress[league.id] = 'en cours...';
-        seedProgress = seedProgress; // trigger reactivity
-        try {
-          const result = await seedLeague(ids, seedJobId);
-          seedProgress[league.id] = `${result.teams || 0} equipes, ${result.matches || 0} matchs (${result.seasons_done || 1} saisons)`;
-          if (result.errors?.length) {
-            seedProgress[league.id] += ` (${result.errors.length} erreurs)`;
-          }
-        } catch (e) {
-          seedProgress[league.id] = `erreur: ${e.message}`;
-        }
-        seedDone++;
-        seedProgress = seedProgress; // trigger reactivity
+        const seasonIds = league.season_ids || [league.id];
+        seedCurrentLeague = `${league.name || league.id}`;
+        seedProgress[league.id] = `0/${seasonIds.length} saisons...`;
+        seedProgress = seedProgress;
 
-        // Pause 3s entre chaque ligue pour éviter le rate limit
+        let totalTeams = 0, totalMatches = 0, totalErrors = 0;
+
+        // Seeder une saison à la fois pour éviter le timeout Netlify
+        for (let s = 0; s < seasonIds.length; s++) {
+          seedProgress[league.id] = `saison ${s + 1}/${seasonIds.length}...`;
+          seedProgress = seedProgress;
+          try {
+            const result = await seedLeague(String(seasonIds[s]), seedJobId);
+            totalTeams += result.teams || 0;
+            totalMatches += result.matches || 0;
+            totalErrors += result.errors?.length || 0;
+          } catch (e) {
+            totalErrors++;
+          }
+          // Pause 2s entre chaque saison
+          if (s < seasonIds.length - 1) {
+            await new Promise(r => setTimeout(r, 2000));
+          }
+        }
+
+        seedProgress[league.id] = `${totalTeams} equipes, ${totalMatches} matchs (${seasonIds.length} saisons)`;
+        if (totalErrors > 0) seedProgress[league.id] += ` (${totalErrors} erreurs)`;
+        seedDone++;
+        seedProgress = seedProgress;
+
+        // Pause 2s entre chaque ligue
         if (seedDone < seedTotal) {
-          await new Promise(r => setTimeout(r, 3000));
+          await new Promise(r => setTimeout(r, 2000));
         }
       }
 
