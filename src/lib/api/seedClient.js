@@ -59,7 +59,9 @@ export async function seedLeague(seasonId) {
       });
       if (!res.ok) {
         const text = await res.text();
-        errors.push(`batch ${i}: HTTP ${res.status} — ${text.slice(0, 100)}`);
+        console.error(`[SEED] batch ${i} HTTP ${res.status}:`, text);
+        console.error(`[SEED] sample row:`, JSON.stringify(batch[0]));
+        errors.push(`batch ${i}: HTTP ${res.status} — ${text.slice(0, 200)}`);
       }
     } catch (e) {
       errors.push(`batch ${i}: ${e.message}`);
