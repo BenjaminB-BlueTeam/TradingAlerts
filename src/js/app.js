@@ -3,7 +3,7 @@
    FHG Tracker
    ================================================ */
 
-import { loadFromStorage, getState, setState, savePrefs } from './store/store.js';
+import { loadFromStorage, getState, setState, savePrefs, loadTradesFromSupabase } from './store/store.js';
 import { initSidebar, setActivePage } from './components/sidebar.js';
 import { initModal } from './components/modal.js';
 import { getTodaysMatches, getLeagueTeams, getH2H } from './api/footystats.js';
@@ -40,8 +40,11 @@ export async function init() {
     });
   }
 
-  // 4. Charger les données
-  await loadData();
+  // 4. Charger les données (matchs + trades Supabase en parallèle)
+  await Promise.all([
+    loadData(),
+    loadTradesFromSupabase(),
+  ]);
 
   // 5. Naviguer vers la page initiale
   const startPage = prefs.currentPage || 'dashboard';
