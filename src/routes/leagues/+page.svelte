@@ -51,7 +51,6 @@
     statsLoading = statsLoading;
     try {
       const stats = await getLeagueSeason(seasonId);
-      console.log(`[loadLeagueStats ${seasonId}]`, stats);
       if (stats) {
         leagueStats[seasonId] = stats;
         leagueStats = leagueStats;
