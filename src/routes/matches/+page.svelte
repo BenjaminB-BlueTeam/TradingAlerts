@@ -7,16 +7,13 @@
   let filtreSignal   = 0;
   let filtreContexte = 'tous';
   let filtre1MT      = false;
-  let filtreExclus   = false;
-
-  $: allMatches = [...$signaux, ...(filtreExclus ? $exclus : [])];
+  $: allMatches = [...$signaux];
   $: filteredMatches = filtrerMatchsUpcoming(allMatches, {
     plage:         filtrePlage,
     ligue:         filtreLigue,
     signalMin:     filtreSignal,
     contexte:      filtreContexte,
     seuil1MTOnly:  filtre1MT,
-    afficherExclus: filtreExclus,
   });
 
   $: activeLeagues = $leagues.filter(l => l.active);
@@ -46,13 +43,15 @@
 <div class="filters-bar">
   <select class="filter-select" bind:value={filtrePlage}>
     <option value="aujourd_hui">Aujourd'hui</option>
-    <option value="tous">Tous les jours</option>
+    <option value="demain">Demain</option>
+    <option value="apres_demain">Apres-demain</option>
+    <option value="tous">Tous</option>
   </select>
 
   <select class="filter-select filter-select--league" bind:value={filtreLigue}>
     <option value="toutes">Toutes les ligues</option>
     {#each activeLeagues as l}
-      <option value={l.id}>{l.flag} {l.name}</option>
+      <option value={l.id}>{l.name}</option>
     {/each}
   </select>
 
@@ -71,11 +70,6 @@
   <label class="filter-toggle">
     <input type="checkbox" bind:checked={filtre1MT} />
     <span>1MT 50%+</span>
-  </label>
-
-  <label class="filter-toggle">
-    <input type="checkbox" bind:checked={filtreExclus} />
-    <span>Exclus</span>
   </label>
 </div>
 
