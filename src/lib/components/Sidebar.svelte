@@ -24,7 +24,7 @@
 
   const adminItems = [
     { href: '/leagues',  icon: '🏆', label: 'Ligues actives' },
-    { href: '/explore',  icon: '🌍', label: 'Explorer'       },
+    { href: '/explore',  icon: '🌍', label: 'Classements ligues' },
     { href: '/config',   icon: '🔧', label: 'Configuration'  },
     { href: '/debug',    icon: '🐛', label: 'Debug'          },
   ];
