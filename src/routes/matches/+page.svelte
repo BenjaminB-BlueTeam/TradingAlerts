@@ -1,24 +1,32 @@
 <script>
   import { onMount } from 'svelte';
-  import { leagues, isDemo } from '$lib/stores/appStore.js';
-  import { getTodaysMatches } from '$lib/api/footystats.js';
+  import { leagues } from '$lib/stores/appStore.js';
+  import { getTodaysMatches, getAllLeagues } from '$lib/api/footystats.js';
 
   let filtrePlage = 0;
   let filtreLigue = 'toutes';
   let allMatches = [];
   let loading = false;
+  let leagueNames = {}; // competition_id → nom de la ligue
 
   $: activeLeagues = $leagues.filter(l => l.active);
+
+  function getLeagueName(m) {
+    const compId = m.competition_id || m.league_id;
+    return leagueNames[compId] || m.competition_name || m.league_name || '—';
+  }
 
   // Filtrage réactif : exclure les terminés + filtre ligue
   $: filteredMatches = allMatches.filter(m => {
     const status = (m.status || '').toLowerCase();
     if (status === 'complete' || status === 'finished') return false;
     if (filtreLigue === 'toutes') return true;
-    const compName = m.competition_name || m.league_name || '';
+    const compId = m.competition_id || m.league_id;
     const league = activeLeagues.find(l => l.id === filtreLigue);
     if (!league) return true;
-    return compName.includes(league.name) || league.name.includes(compName);
+    // Matcher par season_ids ou par nom
+    const lName = getLeagueName(m);
+    return lName.includes(league.name) || league.name.includes(lName);
   }).sort((a, b) => (a.date_unix || 0) - (b.date_unix || 0));
 
   function getDateStr(offset) {
@@ -55,7 +63,26 @@
   // Recharger quand la plage change
   $: loadMatches(filtrePlage);
 
-  onMount(() => { loadMatches(filtrePlage); });
+  async function loadLeagueNames() {
+    try {
+      const leagues = await getAllLeagues();
+      for (const l of leagues) {
+        // Mapper chaque season_id vers le nom de la ligue
+        if (l.id) leagueNames[l.id] = l.name;
+        if (l.seasons) {
+          for (const s of l.seasons) {
+            leagueNames[s.id] = l.name;
+          }
+        }
+      }
+      leagueNames = leagueNames; // trigger reactivity
+    } catch {}
+  }
+
+  onMount(() => {
+    loadLeagueNames();
+    loadMatches(filtrePlage);
+  });
 </script>
 
 <div class="page-title">⚽ Matchs à venir</div>
@@ -108,7 +135,7 @@
             <td>{formatDate(m.date_unix)}</td>
             <td>{formatTime(m.date_unix)}</td>
             <td style="font-weight:600;">{m.home_name || '?'} vs {m.away_name || '?'}</td>
-            <td style="font-size:12px;color:var(--color-text-muted);">{m.competition_name || m.league_name || '—'}</td>
+            <td style="font-size:12px;color:var(--color-text-muted);">{getLeagueName(m)}</td>
             <td style="font-weight:700;">
               {#if m.homeGoalCount != null && m.awayGoalCount != null}
                 {m.homeGoalCount} - {m.awayGoalCount}
