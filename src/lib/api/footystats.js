@@ -4,8 +4,7 @@
    ================================================ */
 
 import { cacheGet, cacheSet, cacheKey } from './cache.js';
-import { getIsDemo, apiRequestsRemaining } from '$lib/stores/appStore.js';
-import { MOCK_DATA } from '$lib/core/mockData.js';
+import { apiRequestsRemaining } from '$lib/stores/appStore.js';
 
 const PROXY_URL = '/.netlify/functions/footystats';
 
@@ -64,17 +63,12 @@ export async function testApiConnection() {
 
     const data = await res.json();
     if (data.error) return { success: false, error: data.error };
-    return { success: true, message: 'Connexion réussie ✓' };
+    return { success: true, message: 'Connexion réussie' };
   } catch (e) {
     return { success: false, error: `Erreur réseau : ${e.message}` };
   }
 }
 
-/**
- * Normalise les données league-list : extrait la saison la plus récente
- * pour chaque ligue et retourne un tableau plat utilisable partout.
- * Retourne: [{ id (season_id), name, country, image, year, seasons }]
- */
 export function normalizeLeagues(raw) {
   const data = raw?.data || raw || [];
   if (!Array.isArray(data)) return [];
@@ -93,47 +87,32 @@ export function normalizeLeagues(raw) {
 }
 
 export async function getAllLeagues() {
-  const isDemo = getIsDemo();
-  if (isDemo) return MOCK_DATA.leagues;
   const raw = await apiRequest('league-list', { chosen_leagues_only: 'true' });
   return normalizeLeagues(raw);
 }
 
 export async function getLeagueTeams(leagueId) {
-  const isDemo = getIsDemo();
-  if (isDemo) return MOCK_DATA.teams[leagueId] || [];
   const data = await apiRequest('league-teams', { season_id: leagueId, include: 'stats' });
   return data?.data || [];
 }
 
 export async function getTodaysMatches(date) {
-  const isDemo = getIsDemo();
-  if (isDemo) return MOCK_DATA.matches;
   const d = date || new Date().toISOString().split('T')[0];
   const data = await apiRequest('todays-matches', { date: d });
   return data?.data || [];
 }
 
 export async function getLeagueMatches(leagueId) {
-  const isDemo = getIsDemo();
-  if (isDemo) return MOCK_DATA.leagueMatches[leagueId] || [];
   const data = await apiRequest('league-matches', { season_id: leagueId });
   return data?.data || [];
 }
 
 export async function getMatchDetail(matchId) {
-  const isDemo = getIsDemo();
-  if (isDemo) return MOCK_DATA.matchDetails[matchId] || null;
   const data = await apiRequest('match', { match_id: matchId });
   return data?.data || null;
 }
 
 export async function getH2H(homeId, awayId, leagueId) {
-  const isDemo = getIsDemo();
-  if (isDemo) {
-    const key = `${homeId}_${awayId}`;
-    return MOCK_DATA.h2h[key] || [];
-  }
   const matches = await getLeagueMatches(leagueId);
   return matches.filter(m =>
     (m.homeID === homeId && m.awayID === awayId) ||
@@ -143,7 +122,6 @@ export async function getH2H(homeId, awayId, leagueId) {
 
 export async function getLeagueSeason(seasonId) {
   const raw = await apiRequest('league-season', { season_id: seasonId });
-  // L'API peut retourner { data: {...} }, un objet direct, ou un tableau
   const d = raw?.data || (Array.isArray(raw) ? raw[0] : raw);
   if (!d || typeof d !== 'object') return null;
   return {
@@ -161,8 +139,6 @@ export async function getLeagueSeason(seasonId) {
 }
 
 export async function getLeagueTable(leagueId) {
-  const isDemo = getIsDemo();
-  if (isDemo) return [];
   const data = await apiRequest('league-tables', { season_id: leagueId });
   return data?.data?.league_table || [];
 }
