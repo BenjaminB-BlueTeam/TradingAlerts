@@ -142,6 +142,10 @@ export async function getLeagueSeason(seasonId) {
   const raw = await apiRequest('league-season', { season_id: seasonId });
   // L'API peut retourner { data: {...} }, un objet direct, ou un tableau
   const d = raw?.data || (Array.isArray(raw) ? raw[0] : raw);
+  if ([16504, 14968, 15050].includes(seasonId)) {
+    console.log(`[DEBUG getLeagueSeason ${seasonId}] raw:`, JSON.stringify(raw).slice(0, 500));
+    console.log(`[DEBUG getLeagueSeason ${seasonId}] d:`, d);
+  }
   if (!d || typeof d !== 'object') return null;
   return {
     matchesPlayed: d.matchesCompleted || 0,
