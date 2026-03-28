@@ -119,6 +119,20 @@
   }
 
   // --- Testeur API brut ---
+  let copyLabel = '📋 Copier';
+
+  async function copyRawResult() {
+    if (!rawResult) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(rawResult.data, null, 2));
+      copyLabel = '✓ Copie !';
+      setTimeout(() => copyLabel = '📋 Copier', 2000);
+    } catch {
+      copyLabel = '✗ Erreur';
+      setTimeout(() => copyLabel = '📋 Copier', 2000);
+    }
+  }
+
   let rawEndpoint = 'league-list';
   let rawParams = '';
   let rawResult = null;
@@ -316,6 +330,9 @@
   {#if rawResult}
     <div class="debug-raw-meta">
       Status: <strong>{rawResult.status}</strong> — Temps: <strong>{rawResult.elapsed}ms</strong>
+      <button class="btn-copy" on:click={copyRawResult} title="Copier le JSON">
+        {copyLabel}
+      </button>
     </div>
     <pre class="debug-raw-output">{JSON.stringify(rawResult.data, null, 2)}</pre>
   {/if}
@@ -407,6 +424,22 @@
     font-size: 13px;
     margin-bottom: 8px;
     color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .btn-copy {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-copy:hover {
+    background: rgba(255,255,255,0.15);
   }
   .debug-raw-output {
     background: rgba(0,0,0,0.3);
