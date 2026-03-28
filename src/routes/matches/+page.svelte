@@ -16,17 +16,13 @@
     return leagueNames[compId] || m.competition_name || m.league_name || '—';
   }
 
-  // Filtrage réactif : exclure les terminés + filtre ligue
+  // Filtrage réactif : exclure les terminés + filtre ligue par nom
   $: filteredMatches = allMatches.filter(m => {
     const status = (m.status || '').toLowerCase();
     if (status === 'complete' || status === 'finished') return false;
     if (filtreLigue === 'toutes') return true;
-    const compId = m.competition_id || m.league_id;
-    const league = activeLeagues.find(l => l.id === filtreLigue);
-    if (!league) return true;
-    // Matcher par season_ids ou par nom
-    const lName = getLeagueName(m);
-    return lName.includes(league.name) || league.name.includes(lName);
+    const matchLeague = getLeagueName(m);
+    return matchLeague.includes(filtreLigue) || filtreLigue.includes(matchLeague);
   }).sort((a, b) => (a.date_unix || 0) - (b.date_unix || 0));
 
   function getDateStr(offset) {
@@ -102,7 +98,7 @@
   <select class="filter-select filter-select--league" bind:value={filtreLigue}>
     <option value="toutes">Toutes les ligues</option>
     {#each activeLeagues as l}
-      <option value={l.id}>{l.name}</option>
+      <option value={l.name}>{l.name}</option>
     {/each}
   </select>
 
