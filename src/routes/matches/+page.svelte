@@ -16,10 +16,12 @@
     return leagueNames[compId] || m.competition_name || m.league_name || '—';
   }
 
-  // Filtrage réactif : exclure les terminés + filtre ligue par nom
+  // Filtrage réactif : exclure terminés et en cours + filtre ligue
   $: filteredMatches = allMatches.filter(m => {
     const status = (m.status || '').toLowerCase();
     if (status === 'complete' || status === 'finished') return false;
+    // Si le kickoff est passé, le match a commencé → exclure
+    if (m.date_unix && m.date_unix * 1000 < Date.now()) return false;
     if (filtreLigue === 'toutes') return true;
     const matchLeague = getLeagueName(m);
     return matchLeague.includes(filtreLigue) || filtreLigue.includes(matchLeague);
