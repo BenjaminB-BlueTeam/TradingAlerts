@@ -102,10 +102,16 @@ Score calculé par équipe (domicile ET extérieur, on prend le meilleur) :
 - Déploiement Netlify configuré
 - Design responsive (mobile + desktop)
 
+### ✅ Fait (récent)
+- **Goal Timeline H2H** — barre de timing des buts style FootyStats (⚽ coloré = marqué, ⚽ grisé = encaissé, marqueurs HT/FT). Données mock goals ajoutées. Mapping API à adapter en prod (champ `goalscorer` endpoint `match`).
+
 ### 🔄 En cours / À affiner
-- (rien en cours pour l'instant)
+- Adapter `renderGoalTimeline` aux vrais champs FootyStats API en prod
 
 ### 📋 À faire (voir IDEAS.md pour le détail)
+- [ ] **Refonte DB Supabase** — table `team_seasons` (3 saisons, buts/min, comebacks, wins/losses)
+- [ ] **Refonte algo** — % bruts (saison / 5 matchs / 10 matchs) au lieu du score 0-100
+- [ ] **Refonte cartes** — badges FHG + DC indépendants, bouton "Analyse IA"
 - [ ] **Page Historique des Alertes** — backlog complet avec gain/perte, filtres, dashboard stats
 - [ ] Notifications push / alertes temps réel
 - [ ] Export CSV/PDF
