@@ -72,12 +72,17 @@
     );
   }
 
-  function isActive(apiLeague) {
-    const idx = findStoreIndex($leagues, apiLeague);
-    return idx > -1 && $leagues[idx].active;
-  }
+  // Set réactif des season_id actifs (recalculé quand $leagues change)
+  $: activeSeasonIds = new Set(
+    apiLeagues
+      .filter(l => {
+        const idx = findStoreIndex($leagues, l);
+        return idx > -1 && $leagues[idx].active;
+      })
+      .map(l => l.id)
+  );
 
-  $: activeCount = apiLeagues.filter(l => isActive(l)).length;
+  $: activeCount = activeSeasonIds.size;
 
   $: filtered = searchQuery
     ? apiLeagues.filter(l =>
@@ -181,7 +186,7 @@
 {:else}
   <div class="leagues-list">
     {#each filtered as league (league.id)}
-      {@const active = isActive(league)}
+      {@const active = activeSeasonIds.has(league.id)}
       {@const stats = leagueStats[league.id]}
       <div class="league-item" class:league-item--active={active} class:league-item--expanded={expandedLeague === league.id}>
         <div class="league-item__header">
