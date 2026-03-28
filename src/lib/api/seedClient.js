@@ -4,9 +4,9 @@
    La Function fetch les données, le client insert dans Supabase.
    ================================================ */
 
-import { supabase } from '$lib/api/supabase.js';
-
 const SEED_URL = '/.netlify/functions/seed-data';
+const SUPABASE_URL = 'https://ikpafgqjmjifpaulctmx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrcGFmZ3FqbWppZnBhdWxjdG14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODMxMzAsImV4cCI6MjA5MDI1OTEzMH0._01tjkB0WvN4xeHH78HIDqZk9BIhDxb9qYJ7dYystso';
 
 async function seedRequest(params) {
   const url = new URL(SEED_URL, window.location.origin);
@@ -41,23 +41,28 @@ export async function seedLeague(seasonId) {
     return { matches: 0, errors: data.errors || [] };
   }
 
-  // 2. Insert dans Supabase côté client (pas de timeout)
+  // 2. Insert dans Supabase côté client via REST API (pas de timeout)
   const errors = [];
-  const BATCH = 100;
+  const BATCH = 200;
   for (let i = 0; i < data.rows.length; i += BATCH) {
     const batch = data.rows.slice(i, i + BATCH);
-    // Essayer upsert, fallback sur insert avec ignore duplicates
-    let error;
-    ({ error } = await supabase.from('h2h_matches').upsert(batch));
-    if (error && error.code === '23505') {
-      // Duplicate key — insérer un par un en ignorant les doublons
-      for (const row of batch) {
-        await supabase.from('h2h_matches').upsert(row);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/h2h_matches?on_conflict=match_id`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal',
+        },
+        body: JSON.stringify(batch),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        errors.push(`batch ${i}: HTTP ${res.status} — ${text.slice(0, 100)}`);
       }
-      error = null;
-    }
-    if (error) {
-      errors.push(`batch ${i}: ${error.message} (${error.code})`);
+    } catch (e) {
+      errors.push(`batch ${i}: ${e.message}`);
     }
   }
 
