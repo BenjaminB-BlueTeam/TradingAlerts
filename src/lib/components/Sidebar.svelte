@@ -2,8 +2,16 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { isDemo, apiConnected, alertesActives, pauseSession, savePrefs } from '$lib/stores/appStore.js';
+  import { cacheClear } from '$lib/api/cache.js';
 
   let sidebarOpen = false;
+  let refreshing = false;
+
+  async function handleRefresh() {
+    refreshing = true;
+    cacheClear();
+    window.location.reload();
+  }
 
   const navItems = [
     { href: '/',         icon: '📊', label: 'Dashboard'      },
@@ -70,6 +78,10 @@
   </div>
 
   <div class="sidebar__nav">
+    <button class="sidebar__refresh-btn" on:click={handleRefresh} disabled={refreshing} title="Vider le cache et recharger">
+      {refreshing ? '⏳' : '🔄'} Refresh
+    </button>
+
     {#each navItems as item}
       <a
         href={item.href}
@@ -132,6 +144,32 @@
 </nav>
 
 <style>
+  .sidebar__refresh-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: calc(100% - 24px);
+    margin: 4px 12px 8px;
+    padding: 7px 0;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sidebar__refresh-btn:hover {
+    background: rgba(55, 138, 221, 0.12);
+    color: var(--color-accent-blue);
+    border-color: var(--color-accent-blue);
+  }
+  .sidebar__refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
   .sidebar__section-toggle {
     display: flex;
     align-items: center;
