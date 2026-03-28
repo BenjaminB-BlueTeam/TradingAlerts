@@ -363,3 +363,84 @@ export const MOCK_DATA = {
 function getTodayStr() {
   return new Date().toISOString().split('T')[0];
 }
+
+// ---- HISTORIQUE DES ALERTES (mock) ----
+
+export const mockAlertHistory = [
+  // --- Premier League ---
+  { id: 'mock-1', match_date: '2025-03-15', home_team: 'Manchester City', away_team: 'Arsenal', league_name: 'Premier League', signal_type: 'FHG', fhg_score: 78, dc_score: null, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-03-15T15:00:00Z', result: 'goal', goal_minute: 38, expected_window: '31-45', notes: 'But à la 38e minute, dans la fenêtre', tags: ['FHG', '1MT', 'H2H vert'] },
+  { id: 'mock-2', match_date: '2025-03-16', home_team: 'Liverpool', away_team: 'Chelsea', league_name: 'Premier League', signal_type: 'BOTH', fhg_score: 82, dc_score: 75, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-03-16T14:00:00Z', result: 'goal', goal_minute: 33, expected_window: '31-45', notes: 'But 33e, pile dans la fenêtre', tags: ['FHG', 'DC', '1MT', 'H2H vert'] },
+  { id: 'mock-3', match_date: '2025-03-22', home_team: 'Tottenham', away_team: 'Aston Villa', league_name: 'Premier League', signal_type: 'FHG', fhg_score: 65, dc_score: null, h2h_status: 'orange', has_1mt_bonus: false, kickoff_time: '2025-03-22T15:00:00Z', result: 'no_goal', goal_minute: null, expected_window: '31-45', notes: '0-0 à la MT, aucun but 1MT', tags: ['FHG', 'H2H orange'] },
+  { id: 'mock-4', match_date: '2025-04-02', home_team: 'Newcastle', away_team: 'Wolverhampton', league_name: 'Premier League', signal_type: 'DC', fhg_score: null, dc_score: 80, h2h_status: 'green', has_1mt_bonus: false, kickoff_time: '2025-04-02T19:45:00Z', result: 'goal', goal_minute: null, expected_window: null, notes: 'DC validé, victoire 2-0', tags: ['DC', 'H2H vert'] },
+  { id: 'mock-5', match_date: '2025-04-06', home_team: 'Brighton', away_team: 'Brentford', league_name: 'Premier League', signal_type: 'FHG', fhg_score: 71, dc_score: null, h2h_status: 'insufficient', has_1mt_bonus: true, kickoff_time: '2025-04-06T14:00:00Z', result: 'goal', goal_minute: 41, expected_window: '31-45', notes: 'But 41e, fenêtre validée', tags: ['FHG', '1MT'] },
+  { id: 'mock-6', match_date: '2025-04-12', home_team: 'West Ham', away_team: 'Everton', league_name: 'Premier League', signal_type: 'FHG', fhg_score: 62, dc_score: null, h2h_status: 'orange', has_1mt_bonus: false, kickoff_time: '2025-04-12T15:00:00Z', result: 'no_goal', goal_minute: null, expected_window: '31-45', notes: 'Match fermé, 0-0 MT', tags: ['FHG', 'H2H orange'] },
+  { id: 'mock-7', match_date: '2025-04-20', home_team: 'Arsenal', away_team: 'Manchester United', league_name: 'Premier League', signal_type: 'BOTH', fhg_score: 85, dc_score: 82, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-04-20T16:30:00Z', result: 'goal', goal_minute: 28, expected_window: '31-45', notes: 'But 28e — hors fenêtre mais avant MT', tags: ['FHG', 'DC', '1MT', 'H2H vert'] },
+
+  // --- La Liga ---
+  { id: 'mock-8', match_date: '2025-03-16', home_team: 'Barcelona', away_team: 'Real Madrid', league_name: 'La Liga', signal_type: 'BOTH', fhg_score: 88, dc_score: 85, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-03-16T20:00:00Z', result: 'goal', goal_minute: 22, expected_window: '31-45', notes: 'But 22e, avant fenêtre', tags: ['FHG', 'DC', '1MT', 'H2H vert'] },
+  { id: 'mock-9', match_date: '2025-03-23', home_team: 'Atletico Madrid', away_team: 'Sevilla', league_name: 'La Liga', signal_type: 'DC', fhg_score: null, dc_score: 72, h2h_status: 'green', has_1mt_bonus: false, kickoff_time: '2025-03-23T18:30:00Z', result: 'goal', goal_minute: null, expected_window: null, notes: 'DC solide, victoire 1-0', tags: ['DC', 'H2H vert'] },
+  { id: 'mock-10', match_date: '2025-04-06', home_team: 'Real Sociedad', away_team: 'Athletic Bilbao', league_name: 'La Liga', signal_type: 'FHG', fhg_score: 67, dc_score: null, h2h_status: 'orange', has_1mt_bonus: false, kickoff_time: '2025-04-06T16:15:00Z', result: 'no_goal', goal_minute: null, expected_window: '31-45', notes: 'Derby basque, 0-0 MT', tags: ['FHG', 'H2H orange'] },
+  { id: 'mock-11', match_date: '2025-04-13', home_team: 'Villarreal', away_team: 'Betis', league_name: 'La Liga', signal_type: 'FHG', fhg_score: 74, dc_score: null, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-04-13T20:00:00Z', result: 'goal', goal_minute: 36, expected_window: '31-45', notes: 'But 36e penalty, dans la fenêtre', tags: ['FHG', '1MT', 'H2H vert'] },
+  { id: 'mock-12', match_date: '2025-04-27', home_team: 'Valencia', away_team: 'Celta Vigo', league_name: 'La Liga', signal_type: 'DC', fhg_score: null, dc_score: 68, h2h_status: 'insufficient', has_1mt_bonus: false, kickoff_time: '2025-04-27T18:30:00Z', result: null, goal_minute: null, expected_window: null, notes: '', tags: ['DC'] },
+
+  // --- Bundesliga ---
+  { id: 'mock-13', match_date: '2025-03-15', home_team: 'Bayern Munich', away_team: 'Borussia Dortmund', league_name: 'Bundesliga', signal_type: 'BOTH', fhg_score: 90, dc_score: 88, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-03-15T18:30:00Z', result: 'goal', goal_minute: 18, expected_window: '31-45', notes: 'But 18e, bien avant fenêtre', tags: ['FHG', 'DC', '1MT', 'H2H vert'] },
+  { id: 'mock-14', match_date: '2025-03-22', home_team: 'Bayer Leverkusen', away_team: 'RB Leipzig', league_name: 'Bundesliga', signal_type: 'FHG', fhg_score: 76, dc_score: null, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-03-22T15:30:00Z', result: 'goal', goal_minute: 31, expected_window: '31-45', notes: 'But 31e Wirtz, pile début fenêtre', tags: ['FHG', '1MT', 'H2H vert'] },
+  { id: 'mock-15', match_date: '2025-04-05', home_team: 'Eintracht Frankfurt', away_team: 'Stuttgart', league_name: 'Bundesliga', signal_type: 'FHG', fhg_score: 63, dc_score: null, h2h_status: 'orange', has_1mt_bonus: false, kickoff_time: '2025-04-05T15:30:00Z', result: 'no_goal', goal_minute: null, expected_window: '31-45', notes: 'Pas de but 1MT', tags: ['FHG', 'H2H orange'] },
+  { id: 'mock-16', match_date: '2025-04-19', home_team: 'Wolfsburg', away_team: 'Freiburg', league_name: 'Bundesliga', signal_type: 'DC', fhg_score: null, dc_score: 70, h2h_status: 'green', has_1mt_bonus: false, kickoff_time: '2025-04-19T15:30:00Z', result: 'goal', goal_minute: null, expected_window: null, notes: 'DC validé 2-1', tags: ['DC', 'H2H vert'] },
+  { id: 'mock-17', match_date: '2025-05-03', home_team: 'Borussia Dortmund', away_team: 'Union Berlin', league_name: 'Bundesliga', signal_type: 'FHG', fhg_score: 69, dc_score: null, h2h_status: 'insufficient', has_1mt_bonus: true, kickoff_time: '2025-05-03T18:30:00Z', result: 'goal', goal_minute: 44, expected_window: '31-45', notes: 'But 44e in extremis, dans la fenêtre', tags: ['FHG', '1MT'] },
+
+  // --- Serie A ---
+  { id: 'mock-18', match_date: '2025-03-16', home_team: 'Inter Milan', away_team: 'AC Milan', league_name: 'Serie A', signal_type: 'BOTH', fhg_score: 80, dc_score: 78, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-03-16T20:45:00Z', result: 'goal', goal_minute: 25, expected_window: '31-45', notes: 'Derby, but 25e Lautaro, avant fenêtre', tags: ['FHG', 'DC', '1MT', 'H2H vert'] },
+  { id: 'mock-19', match_date: '2025-03-30', home_team: 'Napoli', away_team: 'Roma', league_name: 'Serie A', signal_type: 'FHG', fhg_score: 72, dc_score: null, h2h_status: 'green', has_1mt_bonus: false, kickoff_time: '2025-03-30T18:00:00Z', result: 'no_goal', goal_minute: null, expected_window: '31-45', notes: '0-0 à la pause', tags: ['FHG', 'H2H vert'] },
+  { id: 'mock-20', match_date: '2025-04-13', home_team: 'Juventus', away_team: 'Lazio', league_name: 'Serie A', signal_type: 'DC', fhg_score: null, dc_score: 76, h2h_status: 'green', has_1mt_bonus: false, kickoff_time: '2025-04-13T20:45:00Z', result: 'goal', goal_minute: null, expected_window: null, notes: 'DC validé, Juve solide 1-0', tags: ['DC', 'H2H vert'] },
+  { id: 'mock-21', match_date: '2025-04-27', home_team: 'Atalanta', away_team: 'Fiorentina', league_name: 'Serie A', signal_type: 'FHG', fhg_score: 68, dc_score: null, h2h_status: 'orange', has_1mt_bonus: true, kickoff_time: '2025-04-27T15:00:00Z', result: 'goal', goal_minute: 40, expected_window: '31-45', notes: 'But 40e sur corner, dans la fenêtre', tags: ['FHG', '1MT', 'H2H orange'] },
+  { id: 'mock-22', match_date: '2025-05-04', home_team: 'Roma', away_team: 'Torino', league_name: 'Serie A', signal_type: 'FHG', fhg_score: 61, dc_score: null, h2h_status: 'insufficient', has_1mt_bonus: false, kickoff_time: '2025-05-04T18:00:00Z', result: 'no_goal', goal_minute: null, expected_window: '31-45', notes: '0-0 MT, but 58e trop tard', tags: ['FHG'] },
+
+  // --- Ligue 1 ---
+  { id: 'mock-23', match_date: '2025-03-22', home_team: 'PSG', away_team: 'Marseille', league_name: 'Ligue 1', signal_type: 'BOTH', fhg_score: 84, dc_score: 80, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-03-22T21:00:00Z', result: 'goal', goal_minute: 15, expected_window: '31-45', notes: 'But 15e Dembélé, bien avant fenêtre', tags: ['FHG', 'DC', '1MT', 'H2H vert'] },
+  { id: 'mock-24', match_date: '2025-03-30', home_team: 'Lyon', away_team: 'Monaco', league_name: 'Ligue 1', signal_type: 'FHG', fhg_score: 70, dc_score: null, h2h_status: 'orange', has_1mt_bonus: false, kickoff_time: '2025-03-30T20:45:00Z', result: 'no_goal', goal_minute: null, expected_window: '31-45', notes: 'Aucun but 1MT', tags: ['FHG', 'H2H orange'] },
+  { id: 'mock-25', match_date: '2025-04-06', home_team: 'Lille', away_team: 'Nice', league_name: 'Ligue 1', signal_type: 'DC', fhg_score: null, dc_score: 73, h2h_status: 'green', has_1mt_bonus: false, kickoff_time: '2025-04-06T17:05:00Z', result: 'goal', goal_minute: null, expected_window: null, notes: 'DC validé, victoire 2-0', tags: ['DC', 'H2H vert'] },
+  { id: 'mock-26', match_date: '2025-04-20', home_team: 'RC Lens', away_team: 'Rennes', league_name: 'Ligue 1', signal_type: 'FHG', fhg_score: 66, dc_score: null, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-04-20T15:00:00Z', result: 'goal', goal_minute: 42, expected_window: '31-45', notes: 'But 42e coup franc, dans la fenêtre', tags: ['FHG', '1MT', 'H2H vert'] },
+  { id: 'mock-27', match_date: '2025-05-04', home_team: 'Strasbourg', away_team: 'Montpellier', league_name: 'Ligue 1', signal_type: 'FHG', fhg_score: 60, dc_score: null, h2h_status: 'insufficient', has_1mt_bonus: false, kickoff_time: '2025-05-04T15:00:00Z', result: null, goal_minute: null, expected_window: '31-45', notes: '', tags: ['FHG'] },
+
+  // --- Entrées supplémentaires variées ---
+  { id: 'mock-28', match_date: '2025-05-10', home_team: 'Manchester City', away_team: 'Liverpool', league_name: 'Premier League', signal_type: 'BOTH', fhg_score: 86, dc_score: 83, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-05-10T16:30:00Z', result: 'goal', goal_minute: 35, expected_window: '31-45', notes: 'But 35e Haaland, dans la fenêtre', tags: ['FHG', 'DC', '1MT', 'H2H vert'] },
+  { id: 'mock-29', match_date: '2025-05-11', home_team: 'Real Madrid', away_team: 'Atletico Madrid', league_name: 'La Liga', signal_type: 'FHG', fhg_score: 75, dc_score: null, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-05-11T21:00:00Z', result: 'no_goal', goal_minute: null, expected_window: '31-45', notes: 'Derby, 0-0 MT puis but 55e', tags: ['FHG', '1MT', 'H2H vert'] },
+  { id: 'mock-30', match_date: '2025-05-17', home_team: 'Bayern Munich', away_team: 'Bayer Leverkusen', league_name: 'Bundesliga', signal_type: 'BOTH', fhg_score: 81, dc_score: 79, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-05-17T18:30:00Z', result: 'goal', goal_minute: 34, expected_window: '31-45', notes: 'But 34e Müller, dans la fenêtre', tags: ['FHG', 'DC', '1MT', 'H2H vert'] },
+  { id: 'mock-31', match_date: '2025-05-18', home_team: 'AC Milan', away_team: 'Napoli', league_name: 'Serie A', signal_type: 'DC', fhg_score: null, dc_score: 74, h2h_status: 'orange', has_1mt_bonus: false, kickoff_time: '2025-05-18T20:45:00Z', result: 'no_goal', goal_minute: null, expected_window: null, notes: 'DC raté, défaite 1-2', tags: ['DC', 'H2H orange'] },
+  { id: 'mock-32', match_date: '2025-05-24', home_team: 'PSG', away_team: 'Lyon', league_name: 'Ligue 1', signal_type: 'FHG', fhg_score: 77, dc_score: null, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-05-24T21:00:00Z', result: 'goal', goal_minute: 27, expected_window: '31-45', notes: 'But 27e Dembélé, avant fenêtre', tags: ['FHG', '1MT', 'H2H vert'] },
+  { id: 'mock-33', match_date: '2025-05-25', home_team: 'Chelsea', away_team: 'Tottenham', league_name: 'Premier League', signal_type: 'FHG', fhg_score: 73, dc_score: null, h2h_status: 'green', has_1mt_bonus: false, kickoff_time: '2025-05-25T14:00:00Z', result: 'goal', goal_minute: 43, expected_window: '31-45', notes: 'But 43e, dans la fenêtre', tags: ['FHG', 'H2H vert'] },
+  { id: 'mock-34', match_date: '2025-05-31', home_team: 'Barcelona', away_team: 'Villarreal', league_name: 'La Liga', signal_type: 'BOTH', fhg_score: 79, dc_score: 77, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-05-31T18:30:00Z', result: null, goal_minute: null, expected_window: '31-45', notes: '', tags: ['FHG', 'DC', '1MT', 'H2H vert'] },
+  { id: 'mock-35', match_date: '2025-06-01', home_team: 'Inter Milan', away_team: 'Juventus', league_name: 'Serie A', signal_type: 'BOTH', fhg_score: 83, dc_score: 81, h2h_status: 'green', has_1mt_bonus: true, kickoff_time: '2025-06-01T20:45:00Z', result: 'goal', goal_minute: 19, expected_window: '31-45', notes: 'Derby d\'Italia, but 19e avant fenêtre', tags: ['FHG', 'DC', '1MT', 'H2H vert'] },
+];
+
+export const mockBacktestResults = {
+  total_signals: 245,
+  true_positives: 158,
+  false_positives: 87,
+  success_rate: 64.5,
+  by_league: [
+    { league: 'Premier League', signals: 48, wins: 33, rate: 68.75 },
+    { league: 'La Liga', signals: 42, wins: 28, rate: 66.67 },
+    { league: 'Bundesliga', signals: 38, wins: 25, rate: 65.79 },
+    { league: 'Serie A', signals: 35, wins: 21, rate: 60.0 },
+    { league: 'Ligue 1', signals: 32, wins: 19, rate: 59.38 },
+  ],
+  by_threshold: [
+    { threshold: 50, signals: 380, rate: 55.2 },
+    { threshold: 55, signals: 320, rate: 58.4 },
+    { threshold: 60, signals: 245, rate: 64.5 },
+    { threshold: 65, signals: 180, rate: 68.3 },
+    { threshold: 70, signals: 120, rate: 72.1 },
+    { threshold: 75, signals: 72, rate: 76.4 },
+    { threshold: 80, signals: 35, rate: 80.0 },
+  ],
+  with_1mt_bonus: { signals: 95, rate: 71.6 },
+  without_1mt_bonus: { signals: 150, rate: 59.3 },
+  by_h2h: {
+    green: { signals: 110, rate: 72.7 },
+    orange: { signals: 80, rate: 58.8 },
+    insufficient: { signals: 55, rate: 56.4 },
+  }
+};
