@@ -3,7 +3,7 @@
    FHG Tracker
    ================================================ */
 
-import { getState, saveApiKey, saveLeagues, addTrade, updateTrade, deleteTrade,
+import { getState, saveLeagues, addTrade, updateTrade, deleteTrade,
          clearAllData, calcStatsTradesGlobal } from '../store/store.js';
 import { testApiConnection } from '../api/footystats.js';
 import { showToast } from '../components/matchCard.js';
@@ -13,7 +13,7 @@ import { createWinRateChart, createBankrollChart } from '../components/charts.js
  * Rendre la page Paramètres.
  */
 export function renderSettings() {
-  const { apiKey, isDemo, leagues, trades } = getState();
+  const { isDemo, leagues, trades } = getState();
   const config  = getState('config') || {};
   const stats   = calcStatsTradesGlobal();
   const bankroll = parseFloat(localStorage.getItem('fhg_bankroll') || '0');
@@ -22,23 +22,24 @@ export function renderSettings() {
     <!-- CONNEXION API -->
     <div class="settings-block">
       <div class="settings-block__title">🔌 Connexion API FootyStats</div>
-      <div class="form-group">
-        <label class="form-label">Clé API (football-data-api.com)</label>
-        <div style="display:flex;gap:8px;">
-          <input type="password" id="api-key-input" class="form-input form-input--password"
-            value="${apiKey || ''}"
-            placeholder="Entrez votre clé API FootyStats…"
-            autocomplete="new-password" />
-          <button class="btn btn--primary" id="api-save-btn" style="white-space:nowrap;">
-            Enregistrer
-          </button>
-        </div>
-        <div class="form-hint">Votre clé est stockée localement, jamais envoyée ailleurs.</div>
+
+      <div id="api-status-block" style="margin-bottom:16px;">
+        ${isDemo
+          ? `<div class="danger-box">⚠ Mode démonstration — API non configurée</div>`
+          : `<div class="info-box" style="border-color:var(--color-accent-green);color:var(--color-accent-green);">✓ API connectée et opérationnelle</div>`
+        }
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <button class="btn btn--secondary" id="api-test-btn">🔗 Tester la connexion</button>
-        ${isDemo ? '<span class="badge badge--faible">Mode démo actif</span>' : ''}
+
+      <div class="info-box" style="font-size:12px;margin-bottom:12px;">
+        🔒 La clé API est stockée de façon sécurisée côté serveur (variable d'env Netlify).<br/>
+        Elle n'est jamais exposée dans le navigateur.<br/><br/>
+        <strong>Pour configurer ou changer la clé :</strong><br/>
+        1. Netlify → votre site → <strong>Site configuration → Environment variables</strong><br/>
+        2. Ajouter <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;">FOOTYSTATS_API_KEY</code> avec votre clé<br/>
+        3. Redéployer le site (Deploy → Trigger deploy)
       </div>
+
+      <button class="btn btn--secondary" id="api-test-btn">🔗 Tester la connexion</button>
       <div id="api-test-result"></div>
     </div>
 
@@ -275,27 +276,14 @@ export function initSettings(container) {
   if (!container) return;
 
   // ---- API ----
-  document.getElementById('api-save-btn')?.addEventListener('click', () => {
-    const key = document.getElementById('api-key-input')?.value?.trim();
-    saveApiKey(key || null);
-    showToast(key ? 'Clé API sauvegardée' : 'Clé API supprimée', 'success');
-    import('../app.js').then(m => m.init?.());
-  });
-
   document.getElementById('api-test-btn')?.addEventListener('click', async () => {
-    const key = document.getElementById('api-key-input')?.value?.trim();
     const resultEl = document.getElementById('api-test-result');
     if (!resultEl) return;
 
-    if (!key) {
-      resultEl.innerHTML = '<div class="api-test-result error">⚠ Clé API manquante</div>';
-      return;
-    }
-
-    resultEl.innerHTML = '<div class="api-test-result" style="color:var(--color-text-muted);">⏳ Test en cours…</div>';
-    const result = await testApiConnection(key);
+    resultEl.innerHTML = '<div class="api-test-result" style="color:var(--color-text-muted);margin-top:8px;">⏳ Test en cours…</div>';
+    const result = await testApiConnection();
     resultEl.innerHTML = `
-      <div class="api-test-result ${result.success ? 'success' : 'error'}">
+      <div class="api-test-result ${result.success ? 'success' : 'error'}" style="margin-top:8px;">
         ${result.success ? '✓ ' + result.message : '✗ ' + result.error}
       </div>
     `;
