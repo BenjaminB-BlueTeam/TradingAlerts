@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { leagues, saveLeagues, isDemo } from '$lib/stores/appStore.js';
-  import { getAllLeagues, getLeagueTable, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
+  import { getAllLeagues, getLeagueTable, getLeagueSeason, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
 
   let apiLeagues = [];
   let loading = true;
@@ -11,17 +11,21 @@
   let tableLoading = false;
   let loaded = false;
 
+  // Stats par ligue (season_id → stats)
+  let leagueStats = {};
+  let statsLoading = {};
+
   async function loadLeagues() {
-    if (loaded && apiLeagues.length > 10) return; // déjà chargé avec les vraies données
+    if (loaded && apiLeagues.length > 10) return;
     loading = true;
     try {
-      // Appel direct sans passer par le check isDemo
       const res = await rawApiCall('league-list', { chosen_leagues_only: 'true' });
       if (res.status === 200) {
         apiLeagues = normalizeLeagues(res.data);
         loaded = true;
+        // Charger les stats progressivement
+        loadAllStats();
       } else {
-        // Fallback sur getAllLeagues (qui retourne mock en demo)
         apiLeagues = await getAllLeagues();
       }
     } catch (e) {
@@ -30,7 +34,32 @@
     loading = false;
   }
 
-  // Recharger quand l'API se connecte (isDemo passe de true à false)
+  async function loadAllStats() {
+    // Charger les stats 3 par 3 pour ne pas spammer l'API
+    for (let i = 0; i < apiLeagues.length; i += 3) {
+      const batch = apiLeagues.slice(i, i + 3);
+      await Promise.all(batch.map(l => loadLeagueStats(l.id)));
+      if (i + 3 < apiLeagues.length) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+  }
+
+  async function loadLeagueStats(seasonId) {
+    if (leagueStats[seasonId]) return;
+    statsLoading[seasonId] = true;
+    statsLoading = statsLoading;
+    try {
+      const stats = await getLeagueSeason(seasonId);
+      if (stats) {
+        leagueStats[seasonId] = stats;
+        leagueStats = leagueStats;
+      }
+    } catch {}
+    statsLoading[seasonId] = false;
+    statsLoading = statsLoading;
+  }
+
   $: if (!$isDemo && !loaded) loadLeagues();
 
   // Set des season_id actifs pour lookup rapide
@@ -49,15 +78,13 @@
   }
 
   function toggleLeague(league) {
-    const sid = league.id; // season_id
+    const sid = league.id;
     const current = [...$leagues];
     const idx = current.findIndex(l => (l.leagueId || l.id) === sid);
 
     if (idx > -1) {
-      // Existe déjà → toggle
       current[idx] = { ...current[idx], active: !current[idx].active };
     } else {
-      // Ajouter comme active
       current.push({
         id: league.name.toLowerCase().replace(/\s+/g, '-'),
         name: league.name,
@@ -86,6 +113,12 @@
       if (window.showToast) window.showToast(`Erreur : ${e.message}`, 'error');
     }
     tableLoading = false;
+  }
+
+  function statColor(val, green, orange) {
+    if (val >= green) return 'var(--color-accent-green)';
+    if (val >= orange) return 'var(--color-signal-moyen)';
+    return 'var(--color-text-muted)';
   }
 
   onMount(() => {
@@ -117,6 +150,7 @@
   <div class="leagues-list">
     {#each filtered as league (league.id)}
       {@const active = isActive(league.id)}
+      {@const stats = leagueStats[league.id]}
       <div class="league-item" class:league-item--active={active} class:league-item--expanded={expandedLeague === league.id}>
         <div class="league-item__header">
           <label class="toggle-switch" on:click|stopPropagation>
@@ -134,8 +168,33 @@
             <div class="league-item__meta">
               {league.country}
               {#if league.year} · {league.year}{/if}
+              {#if stats} · {stats.matchesPlayed}/{stats.totalMatches} matchs{/if}
             </div>
           </div>
+
+          {#if stats}
+            <div class="league-item__stats">
+              <div class="league-stat-pill" title="But en 1MT (Over 0.5 FHG)">
+                <span class="league-stat-pill__label">1MT</span>
+                <span class="league-stat-pill__value" style:color={statColor(stats.over05FHG, 75, 60)}>{stats.over05FHG}%</span>
+              </div>
+              <div class="league-stat-pill" title="Moyenne buts/match">
+                <span class="league-stat-pill__label">Avg</span>
+                <span class="league-stat-pill__value" style:color={statColor(stats.avgGoals * 25, 75, 60)}>{stats.avgGoals}</span>
+              </div>
+              <div class="league-stat-pill" title="BTTS (les 2 equipes marquent)">
+                <span class="league-stat-pill__label">BTTS</span>
+                <span class="league-stat-pill__value" style:color={statColor(stats.btts, 55, 45)}>{stats.btts}%</span>
+              </div>
+              <div class="league-stat-pill" title="Over 2.5 buts">
+                <span class="league-stat-pill__label">O2.5</span>
+                <span class="league-stat-pill__value" style:color={statColor(stats.over25, 60, 45)}>{stats.over25}%</span>
+              </div>
+            </div>
+          {:else if statsLoading[league.id]}
+            <div class="league-item__stats-loading">...</div>
+          {/if}
+
           <!-- svelte-ignore a11y-click-events-have-key-events -->
           <span class="league-item__arrow" on:click={() => toggleExpand(league.id)} role="button" tabindex="0">
             {expandedLeague === league.id ? '▼' : '▶'}
@@ -253,6 +312,36 @@
     color: var(--color-text-muted);
     margin-top: 2px;
   }
+  .league-item__stats {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .league-item__stats-loading {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+  .league-stat-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    padding: 3px 8px;
+    min-width: 42px;
+  }
+  .league-stat-pill__label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    letter-spacing: 0.3px;
+  }
+  .league-stat-pill__value {
+    font-size: 13px;
+    font-weight: 700;
+  }
   .league-item__arrow {
     font-size: 11px;
     color: var(--color-text-muted);
@@ -292,5 +381,11 @@
   }
   .league-table__diff--neg {
     color: var(--color-danger);
+  }
+
+  @media (max-width: 640px) {
+    .league-item__stats {
+      display: none;
+    }
   }
 </style>

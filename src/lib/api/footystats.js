@@ -16,6 +16,7 @@ const TTL = {
   'league-list':     24 * 60 * 60 * 1000,
   'match':           15 * 60 * 1000,
   'league-tables':   60 * 60 * 1000,
+  'league-season':   60 * 60 * 1000,
 };
 
 async function apiRequest(endpoint, params = {}) {
@@ -133,6 +134,26 @@ export async function getH2H(homeId, awayId, leagueId) {
     (m.homeID === homeId && m.awayID === awayId) ||
     (m.homeID === awayId && m.awayID === homeId)
   ).slice(-5);
+}
+
+export async function getLeagueSeason(seasonId) {
+  const isDemo = getIsDemo();
+  if (isDemo) return null;
+  const data = await apiRequest('league-season', { season_id: seasonId });
+  const d = data?.data;
+  if (!d) return null;
+  return {
+    matchesPlayed: d.matchesCompleted || 0,
+    totalMatches: d.totalMatches || 0,
+    avgGoals: d.seasonAVG_overall || 0,
+    btts: d.seasonBTTSPercentage || 0,
+    cs: d.seasonCSPercentage || 0,
+    over05FHG: d.over05_fhg_percentage || 0,
+    over15FHG: d.over15_fhg_percentage || 0,
+    over25: d.seasonOver25Percentage_overall || 0,
+    over05: d.seasonOver05Percentage_overall || 0,
+    over05_2HG: d.over05_2hg_percentage || 0,
+  };
 }
 
 export async function getLeagueTable(leagueId) {
