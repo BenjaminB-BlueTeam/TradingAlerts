@@ -271,7 +271,15 @@
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#each bar.goals as g}
                             <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'">
-                              <svg viewBox="0 0 20 20" width="14" height="14"><circle cx="10" cy="10" r="9" fill="white" stroke="#333" stroke-width="1.2"/><path d="M10 1.5a8.5 8.5 0 100 17 8.5 8.5 0 000-17zm0 2.3l1.8 1.3-.7 2.1h-2.2l-.7-2.1zm-4.2 3.4h2.3l.7 2.2-1.4 1-.1.1zm1.6 5.5l.5-2.3 1.9-.6 1.9.6.5 2.3zm5.7-2.3l-1.5-1.1.7-2.2h2.3z" fill="#333" opacity="0.7"/></svg>
+                              <svg viewBox="0 0 32 32" width="16" height="16">
+                                <circle cx="16" cy="16" r="15" fill="#f5f5f5" stroke="#555" stroke-width="0.8"/>
+                                <polygon points="16,6 19.5,9 18,13 14,13 12.5,9" fill="#333"/>
+                                <polygon points="7,14 10,11 14,13 13,17 9,17" fill="#333"/>
+                                <polygon points="25,14 22,11 18,13 19,17 23,17" fill="#333"/>
+                                <polygon points="10,23 12,19 16,19 18,23 14,26" fill="#333" opacity="0.85"/>
+                                <polygon points="23,20 19,17 16,19 18,23 22,22" fill="#333" opacity="0.7"/>
+                                <polygon points="9,20 13,17 16,19 14,23 10,22" fill="#333" opacity="0.7"/>
+                              </svg>
                             </span>
                           {/each}
                         </div>
@@ -313,7 +321,15 @@
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#each bar.goals as g}
                             <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'">
-                              <svg viewBox="0 0 20 20" width="14" height="14"><circle cx="10" cy="10" r="9" fill="white" stroke="#333" stroke-width="1.2"/><path d="M10 1.5a8.5 8.5 0 100 17 8.5 8.5 0 000-17zm0 2.3l1.8 1.3-.7 2.1h-2.2l-.7-2.1zm-4.2 3.4h2.3l.7 2.2-1.4 1-.1.1zm1.6 5.5l.5-2.3 1.9-.6 1.9.6.5 2.3zm5.7-2.3l-1.5-1.1.7-2.2h2.3z" fill="#333" opacity="0.7"/></svg>
+                              <svg viewBox="0 0 32 32" width="16" height="16">
+                                <circle cx="16" cy="16" r="15" fill="#f5f5f5" stroke="#555" stroke-width="0.8"/>
+                                <polygon points="16,6 19.5,9 18,13 14,13 12.5,9" fill="#333"/>
+                                <polygon points="7,14 10,11 14,13 13,17 9,17" fill="#333"/>
+                                <polygon points="25,14 22,11 18,13 19,17 23,17" fill="#333"/>
+                                <polygon points="10,23 12,19 16,19 18,23 14,26" fill="#333" opacity="0.85"/>
+                                <polygon points="23,20 19,17 16,19 18,23 22,22" fill="#333" opacity="0.7"/>
+                                <polygon points="9,20 13,17 16,19 14,23 10,22" fill="#333" opacity="0.7"/>
+                              </svg>
                             </span>
                           {/each}
                         </div>
