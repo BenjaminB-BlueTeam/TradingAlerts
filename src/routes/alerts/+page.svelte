@@ -4,8 +4,9 @@
 
   let alerts = [];
   let loading = true;
-  let selectedDay = -1; // -1 = tous
-  let selectedType = 'all'; // all | FHG | DC | FHG+DC
+  let selectedDay = -1;
+  let expandedId = null;
+  let teamMatchesCache = {};
 
   const days = [
     { label: "Aujourd'hui", offset: 0 },
@@ -28,27 +29,76 @@
       .lte('match_date', getDateStr(2))
       .order('match_date', { ascending: true })
       .order('kickoff_unix', { ascending: true });
-
-    if (error) {
-      console.error('loadAlerts:', error);
-      alerts = [];
-    } else {
-      alerts = data || [];
-    }
+    alerts = error ? [] : (data || []);
     loading = false;
   }
 
   $: filteredAlerts = alerts.filter(a => {
-    if (selectedDay !== -1) {
-      const dateStr = getDateStr(selectedDay);
-      if (a.match_date !== dateStr) return false;
-    }
-    if (selectedType !== 'all' && a.signal_type !== selectedType) return false;
+    if (selectedDay !== -1 && a.match_date !== getDateStr(selectedDay)) return false;
     return true;
   });
 
-  $: fhgAlerts = filteredAlerts.filter(a => a.signal_type === 'FHG' || a.signal_type === 'FHG+DC');
-  $: dcAlerts = filteredAlerts.filter(a => a.signal_type === 'DC' || a.signal_type === 'FHG+DC');
+  // Charger les derniers matchs d'une équipe dans son contexte
+  async function loadTeamMatches(teamId, context) {
+    const key = `${teamId}_${context}`;
+    if (teamMatchesCache[key]) return teamMatchesCache[key];
+
+    const col = context === 'home' ? 'home_team_id' : 'away_team_id';
+    const { data } = await supabase
+      .from('h2h_matches')
+      .select('*')
+      .eq(col, teamId)
+      .not('home_goals', 'is', null)
+      .order('match_date', { ascending: false })
+      .limit(15);
+
+    teamMatchesCache[key] = data || [];
+    teamMatchesCache = teamMatchesCache;
+    return data || [];
+  }
+
+  async function toggleExpand(alert) {
+    if (expandedId === alert.id) {
+      expandedId = null;
+      return;
+    }
+    expandedId = alert.id;
+    // Précharger les matchs des deux équipes
+    await Promise.all([
+      loadTeamMatches(alert.home_team_id, 'home'),
+      loadTeamMatches(alert.away_team_id, 'away'),
+    ]);
+  }
+
+  function getTeamMatches(teamId, context) {
+    return teamMatchesCache[`${teamId}_${context}`] || [];
+  }
+
+  // Stats résumé pour une équipe
+  function computeTeamStats(matches, context) {
+    if (!matches.length) return null;
+    const scored = matches.map(m => context === 'home' ? (m.home_goals || 0) : (m.away_goals || 0));
+    const conceded = matches.map(m => context === 'home' ? (m.away_goals || 0) : (m.home_goals || 0));
+    const scoredHT = matches.map(m => context === 'home' ? (m.home_goals_ht || 0) : (m.away_goals_ht || 0));
+    const concededHT = matches.map(m => context === 'home' ? (m.away_goals_ht || 0) : (m.home_goals_ht || 0));
+
+    const total = matches.length;
+    const avgGoals = +((scored.reduce((a, b) => a + b, 0) + conceded.reduce((a, b) => a + b, 0)) / total).toFixed(2);
+    const pctGoal1MT = Math.round(scoredHT.filter(g => g > 0).length / total * 100);
+    const pct2Plus1MT = Math.round(scoredHT.filter(g => g >= 2).length / total * 100);
+    const pctBTTS = Math.round(matches.filter((_, i) => scored[i] > 0 && conceded[i] > 0).length / total * 100);
+    const pctOver25 = Math.round(matches.filter((_, i) => scored[i] + conceded[i] > 2).length / total * 100);
+    const avgScored1MT = +(scoredHT.reduce((a, b) => a + b, 0) / total).toFixed(2);
+    const avgScored2MT = +((scored.reduce((a, b) => a + b, 0) - scoredHT.reduce((a, b) => a + b, 0)) / total).toFixed(2);
+
+    return { avgGoals, pctGoal1MT, pct2Plus1MT, pctBTTS, pctOver25, avgScored1MT, avgScored2MT, total };
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+  }
 
   function formatTime(unix) {
     if (!unix) return '—';
@@ -71,6 +121,17 @@
     return c === 'fort' ? 'alert-badge--fort' : 'alert-badge--moyen';
   }
 
+  // Barre de timing : calcule les segments 1MT / 2MT pour scored et conceded
+  function goalBar(match, context) {
+    const scored = context === 'home' ? (match.home_goals || 0) : (match.away_goals || 0);
+    const conceded = context === 'home' ? (match.away_goals || 0) : (match.home_goals || 0);
+    const scoredHT = context === 'home' ? (match.home_goals_ht || 0) : (match.away_goals_ht || 0);
+    const concededHT = context === 'home' ? (match.away_goals_ht || 0) : (match.home_goals_ht || 0);
+    const scored2MT = scored - scoredHT;
+    const conceded2MT = conceded - concededHT;
+    return { scoredHT, scored2MT, concededHT, conceded2MT, total: scored + conceded };
+  }
+
   onMount(() => { loadAlerts(); });
 </script>
 
@@ -79,7 +140,6 @@
   {alerts.length} alerte{alerts.length > 1 ? 's' : ''} sur les 3 prochains jours
 </div>
 
-<!-- Filtres -->
 <div class="alerts-filters">
   <button class="alerts-filter-btn" class:active={selectedDay === -1} on:click={() => selectedDay = -1}>
     Tous ({alerts.length})
@@ -106,126 +166,177 @@
     </div>
   </div>
 {:else}
-
-  <!-- SECTION FHG -->
-  {#if fhgAlerts.length > 0}
-    <div class="alerts-section">
-      <div class="alerts-section__header">
-        <span class="alerts-section__icon">⚽</span>
-        <span class="alerts-section__title">FHG — But en 1re mi-temps</span>
-        <span class="alerts-section__count">{fhgAlerts.length}</span>
-      </div>
-      <div class="alerts-list">
-        {#each fhgAlerts as a (a.id)}
-          <div class="alert-card">
-            <div class="alert-card__time">
-              <div class="alert-card__day">{a.match_date}</div>
-              <div class="alert-card__hour">{formatTime(a.kickoff_unix)}</div>
+  <div class="alerts-list">
+    {#each filteredAlerts as a (a.id)}
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <div class="alert-card" class:alert-card--expanded={expandedId === a.id}>
+        <div class="alert-card__header" on:click={() => toggleExpand(a)} role="button" tabindex="0">
+          <div class="alert-card__time">
+            <div class="alert-card__day">{a.match_date}</div>
+            <div class="alert-card__hour">{formatTime(a.kickoff_unix)}</div>
+          </div>
+          <div class="alert-card__match">
+            <div class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</div>
+            <div class="alert-card__league">{a.league_name || '—'}</div>
+          </div>
+          <div class="alert-card__stats">
+            {#if a.fhg_pct}
+              <div class="alert-pill">
+                <span class="alert-pill__label">FHG</span>
+                <span class="alert-pill__value" style:color={fhgColor(a.fhg_pct)}>{a.fhg_pct}%</span>
+              </div>
+            {/if}
+            {#if a.dc_defeat_pct !== null}
+              <div class="alert-pill">
+                <span class="alert-pill__label">DC def.</span>
+                <span class="alert-pill__value" style:color={defeatColor(a.dc_defeat_pct)}>{a.dc_defeat_pct}%</span>
+              </div>
+            {/if}
+            <div class="alert-pill">
+              <span class="alert-pill__label">H2H</span>
+              <span class="alert-pill__value">{a.h2h_count}</span>
             </div>
-            <div class="alert-card__match">
-              <div class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</div>
-              <div class="alert-card__league">{a.league_name || '—'}</div>
-            </div>
-            <div class="alert-card__stats">
-              {#if a.fhg_pct}
-                <div class="alert-pill">
-                  <span class="alert-pill__label">Score FHG</span>
-                  <span class="alert-pill__value" style:color={fhgColor(a.fhg_pct)}>{a.fhg_pct}%</span>
-                </div>
-              {/if}
-              {#if a.fhg_factors}
-                <div class="alert-pill">
-                  <span class="alert-pill__label">Rec. 1MT</span>
-                  <span class="alert-pill__value">{a.fhg_factors.recurrence1MT}%</span>
-                </div>
-                <div class="alert-pill">
-                  <span class="alert-pill__label">2+ buts</span>
-                  <span class="alert-pill__value">{a.fhg_factors.double1MT}%</span>
-                </div>
-              {/if}
-            </div>
-            <div class="alert-card__badges">
+          </div>
+          <div class="alert-card__badges">
+            {#if a.signal_type === 'FHG' || a.signal_type === 'FHG+DC'}
               <span class="alert-badge alert-badge--fhg">FHG</span>
-              {#if a.signal_type === 'FHG+DC'}<span class="alert-badge alert-badge--dc">DC</span>{/if}
-              <span class="alert-badge {confidenceClass(a.fhg_confidence)}">{a.fhg_confidence}</span>
-            </div>
-          </div>
-        {/each}
-      </div>
-    </div>
-  {/if}
-
-  <!-- SECTION DC -->
-  {#if dcAlerts.length > 0}
-    <div class="alerts-section">
-      <div class="alerts-section__header">
-        <span class="alerts-section__icon">🎯</span>
-        <span class="alerts-section__title">Double Chance</span>
-        <span class="alerts-section__count">{dcAlerts.length}</span>
-      </div>
-      <div class="alerts-list">
-        {#each dcAlerts as a (a.id)}
-          <div class="alert-card">
-            <div class="alert-card__time">
-              <div class="alert-card__day">{a.match_date}</div>
-              <div class="alert-card__hour">{formatTime(a.kickoff_unix)}</div>
-            </div>
-            <div class="alert-card__match">
-              <div class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</div>
-              <div class="alert-card__league">{a.league_name || '—'}</div>
-            </div>
-            <div class="alert-card__stats">
-              {#if a.dc_defeat_pct !== null}
-                <div class="alert-pill">
-                  <span class="alert-pill__label">Def. H2H</span>
-                  <span class="alert-pill__value" style:color={defeatColor(a.dc_defeat_pct)}>{a.dc_defeat_pct}%</span>
-                </div>
-              {/if}
-              <div class="alert-pill">
-                <span class="alert-pill__label">H2H</span>
-                <span class="alert-pill__value">{a.h2h_count}</span>
-              </div>
-              <div class="alert-pill">
-                <span class="alert-pill__label">Cote</span>
-                <span class="alert-pill__value">{a.dc_best_side === 'home' ? 'DOM' : 'EXT'}</span>
-              </div>
-            </div>
-            <div class="alert-card__badges">
-              {#if a.signal_type === 'FHG+DC'}<span class="alert-badge alert-badge--fhg">FHG</span>{/if}
+            {/if}
+            {#if a.signal_type === 'DC' || a.signal_type === 'FHG+DC'}
               <span class="alert-badge alert-badge--dc">DC</span>
-              <span class="alert-badge {confidenceClass(a.dc_confidence)}">{a.dc_confidence}</span>
+            {/if}
+            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
+          </div>
+          <span class="alert-card__arrow">{expandedId === a.id ? '▼' : '▶'}</span>
+        </div>
+
+        {#if expandedId === a.id}
+          <div class="alert-expand">
+            <!-- Équipe domicile -->
+            {@const homeMatches = getTeamMatches(a.home_team_id, 'home')}
+            {@const homeStats = computeTeamStats(homeMatches, 'home')}
+            <div class="team-detail">
+              <div class="team-detail__header">
+                <span class="team-detail__name">{a.home_team_name}</span>
+                <span class="team-detail__context">Domicile</span>
+                {#if homeStats}
+                  <div class="team-detail__summary">
+                    <span>1MT: <strong style:color={fhgColor(homeStats.pctGoal1MT)}>{homeStats.pctGoal1MT}%</strong></span>
+                    <span>AVG: <strong>{homeStats.avgGoals}</strong></span>
+                    <span>BTTS: <strong>{homeStats.pctBTTS}%</strong></span>
+                    <span>O2.5: <strong>{homeStats.pctOver25}%</strong></span>
+                  </div>
+                {/if}
+              </div>
+              {#if homeMatches.length > 0}
+                <div class="team-matches">
+                  {#each homeMatches as m}
+                    {@const bar = goalBar(m, 'home')}
+                    <div class="match-row">
+                      <span class="match-row__date">{formatDate(m.match_date)}</span>
+                      <span class="match-row__home" class:match-row__bold={true}>{m.home_team_name}</span>
+                      <span class="match-row__score">{m.home_goals}-{m.away_goals}</span>
+                      <span class="match-row__away">{m.away_team_name}</span>
+                      <div class="match-row__bar">
+                        <div class="goal-bar">
+                          <div class="goal-bar__half goal-bar__1mt">
+                            {#each Array(bar.scoredHT) as _}<span class="goal-dot goal-dot--scored">⚽</span>{/each}
+                            {#each Array(bar.concededHT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
+                          </div>
+                          <div class="goal-bar__sep">MT</div>
+                          <div class="goal-bar__half goal-bar__2mt">
+                            {#each Array(bar.scored2MT) as _}<span class="goal-dot goal-dot--scored">⚽</span>{/each}
+                            {#each Array(bar.conceded2MT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
+                          </div>
+                          <div class="goal-bar__sep">FT</div>
+                        </div>
+                      </div>
+                      <span class="match-row__total">{bar.total}</span>
+                    </div>
+                  {/each}
+                </div>
+              {:else}
+                <div class="team-detail__empty">Aucun match recent</div>
+              {/if}
+            </div>
+
+            <!-- Équipe extérieur -->
+            {@const awayMatches = getTeamMatches(a.away_team_id, 'away')}
+            {@const awayStats = computeTeamStats(awayMatches, 'away')}
+            <div class="team-detail">
+              <div class="team-detail__header">
+                <span class="team-detail__name">{a.away_team_name}</span>
+                <span class="team-detail__context">Exterieur</span>
+                {#if awayStats}
+                  <div class="team-detail__summary">
+                    <span>1MT: <strong style:color={fhgColor(awayStats.pctGoal1MT)}>{awayStats.pctGoal1MT}%</strong></span>
+                    <span>AVG: <strong>{awayStats.avgGoals}</strong></span>
+                    <span>BTTS: <strong>{awayStats.pctBTTS}%</strong></span>
+                    <span>O2.5: <strong>{awayStats.pctOver25}%</strong></span>
+                  </div>
+                {/if}
+              </div>
+              {#if awayMatches.length > 0}
+                <div class="team-matches">
+                  {#each awayMatches as m}
+                    {@const bar = goalBar(m, 'away')}
+                    <div class="match-row">
+                      <span class="match-row__date">{formatDate(m.match_date)}</span>
+                      <span class="match-row__home">{m.home_team_name}</span>
+                      <span class="match-row__score">{m.home_goals}-{m.away_goals}</span>
+                      <span class="match-row__away" class:match-row__bold={true}>{m.away_team_name}</span>
+                      <div class="match-row__bar">
+                        <div class="goal-bar">
+                          <div class="goal-bar__half goal-bar__1mt">
+                            {#each Array(bar.scoredHT) as _}<span class="goal-dot goal-dot--scored">⚽</span>{/each}
+                            {#each Array(bar.concededHT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
+                          </div>
+                          <div class="goal-bar__sep">MT</div>
+                          <div class="goal-bar__half goal-bar__2mt">
+                            {#each Array(bar.scored2MT) as _}<span class="goal-dot goal-dot--scored">⚽</span>{/each}
+                            {#each Array(bar.conceded2MT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
+                          </div>
+                          <div class="goal-bar__sep">FT</div>
+                        </div>
+                      </div>
+                      <span class="match-row__total">{bar.total}</span>
+                    </div>
+                  {/each}
+                </div>
+              {:else}
+                <div class="team-detail__empty">Aucun match recent</div>
+              {/if}
             </div>
           </div>
-        {/each}
+        {/if}
       </div>
-    </div>
-  {/if}
+    {/each}
+  </div>
 {/if}
 
 <style>
-  .alerts-filters { display: flex; gap: 4px; margin-bottom: 20px; }
+  .alerts-filters { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
   .alerts-filter-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 5px 12px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
   .alerts-filter-btn.active { background: var(--color-accent-blue); border-color: var(--color-accent-blue); color: white; }
 
-  .alerts-section { margin-bottom: 28px; }
-  .alerts-section__header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--color-border); }
-  .alerts-section__icon { font-size: 18px; }
-  .alerts-section__title { font-size: 15px; font-weight: 600; }
-  .alerts-section__count { background: rgba(255,255,255,0.08); color: var(--color-text-muted); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-left: auto; }
+  .alerts-list { display: flex; flex-direction: column; gap: 8px; }
 
-  .alerts-list { display: flex; flex-direction: column; gap: 6px; }
-  .alert-card { display: flex; align-items: center; gap: 14px; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 14px; transition: border-color 0.15s; }
+  .alert-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
   .alert-card:hover { border-color: var(--color-accent-blue); }
+  .alert-card--expanded { border-color: var(--color-accent-blue); }
 
-  .alert-card__time { min-width: 70px; text-align: center; }
+  .alert-card__header { display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; transition: background 0.15s; }
+  .alert-card__header:hover { background: rgba(255,255,255,0.02); }
+
+  .alert-card__time { min-width: 65px; text-align: center; }
   .alert-card__day { font-size: 10px; color: var(--color-text-muted); }
   .alert-card__hour { font-size: 14px; font-weight: 600; }
   .alert-card__match { flex: 1; min-width: 0; }
   .alert-card__teams { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .alert-card__league { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+  .alert-card__arrow { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
 
   .alert-card__stats { display: flex; gap: 6px; flex-shrink: 0; }
-  .alert-pill { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.04); border-radius: 6px; padding: 3px 8px; min-width: 48px; }
+  .alert-pill { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.04); border-radius: 6px; padding: 3px 8px; min-width: 44px; }
   .alert-pill__label { font-size: 9px; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted); }
   .alert-pill__value { font-size: 13px; font-weight: 700; }
 
@@ -236,8 +347,41 @@
   .alert-badge--fort { background: rgba(29, 158, 117, 0.15); color: var(--color-accent-green); }
   .alert-badge--moyen { background: rgba(239, 159, 39, 0.15); color: var(--color-signal-moyen); }
 
-  @media (max-width: 640px) {
-    .alert-card { flex-wrap: wrap; }
-    .alert-card__stats { width: 100%; justify-content: center; }
+  /* Expand */
+  .alert-expand { border-top: 1px solid var(--color-border); padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+
+  .team-detail { background: rgba(255,255,255,0.02); border-radius: 8px; padding: 12px; }
+  .team-detail__header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .team-detail__name { font-size: 14px; font-weight: 600; }
+  .team-detail__context { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--color-accent-blue); background: rgba(55,138,221,0.12); padding: 2px 6px; border-radius: 4px; }
+  .team-detail__summary { display: flex; gap: 12px; margin-left: auto; font-size: 11px; color: var(--color-text-muted); }
+  .team-detail__summary strong { color: var(--color-text-primary); }
+  .team-detail__empty { padding: 12px; text-align: center; color: var(--color-text-muted); font-size: 12px; }
+
+  .team-matches { display: flex; flex-direction: column; gap: 1px; }
+
+  .match-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .match-row__date { min-width: 50px; color: var(--color-text-muted); font-size: 11px; }
+  .match-row__home, .match-row__away { min-width: 100px; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .match-row__bold { font-weight: 600; color: var(--color-text-primary); }
+  .match-row__score { font-weight: 700; min-width: 30px; text-align: center; }
+  .match-row__total { min-width: 20px; text-align: right; font-weight: 700; color: var(--color-text-primary); }
+
+  .match-row__bar { flex: 1; min-width: 120px; }
+  .goal-bar { display: flex; align-items: center; height: 20px; background: rgba(255,255,255,0.03); border-radius: 3px; overflow: hidden; }
+  .goal-bar__half { display: flex; align-items: center; gap: 1px; padding: 0 4px; flex: 1; }
+  .goal-bar__1mt { background: rgba(29, 158, 117, 0.08); justify-content: flex-end; }
+  .goal-bar__2mt { background: rgba(55, 138, 221, 0.05); }
+  .goal-bar__sep { font-size: 8px; font-weight: 700; color: var(--color-text-muted); padding: 0 2px; flex-shrink: 0; }
+  .goal-dot { font-size: 10px; }
+  .goal-dot--scored { filter: none; }
+  .goal-dot--conceded { filter: grayscale(1) opacity(0.4); }
+
+  @media (max-width: 768px) {
+    .alert-card__header { flex-wrap: wrap; }
+    .alert-card__stats { width: 100%; }
+    .match-row { flex-wrap: wrap; }
+    .match-row__bar { width: 100%; }
+    .team-detail__summary { margin-left: 0; width: 100%; }
   }
 </style>
