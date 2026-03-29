@@ -59,7 +59,6 @@
       const matchDetails = await Promise.all(
         inPlayAlerts.map(a => getMatchDetail(a.match_id, true).catch(() => null))
       );
-      console.log('[LIVE DEBUG] matchDetails:', JSON.stringify(matchDetails, null, 2));
 
       // 4. Enrichir les alertes avec les scores live
       liveMatches = inPlayAlerts.map((a, i) => {
@@ -67,12 +66,15 @@
         const status = (live.status || '').toLowerCase();
         const isFinished = status === 'complete' || status === 'finished';
 
+        // FootyStats ne fournit pas de scores en temps réel (status "incomplete" = en cours, score non mis à jour)
+        const scoreAvailable = isFinished;
+
         return {
           ...a,
-          homeGoals: live.homeGoalCount ?? null,
-          awayGoals: live.awayGoalCount ?? null,
-          htHome: live.team_a_ht_score ?? live.ht_goals_team_a ?? null,
-          htAway: live.team_b_ht_score ?? live.ht_goals_team_b ?? null,
+          homeGoals: scoreAvailable ? (live.homeGoalCount ?? null) : null,
+          awayGoals: scoreAvailable ? (live.awayGoalCount ?? null) : null,
+          htHome: live.ht_goals_team_a ?? null,
+          htAway: live.ht_goals_team_b ?? null,
           minute: isFinished ? 'FT' : getMatchMinute(a.kickoff_unix),
           isFinished,
           liveStatus: status,
@@ -112,8 +114,10 @@
   }
 
   function scoreDisplay(m) {
-    if (m.homeGoals === null || m.awayGoals === null) return '— : —';
-    return `${m.homeGoals} : ${m.awayGoals}`;
+    if (m.isFinished && m.homeGoals !== null && m.awayGoals !== null) {
+      return `${m.homeGoals} : ${m.awayGoals}`;
+    }
+    return '? : ?'; // FootyStats ne fournit pas les scores en temps réel
   }
 
   onMount(() => {
