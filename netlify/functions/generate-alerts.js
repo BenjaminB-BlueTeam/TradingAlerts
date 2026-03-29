@@ -124,7 +124,7 @@ function analyzeFHGFromMatches(matches, context, h2h, teamId, opponentMatches) {
         ? (m.away_goals || 0) : (m.home_goals || 0);
       return conceded > 0;
     }).length;
-    opponentConcedesEnough = oppConcedesCount >= 3;
+    opponentConcedesEnough = oppConcedesCount >= 2;
 
     const oppConceded1MT = opponentMatches.filter(m => {
       const conceded = oppContext === 'home'

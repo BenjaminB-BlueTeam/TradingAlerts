@@ -115,7 +115,7 @@ export async function analyzeFHG(teamId, context, opponentId) {
       return conceded > 0;
     }).length;
     // Filtre : au moins 3 matchs sur 5 où il encaisse
-    opponentConcedesEnough = oppConcedesCount >= 3;
+    opponentConcedesEnough = oppConcedesCount >= 2;
 
     // % encaisse en 1MT (pour le score composite)
     const oppConceded1MT = opponentMatches.filter(m => {
