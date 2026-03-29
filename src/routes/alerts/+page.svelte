@@ -270,7 +270,9 @@
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#each bar.goals as g}
-                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%">⚽</span>
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'">
+                              <svg viewBox="0 0 20 20" width="14" height="14"><circle cx="10" cy="10" r="9" fill="white" stroke="#333" stroke-width="1.2"/><path d="M10 1.5a8.5 8.5 0 100 17 8.5 8.5 0 000-17zm0 2.3l1.8 1.3-.7 2.1h-2.2l-.7-2.1zm-4.2 3.4h2.3l.7 2.2-1.4 1-.1.1zm1.6 5.5l.5-2.3 1.9-.6 1.9.6.5 2.3zm5.7-2.3l-1.5-1.1.7-2.2h2.3z" fill="#333" opacity="0.7"/></svg>
+                            </span>
                           {/each}
                         </div>
                       </div>
@@ -310,7 +312,9 @@
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#each bar.goals as g}
-                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%">⚽</span>
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'">
+                              <svg viewBox="0 0 20 20" width="14" height="14"><circle cx="10" cy="10" r="9" fill="white" stroke="#333" stroke-width="1.2"/><path d="M10 1.5a8.5 8.5 0 100 17 8.5 8.5 0 000-17zm0 2.3l1.8 1.3-.7 2.1h-2.2l-.7-2.1zm-4.2 3.4h2.3l.7 2.2-1.4 1-.1.1zm1.6 5.5l.5-2.3 1.9-.6 1.9.6.5 2.3zm5.7-2.3l-1.5-1.1.7-2.2h2.3z" fill="#333" opacity="0.7"/></svg>
+                            </span>
                           {/each}
                         </div>
                       </div>
@@ -390,8 +394,8 @@
   .match-row__bar { width: auto; }
   .goal-bar { position: relative; height: 20px; min-width: 160px; background: linear-gradient(90deg, #2a7a52 0%, #2a7a52 50%, #1e6340 50%, #1e6340 100%); border-radius: 3px; }
   .goal-bar__marker { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.35); z-index: 1; pointer-events: none; }
-  .goal-dot { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 11px; z-index: 2; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); cursor: default; }
-  .goal-dot--conceded { filter: grayscale(1) brightness(0.6) drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
+  .goal-dot { position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 2; cursor: default; line-height: 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)); }
+  .goal-dot--conceded { opacity: 0.45; }
 
   @media (max-width: 1200px) {
     .alert-expand { grid-template-columns: 1fr; }
