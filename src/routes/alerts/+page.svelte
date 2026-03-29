@@ -270,17 +270,7 @@
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#each bar.goals as g}
-                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'">
-                              <svg viewBox="0 0 32 32" width="16" height="16">
-                                <circle cx="16" cy="16" r="15" fill="#f5f5f5" stroke="#555" stroke-width="0.8"/>
-                                <polygon points="16,6 19.5,9 18,13 14,13 12.5,9" fill="#333"/>
-                                <polygon points="7,14 10,11 14,13 13,17 9,17" fill="#333"/>
-                                <polygon points="25,14 22,11 18,13 19,17 23,17" fill="#333"/>
-                                <polygon points="10,23 12,19 16,19 18,23 14,26" fill="#333" opacity="0.85"/>
-                                <polygon points="23,20 19,17 16,19 18,23 22,22" fill="#333" opacity="0.7"/>
-                                <polygon points="9,20 13,17 16,19 14,23 10,22" fill="#333" opacity="0.7"/>
-                              </svg>
-                            </span>
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'"></span>
                           {/each}
                         </div>
                       </div>
@@ -320,17 +310,7 @@
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#each bar.goals as g}
-                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'">
-                              <svg viewBox="0 0 32 32" width="16" height="16">
-                                <circle cx="16" cy="16" r="15" fill="#f5f5f5" stroke="#555" stroke-width="0.8"/>
-                                <polygon points="16,6 19.5,9 18,13 14,13 12.5,9" fill="#333"/>
-                                <polygon points="7,14 10,11 14,13 13,17 9,17" fill="#333"/>
-                                <polygon points="25,14 22,11 18,13 19,17 23,17" fill="#333"/>
-                                <polygon points="10,23 12,19 16,19 18,23 14,26" fill="#333" opacity="0.85"/>
-                                <polygon points="23,20 19,17 16,19 18,23 22,22" fill="#333" opacity="0.7"/>
-                                <polygon points="9,20 13,17 16,19 14,23 10,22" fill="#333" opacity="0.7"/>
-                              </svg>
-                            </span>
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'"></span>
                           {/each}
                         </div>
                       </div>
@@ -410,8 +390,15 @@
   .match-row__bar { width: auto; }
   .goal-bar { position: relative; height: 20px; min-width: 160px; background: linear-gradient(90deg, #2a7a52 0%, #2a7a52 50%, #1e6340 50%, #1e6340 100%); border-radius: 3px; }
   .goal-bar__marker { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.35); z-index: 1; pointer-events: none; }
-  .goal-dot { position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 2; cursor: default; line-height: 0; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)); }
-  .goal-dot--conceded { opacity: 0.45; }
+  .goal-dot {
+    position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 2; cursor: default;
+    width: 16px; height: 16px;
+    background: url('/ballon.png') center/contain no-repeat;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
+  }
+  .goal-dot--conceded {
+    opacity: 0.35;
+  }
 
   @media (max-width: 1200px) {
     .alert-expand { grid-template-columns: 1fr; }
