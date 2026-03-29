@@ -240,16 +240,16 @@
                       <span class="match-row__away">{m.away_team_name}</span>
                       <div class="match-row__bar">
                         <div class="goal-bar">
-                          <div class="goal-bar__half goal-bar__1mt">
-                            {#each Array(bar.scoredHT) as _}<span class="goal-dot goal-dot--scored">⚽</span>{/each}
+                          <div class="goal-bar__half">
+                            {#each Array(bar.scoredHT) as _}<span class="goal-dot">⚽</span>{/each}
                             {#each Array(bar.concededHT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
                           </div>
-                          <div class="goal-bar__sep">MT</div>
-                          <div class="goal-bar__half goal-bar__2mt">
-                            {#each Array(bar.scored2MT) as _}<span class="goal-dot goal-dot--scored">⚽</span>{/each}
+                          <span class="goal-bar__marker goal-bar__marker--ht">MT</span>
+                          <div class="goal-bar__half">
+                            {#each Array(bar.scored2MT) as _}<span class="goal-dot">⚽</span>{/each}
                             {#each Array(bar.conceded2MT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
                           </div>
-                          <div class="goal-bar__sep">FT</div>
+                          <span class="goal-bar__marker goal-bar__marker--ft">FT</span>
                         </div>
                       </div>
                       <span class="match-row__total">{bar.total}</span>
@@ -285,16 +285,16 @@
                       <span class="match-row__away match-row__bold">{m.away_team_name}</span>
                       <div class="match-row__bar">
                         <div class="goal-bar">
-                          <div class="goal-bar__half goal-bar__1mt">
-                            {#each Array(bar.scoredHT) as _}<span class="goal-dot goal-dot--scored">⚽</span>{/each}
+                          <div class="goal-bar__half">
+                            {#each Array(bar.scoredHT) as _}<span class="goal-dot">⚽</span>{/each}
                             {#each Array(bar.concededHT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
                           </div>
-                          <div class="goal-bar__sep">MT</div>
-                          <div class="goal-bar__half goal-bar__2mt">
-                            {#each Array(bar.scored2MT) as _}<span class="goal-dot goal-dot--scored">⚽</span>{/each}
+                          <span class="goal-bar__marker goal-bar__marker--ht">MT</span>
+                          <div class="goal-bar__half">
+                            {#each Array(bar.scored2MT) as _}<span class="goal-dot">⚽</span>{/each}
                             {#each Array(bar.conceded2MT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
                           </div>
-                          <div class="goal-bar__sep">FT</div>
+                          <span class="goal-bar__marker goal-bar__marker--ft">FT</span>
                         </div>
                       </div>
                       <span class="match-row__total">{bar.total}</span>
@@ -366,15 +366,14 @@
   .match-row__score { font-weight: 700; min-width: 30px; text-align: center; }
   .match-row__total { min-width: 20px; text-align: right; font-weight: 700; color: var(--color-text-primary); }
 
-  .match-row__bar { flex: 1; min-width: 120px; }
-  .goal-bar { display: flex; align-items: center; height: 20px; background: rgba(255,255,255,0.03); border-radius: 3px; overflow: hidden; }
-  .goal-bar__half { display: flex; align-items: center; gap: 1px; padding: 0 4px; flex: 1; }
-  .goal-bar__1mt { background: rgba(29, 158, 117, 0.08); justify-content: flex-end; }
-  .goal-bar__2mt { background: rgba(55, 138, 221, 0.05); }
-  .goal-bar__sep { font-size: 8px; font-weight: 700; color: var(--color-text-muted); padding: 0 2px; flex-shrink: 0; }
-  .goal-dot { font-size: 10px; }
-  .goal-dot--scored { filter: none; }
-  .goal-dot--conceded { filter: grayscale(1) opacity(0.4); }
+  .match-row__bar { flex: 1; min-width: 180px; }
+  .goal-bar { position: relative; display: flex; align-items: center; height: 22px; background: linear-gradient(90deg, #2d6b4f 0%, #2d6b4f 50%, #1a5c3a 50%, #1a5c3a 100%); border-radius: 3px; overflow: hidden; }
+  .goal-bar__half { display: flex; align-items: center; justify-content: center; gap: 2px; flex: 1; height: 100%; position: relative; z-index: 1; }
+  .goal-bar__marker { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.5); position: absolute; top: 50%; transform: translateY(-50%); z-index: 0; }
+  .goal-bar__marker--ht { left: 50%; transform: translate(-50%, -50%); }
+  .goal-bar__marker--ft { right: 4px; transform: translateY(-50%); }
+  .goal-dot { font-size: 12px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
+  .goal-dot--conceded { filter: grayscale(1) brightness(0.7) drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
 
   @media (max-width: 768px) {
     .alert-card__header { flex-wrap: wrap; }
