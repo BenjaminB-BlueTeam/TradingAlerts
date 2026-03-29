@@ -109,8 +109,8 @@ export async function getLeagueMatches(leagueId) {
   return data?.data || [];
 }
 
-export async function getMatchDetail(matchId) {
-  const data = await apiRequest('match', { match_id: matchId });
+export async function getMatchDetail(matchId, bypassCache = false) {
+  const data = await apiRequest('match', { match_id: matchId }, bypassCache);
   return data?.data || null;
 }
 

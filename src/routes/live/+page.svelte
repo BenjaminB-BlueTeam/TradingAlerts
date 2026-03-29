@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { supabase } from '$lib/api/supabase.js';
-  import { getTodaysMatches } from '$lib/api/footystats.js';
+  import { getMatchDetail } from '$lib/api/footystats.js';
 
   const REFRESH_INTERVAL = 10_000;
 
@@ -55,13 +55,14 @@
         return;
       }
 
-      // 3. Fetch les scores live via API (bypass cache pour avoir les scores à jour)
-      const todayMatches = await getTodaysMatches(today, true);
-      const matchMap = new Map((todayMatches || []).map(m => [m.id, m]));
+      // 3. Fetch les scores live via endpoint match individuel (bypass cache)
+      const matchDetails = await Promise.all(
+        inPlayAlerts.map(a => getMatchDetail(a.match_id, true).catch(() => null))
+      );
 
       // 4. Enrichir les alertes avec les scores live
-      liveMatches = inPlayAlerts.map(a => {
-        const live = matchMap.get(a.match_id) || {};
+      liveMatches = inPlayAlerts.map((a, i) => {
+        const live = matchDetails[i] || {};
         const status = (live.status || '').toLowerCase();
         const isFinished = status === 'complete' || status === 'finished';
 
