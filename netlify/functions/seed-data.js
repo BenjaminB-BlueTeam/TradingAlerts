@@ -112,21 +112,32 @@ async function seedLeague(seasonId) {
     const matchesData = await footyRequest('league-matches', { season_id: seasonId });
     const matches = matchesData?.data || [];
 
-    const rows = matches.map(m => ({
-      home_team_id: m.homeID,
-      away_team_id: m.awayID,
-      home_team_name: m.home_name || null,
-      away_team_name: m.away_name || null,
-      league_id: Number(seasonId),
-      season_id: Number(seasonId),
-      match_id: m.id,
-      match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : m.date || '1970-01-01',
-      home_goals: m.homeGoalCount ?? m.homeGoals ?? 0,
-      away_goals: m.awayGoalCount ?? m.awayGoals ?? 0,
-      home_goals_ht: m.team_a_ht_score ?? m.ht_goals_team_a ?? 0,
-      away_goals_ht: m.team_b_ht_score ?? m.ht_goals_team_b ?? 0,
-      last_updated: new Date().toISOString(),
-    }));
+    const rows = matches.map(m => {
+      // Extraire les minutes des buts (léger : juste minute + home/away)
+      let goalMinutes = [];
+      if (m.goalscorer && Array.isArray(m.goalscorer)) {
+        goalMinutes = m.goalscorer.map(g => ({
+          min: parseInt(g.time || g.minute) || 0,
+          home: g.home_or_away === 'home' || g.team_id === m.homeID,
+        })).filter(g => g.min > 0).sort((a, b) => a.min - b.min);
+      }
+      return {
+        home_team_id: m.homeID,
+        away_team_id: m.awayID,
+        home_team_name: m.home_name || null,
+        away_team_name: m.away_name || null,
+        league_id: Number(seasonId),
+        season_id: Number(seasonId),
+        match_id: m.id,
+        match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : m.date || '1970-01-01',
+        home_goals: m.homeGoalCount ?? m.homeGoals ?? 0,
+        away_goals: m.awayGoalCount ?? m.awayGoals ?? 0,
+        home_goals_ht: m.team_a_ht_score ?? m.ht_goals_team_a ?? 0,
+        away_goals_ht: m.team_b_ht_score ?? m.ht_goals_team_b ?? 0,
+        goal_events: goalMinutes,
+        last_updated: new Date().toISOString(),
+      };
+    });
 
     return respond(200, { matches: rows.length, rows });
   } catch (e) {
