@@ -113,14 +113,23 @@ async function seedLeague(seasonId) {
     const matches = matchesData?.data || [];
 
     const rows = matches.map(m => {
-      // Extraire les minutes des buts (léger : juste minute + home/away)
+      // Extraire les minutes des buts depuis homeGoals_timings / awayGoals_timings
       let goalMinutes = [];
-      if (m.goalscorer && Array.isArray(m.goalscorer)) {
-        goalMinutes = m.goalscorer.map(g => ({
-          min: parseInt(g.time || g.minute) || 0,
-          home: g.home_or_away === 'home' || g.team_id === m.homeID,
-        })).filter(g => g.min > 0).sort((a, b) => a.min - b.min);
+      const homeTimings = m.homeGoals_timings || m.homeGoals || [];
+      const awayTimings = m.awayGoals_timings || m.awayGoals || [];
+      if (Array.isArray(homeTimings)) {
+        homeTimings.forEach(t => {
+          const min = parseInt(t);
+          if (min > 0) goalMinutes.push({ min, home: true });
+        });
       }
+      if (Array.isArray(awayTimings)) {
+        awayTimings.forEach(t => {
+          const min = parseInt(t);
+          if (min > 0) goalMinutes.push({ min, home: false });
+        });
+      }
+      goalMinutes.sort((a, b) => a.min - b.min);
       return {
         home_team_id: m.homeID,
         away_team_id: m.awayID,
