@@ -122,37 +122,42 @@
     return c === 'fort' ? 'alert-badge--fort' : 'alert-badge--moyen';
   }
 
-  // Barre de timing : positionne chaque but par minute
+  // Barre de timing + résultat du match
   function goalBar(match, context) {
     const isHome = context === 'home';
-    const totalGoals = (match.home_goals || 0) + (match.away_goals || 0);
+    const teamGoals = isHome ? (match.home_goals || 0) : (match.away_goals || 0);
+    const oppGoals = isHome ? (match.away_goals || 0) : (match.home_goals || 0);
+    const totalGoals = teamGoals + oppGoals;
+
+    // Résultat : W/D/L
+    const result = teamGoals > oppGoals ? 'W' : teamGoals === oppGoals ? 'D' : 'L';
+
     const events = match.goal_events || [];
 
     // Si on a les goal_events avec minutes, les utiliser
     if (events.length > 0 && events[0]?.min) {
       const goals = events.map(g => ({
         min: g.min,
-        pct: Math.min((g.min / 95) * 100, 98), // position en % sur la barre (95 min max)
+        pct: Math.min((g.min / 95) * 100, 98),
         scored: isHome ? g.home : !g.home,
       }));
-      return { goals, total: totalGoals, hasMinutes: true };
+      return { goals, total: totalGoals, result };
     }
 
     // Fallback : répartir dans chaque mi-temps
     const scoredHT = isHome ? (match.home_goals_ht || 0) : (match.away_goals_ht || 0);
     const concededHT = isHome ? (match.away_goals_ht || 0) : (match.home_goals_ht || 0);
-    const scored2MT = (isHome ? (match.home_goals || 0) : (match.away_goals || 0)) - scoredHT;
-    const conceded2MT = (isHome ? (match.away_goals || 0) : (match.home_goals || 0)) - concededHT;
+    const scored2MT = teamGoals - scoredHT;
+    const conceded2MT = oppGoals - concededHT;
 
     const goals = [];
-    // Répartir les buts dans chaque mi-temps
     for (let i = 0; i < scoredHT; i++) goals.push({ min: 10 + i * 12, pct: (10 + i * 12) / 95 * 100, scored: true });
     for (let i = 0; i < concededHT; i++) goals.push({ min: 15 + i * 12, pct: (15 + i * 12) / 95 * 100, scored: false });
     for (let i = 0; i < scored2MT; i++) goals.push({ min: 55 + i * 12, pct: (55 + i * 12) / 95 * 100, scored: true });
     for (let i = 0; i < conceded2MT; i++) goals.push({ min: 60 + i * 12, pct: (60 + i * 12) / 95 * 100, scored: false });
     goals.sort((a, b) => a.min - b.min);
 
-    return { goals, total: totalGoals, hasMinutes: false };
+    return { goals, total: totalGoals, result };
   }
 
   onMount(() => { loadAlerts(); });
@@ -258,7 +263,7 @@
                     <div class="match-row">
                       <span class="match-row__date">{formatDate(m.match_date)}</span>
                       <span class="match-row__home match-row__bold">{m.home_team_name}</span>
-                      <span class="match-row__score">{m.home_goals}-{m.away_goals}</span>
+                      <span class="match-row__score match-row__score--{bar.result}">{m.home_goals}-{m.away_goals}</span>
                       <span class="match-row__away">{m.away_team_name}</span>
                       <div class="match-row__bar">
                         <div class="goal-bar">
@@ -298,7 +303,7 @@
                     <div class="match-row">
                       <span class="match-row__date">{formatDate(m.match_date)}</span>
                       <span class="match-row__home">{m.home_team_name}</span>
-                      <span class="match-row__score">{m.home_goals}-{m.away_goals}</span>
+                      <span class="match-row__score match-row__score--{bar.result}">{m.home_goals}-{m.away_goals}</span>
                       <span class="match-row__away match-row__bold">{m.away_team_name}</span>
                       <div class="match-row__bar">
                         <div class="goal-bar">
@@ -376,7 +381,10 @@
   .match-row__date { width: 44px; color: var(--color-text-muted); font-size: 10px; }
   .match-row__home, .match-row__away { width: 75px; max-width: 75px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .match-row__bold { font-weight: 600; color: var(--color-text-primary); }
-  .match-row__score { width: 28px; font-weight: 700; text-align: center; }
+  .match-row__score { width: 28px; font-weight: 700; text-align: center; border-radius: 3px; }
+  .match-row__score--W { color: var(--color-accent-green); }
+  .match-row__score--D { color: var(--color-signal-moyen); }
+  .match-row__score--L { color: var(--color-danger); }
   .match-row__total { width: 20px; text-align: right; font-weight: 700; color: var(--color-text-primary); }
 
   .match-row__bar { width: auto; }
