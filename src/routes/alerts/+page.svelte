@@ -44,11 +44,12 @@
     if (teamMatchesCache[key]) return teamMatchesCache[key];
 
     const col = context === 'home' ? 'home_team_id' : 'away_team_id';
+    const today = new Date().toISOString().split('T')[0];
     const { data } = await supabase
       .from('h2h_matches')
       .select('*')
       .eq(col, teamId)
-      .not('home_goals', 'is', null)
+      .lt('match_date', today)
       .order('match_date', { ascending: false })
       .limit(15);
 
@@ -62,12 +63,12 @@
       expandedId = null;
       return;
     }
-    expandedId = alert.id;
-    // Précharger les matchs des deux équipes
+    // Charger les données AVANT d'ouvrir l'expand
     await Promise.all([
       loadTeamMatches(alert.home_team_id, 'home'),
       loadTeamMatches(alert.away_team_id, 'away'),
     ]);
+    expandedId = alert.id;
   }
 
   function getTeamMatches(teamId, context) {
