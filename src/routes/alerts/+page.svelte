@@ -122,15 +122,37 @@
     return c === 'fort' ? 'alert-badge--fort' : 'alert-badge--moyen';
   }
 
-  // Barre de timing : calcule les segments 1MT / 2MT pour scored et conceded
+  // Barre de timing : positionne chaque but par minute
   function goalBar(match, context) {
-    const scored = context === 'home' ? (match.home_goals || 0) : (match.away_goals || 0);
-    const conceded = context === 'home' ? (match.away_goals || 0) : (match.home_goals || 0);
-    const scoredHT = context === 'home' ? (match.home_goals_ht || 0) : (match.away_goals_ht || 0);
-    const concededHT = context === 'home' ? (match.away_goals_ht || 0) : (match.home_goals_ht || 0);
-    const scored2MT = scored - scoredHT;
-    const conceded2MT = conceded - concededHT;
-    return { scoredHT, scored2MT, concededHT, conceded2MT, total: scored + conceded };
+    const isHome = context === 'home';
+    const totalGoals = (match.home_goals || 0) + (match.away_goals || 0);
+    const events = match.goal_events || [];
+
+    // Si on a les goal_events avec minutes, les utiliser
+    if (events.length > 0 && events[0]?.min) {
+      const goals = events.map(g => ({
+        min: g.min,
+        pct: Math.min((g.min / 95) * 100, 98), // position en % sur la barre (95 min max)
+        scored: isHome ? g.home : !g.home,
+      }));
+      return { goals, total: totalGoals, hasMinutes: true };
+    }
+
+    // Fallback : répartir dans chaque mi-temps
+    const scoredHT = isHome ? (match.home_goals_ht || 0) : (match.away_goals_ht || 0);
+    const concededHT = isHome ? (match.away_goals_ht || 0) : (match.home_goals_ht || 0);
+    const scored2MT = (isHome ? (match.home_goals || 0) : (match.away_goals || 0)) - scoredHT;
+    const conceded2MT = (isHome ? (match.away_goals || 0) : (match.home_goals || 0)) - concededHT;
+
+    const goals = [];
+    // Répartir les buts dans chaque mi-temps
+    for (let i = 0; i < scoredHT; i++) goals.push({ min: 10 + i * 12, pct: (10 + i * 12) / 95 * 100, scored: true });
+    for (let i = 0; i < concededHT; i++) goals.push({ min: 15 + i * 12, pct: (15 + i * 12) / 95 * 100, scored: false });
+    for (let i = 0; i < scored2MT; i++) goals.push({ min: 55 + i * 12, pct: (55 + i * 12) / 95 * 100, scored: true });
+    for (let i = 0; i < conceded2MT; i++) goals.push({ min: 60 + i * 12, pct: (60 + i * 12) / 95 * 100, scored: false });
+    goals.sort((a, b) => a.min - b.min);
+
+    return { goals, total: totalGoals, hasMinutes: false };
   }
 
   onMount(() => { loadAlerts(); });
@@ -240,16 +262,11 @@
                       <span class="match-row__away">{m.away_team_name}</span>
                       <div class="match-row__bar">
                         <div class="goal-bar">
-                          <div class="goal-bar__half">
-                            {#each Array(bar.scoredHT) as _}<span class="goal-dot">⚽</span>{/each}
-                            {#each Array(bar.concededHT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
-                          </div>
-                          <span class="goal-bar__marker goal-bar__marker--ht">MT</span>
-                          <div class="goal-bar__half">
-                            {#each Array(bar.scored2MT) as _}<span class="goal-dot">⚽</span>{/each}
-                            {#each Array(bar.conceded2MT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
-                          </div>
-                          <span class="goal-bar__marker goal-bar__marker--ft">FT</span>
+                          <span class="goal-bar__marker" style="left:50%">HT</span>
+                          <span class="goal-bar__marker" style="left:98%">FT</span>
+                          {#each bar.goals as g}
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%">⚽</span>
+                          {/each}
                         </div>
                       </div>
                       <span class="match-row__total">{bar.total}</span>
@@ -285,16 +302,11 @@
                       <span class="match-row__away match-row__bold">{m.away_team_name}</span>
                       <div class="match-row__bar">
                         <div class="goal-bar">
-                          <div class="goal-bar__half">
-                            {#each Array(bar.scoredHT) as _}<span class="goal-dot">⚽</span>{/each}
-                            {#each Array(bar.concededHT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
-                          </div>
-                          <span class="goal-bar__marker goal-bar__marker--ht">MT</span>
-                          <div class="goal-bar__half">
-                            {#each Array(bar.scored2MT) as _}<span class="goal-dot">⚽</span>{/each}
-                            {#each Array(bar.conceded2MT) as _}<span class="goal-dot goal-dot--conceded">⚽</span>{/each}
-                          </div>
-                          <span class="goal-bar__marker goal-bar__marker--ft">FT</span>
+                          <span class="goal-bar__marker" style="left:50%">HT</span>
+                          <span class="goal-bar__marker" style="left:98%">FT</span>
+                          {#each bar.goals as g}
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%">⚽</span>
+                          {/each}
                         </div>
                       </div>
                       <span class="match-row__total">{bar.total}</span>
@@ -366,14 +378,11 @@
   .match-row__score { font-weight: 700; min-width: 30px; text-align: center; }
   .match-row__total { min-width: 20px; text-align: right; font-weight: 700; color: var(--color-text-primary); }
 
-  .match-row__bar { flex: 1; min-width: 180px; }
-  .goal-bar { position: relative; display: flex; align-items: center; height: 22px; background: linear-gradient(90deg, #2d6b4f 0%, #2d6b4f 50%, #1a5c3a 50%, #1a5c3a 100%); border-radius: 3px; overflow: hidden; }
-  .goal-bar__half { display: flex; align-items: center; justify-content: center; gap: 2px; flex: 1; height: 100%; position: relative; z-index: 1; }
-  .goal-bar__marker { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.5); position: absolute; top: 50%; transform: translateY(-50%); z-index: 0; }
-  .goal-bar__marker--ht { left: 50%; transform: translate(-50%, -50%); }
-  .goal-bar__marker--ft { right: 4px; transform: translateY(-50%); }
-  .goal-dot { font-size: 12px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
-  .goal-dot--conceded { filter: grayscale(1) brightness(0.7) drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
+  .match-row__bar { flex: 1; min-width: 200px; }
+  .goal-bar { position: relative; height: 24px; background: linear-gradient(90deg, #2a7a52 0%, #2a7a52 50%, #1e6340 50%, #1e6340 100%); border-radius: 3px; }
+  .goal-bar__marker { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.35); z-index: 1; pointer-events: none; }
+  .goal-dot { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 13px; z-index: 2; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); cursor: default; }
+  .goal-dot--conceded { filter: grayscale(1) brightness(0.6) drop-shadow(0 1px 2px rgba(0,0,0,0.4)); }
 
   @media (max-width: 768px) {
     .alert-card__header { flex-wrap: wrap; }
