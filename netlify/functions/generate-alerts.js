@@ -78,7 +78,7 @@ async function getH2H(teamAId, teamBId) {
   );
 }
 
-function analyzeFHGFromMatches(matches, context, h2h, teamId) {
+function analyzeFHGFromMatches(matches, context, h2h, teamId, opponentMatches) {
   if (matches.length < MIN_MATCHES) return null;
 
   const teamGoalsHT = matches.map(m =>
@@ -112,24 +112,53 @@ function analyzeFHGFromMatches(matches, context, h2h, teamId) {
     if (h2hGoals === 0) cleanSheetBlock = true;
   }
 
+  // Adversaire — encaisse-t-il assez ? (filtre : ≥3 matchs sur 5 avec but encaissé)
+  const oppContext = context === 'home' ? 'away' : 'home';
+  let opponentConcedesEnough = false;
+  let oppConcedesCount = 0;
+  let pctOpponentConcedes1MT = 0;
+
+  if (opponentMatches && opponentMatches.length >= 3) {
+    oppConcedesCount = opponentMatches.filter(m => {
+      const conceded = oppContext === 'home'
+        ? (m.away_goals || 0) : (m.home_goals || 0);
+      return conceded > 0;
+    }).length;
+    opponentConcedesEnough = oppConcedesCount >= 3;
+
+    const oppConceded1MT = opponentMatches.filter(m => {
+      const conceded = oppContext === 'home'
+        ? (m.away_goals_ht || 0) : (m.home_goals_ht || 0);
+      return conceded > 0;
+    }).length;
+    pctOpponentConcedes1MT = Math.round((oppConceded1MT / opponentMatches.length) * 100);
+  }
+
   // Score composite
   let score;
   if (pctReaction1MT !== null) {
-    score = pctGoal1MT * 0.50 + pct2Plus1MT * 0.15 + pctReaction1MT * 0.10;
+    score = pctGoal1MT * 0.50 + pctOpponentConcedes1MT * 0.25 + pct2Plus1MT * 0.15 + pctReaction1MT * 0.10;
   } else {
-    score = pctGoal1MT * 0.55 + pct2Plus1MT * 0.17;
+    score = pctGoal1MT * 0.55 + pctOpponentConcedes1MT * 0.28 + pct2Plus1MT * 0.17;
   }
   score = Math.round(score);
-  // Note: pctOpponentConcedes1MT is computed separately and added by caller
 
   const confidence = score >= FHG_SEUIL_FORT ? 'fort' : score >= FHG_SEUIL_MOYEN ? 'moyen' : null;
 
   return {
-    isAlert: confidence !== null && !cleanSheetBlock,
+    isAlert: confidence !== null && !cleanSheetBlock && opponentConcedesEnough,
     cleanSheetBlock,
+    opponentConcedesEnough,
     confidence,
     score,
-    factors: { recurrence1MT: pctGoal1MT, double1MT: pct2Plus1MT, reaction1MT: pctReaction1MT, cleanSheetH2H: cleanSheetBlock },
+    factors: {
+      recurrence1MT: pctGoal1MT,
+      double1MT: pct2Plus1MT,
+      adversaireConcede: pctOpponentConcedes1MT,
+      adversaireEncaisse: `${oppConcedesCount}/${opponentMatches?.length || 0}`,
+      reaction1MT: pctReaction1MT,
+      cleanSheetH2H: cleanSheetBlock,
+    },
   };
 }
 
@@ -196,13 +225,16 @@ exports.handler = async (event) => {
       if (existingIds.has(m.id)) continue;
       results.analyzed++;
 
-      // FHG analyse
+      // FHG analyse — chaque équipe dans son contexte + matchs adversaire
       const homeMatches = await getRecentMatches(m.homeID, 'home', 10);
       const awayMatches = await getRecentMatches(m.awayID, 'away', 10);
       const h2h = await getH2H(m.homeID, m.awayID);
+      // Matchs de l'adversaire dans son contexte (5 derniers)
+      const oppMatchesForHome = await getRecentMatches(m.awayID, 'away', 5);  // adversaire joue ext
+      const oppMatchesForAway = await getRecentMatches(m.homeID, 'home', 5);  // adversaire joue dom
 
-      const fhgHome = analyzeFHGFromMatches(homeMatches, 'home', h2h, m.homeID);
-      const fhgAway = analyzeFHGFromMatches(awayMatches, 'away', h2h, m.awayID);
+      const fhgHome = analyzeFHGFromMatches(homeMatches, 'home', h2h, m.homeID, oppMatchesForHome);
+      const fhgAway = analyzeFHGFromMatches(awayMatches, 'away', h2h, m.awayID, oppMatchesForAway);
 
       const bestFHG = (fhgHome?.isAlert && fhgAway?.isAlert)
         ? (fhgHome.score >= fhgAway.score ? fhgHome : fhgAway)

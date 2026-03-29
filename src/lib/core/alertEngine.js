@@ -95,21 +95,36 @@ export async function analyzeFHG(teamId, context, opponentId) {
   const matchesWith2PlusGoals1MT = teamGoalsHT.filter(g => g >= 2).length;
   const pct2Plus1MT = Math.round((matchesWith2PlusGoals1MT / matches.length) * 100);
 
-  // 3. Adversaire — encaisse-t-il en 1MT ?
-  const opponentMatches = context === 'home'
-    ? await getRecentAwayMatches(opponentId, 10)  // adversaire joue à l'ext
-    : await getRecentHomeMatches(opponentId, 10); // adversaire joue à dom
+  // 3. Adversaire — encaisse-t-il ?
+  // Contexte inversé : si notre équipe est dom, l'adversaire joue ext
+  const oppContext = context === 'home' ? 'away' : 'home';
+  const opponentMatches = oppContext === 'home'
+    ? await getRecentHomeMatches(opponentId, 5)
+    : await getRecentAwayMatches(opponentId, 5);
 
   let pctOpponentConcedes1MT = 0;
-  if (opponentMatches.length >= MIN_MATCHES) {
-    const oppConceded = opponentMatches.filter(m => {
-      // Buts encaissés par l'adversaire en 1MT
-      const conceded = context === 'home'
-        ? (m.home_goals_ht || 0)   // l'adversaire est away, il encaisse les buts home
-        : (m.away_goals_ht || 0);  // l'adversaire est home, il encaisse les buts away
+  let opponentConcedesEnough = false; // filtre : l'adversaire doit encaisser assez
+  let oppConcedesCount = 0;
+
+  if (opponentMatches.length >= 3) {
+    // Compter les matchs où l'adversaire a encaissé au moins 1 but (FT, pas juste 1MT)
+    oppConcedesCount = opponentMatches.filter(m => {
+      const conceded = oppContext === 'home'
+        ? (m.away_goals || 0)   // adversaire est dom, il encaisse les buts ext
+        : (m.home_goals || 0);  // adversaire est ext, il encaisse les buts dom
       return conceded > 0;
     }).length;
-    pctOpponentConcedes1MT = Math.round((oppConceded / opponentMatches.length) * 100);
+    // Filtre : au moins 3 matchs sur 5 où il encaisse
+    opponentConcedesEnough = oppConcedesCount >= 3;
+
+    // % encaisse en 1MT (pour le score composite)
+    const oppConceded1MT = opponentMatches.filter(m => {
+      const conceded = oppContext === 'home'
+        ? (m.away_goals_ht || 0)
+        : (m.home_goals_ht || 0);
+      return conceded > 0;
+    }).length;
+    pctOpponentConcedes1MT = Math.round((oppConceded1MT / opponentMatches.length) * 100);
   }
 
   // 4. Réaction quand mené en 1MT
@@ -155,21 +170,24 @@ export async function analyzeFHG(teamId, context, opponentId) {
 
   return {
     hasData: true,
-    isAlert: confidence !== null && !cleanSheetBlock,
+    isAlert: confidence !== null && !cleanSheetBlock && opponentConcedesEnough,
     cleanSheetBlock,
+    opponentConcedesEnough,
     confidence,
     score,
     pctGoal1MT,
     pct2Plus1MT,
     pctOpponentConcedes1MT,
     pctReaction1MT,
+    oppConcedesCount,
+    oppMatchesChecked: opponentMatches.length,
     matchesAnalyzed: matches.length,
-    opponentMatchesAnalyzed: opponentMatches.length,
     h2hCount: h2h.length,
     factors: {
       recurrence1MT: pctGoal1MT,
       double1MT: pct2Plus1MT,
       adversaireConcede: pctOpponentConcedes1MT,
+      adversaireEncaisse: `${oppConcedesCount}/${opponentMatches.length}`,
       reaction1MT: pctReaction1MT,
       cleanSheetH2H: cleanSheetBlock,
     },
