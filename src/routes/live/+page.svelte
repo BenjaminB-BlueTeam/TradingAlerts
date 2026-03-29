@@ -59,6 +59,7 @@
       const matchDetails = await Promise.all(
         inPlayAlerts.map(a => getMatchDetail(a.match_id, true).catch(() => null))
       );
+      console.log('[LIVE DEBUG] matchDetails:', JSON.stringify(matchDetails, null, 2));
 
       // 4. Enrichir les alertes avec les scores live
       liveMatches = inPlayAlerts.map((a, i) => {
