@@ -18,10 +18,12 @@ const TTL = {
   'league-season':   60 * 60 * 1000,
 };
 
-async function apiRequest(endpoint, params = {}) {
+async function apiRequest(endpoint, params = {}, bypassCache = false) {
   const key = cacheKey(endpoint, params);
-  const cached = cacheGet(key);
-  if (cached) return cached;
+  if (!bypassCache) {
+    const cached = cacheGet(key);
+    if (cached) return cached;
+  }
 
   const url = new URL(PROXY_URL, window.location.origin);
   url.searchParams.set('endpoint', endpoint);
@@ -96,9 +98,9 @@ export async function getLeagueTeams(leagueId) {
   return data?.data || [];
 }
 
-export async function getTodaysMatches(date) {
+export async function getTodaysMatches(date, bypassCache = false) {
   const d = date || new Date().toISOString().split('T')[0];
-  const data = await apiRequest('todays-matches', { date: d });
+  const data = await apiRequest('todays-matches', { date: d }, bypassCache);
   return data?.data || [];
 }
 

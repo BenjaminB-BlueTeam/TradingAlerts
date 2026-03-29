@@ -55,8 +55,8 @@
         return;
       }
 
-      // 3. Fetch les scores live via API
-      const todayMatches = await getTodaysMatches(today);
+      // 3. Fetch les scores live via API (bypass cache pour avoir les scores à jour)
+      const todayMatches = await getTodaysMatches(today, true);
       const matchMap = new Map((todayMatches || []).map(m => [m.id, m]));
 
       // 4. Enrichir les alertes avec les scores live
