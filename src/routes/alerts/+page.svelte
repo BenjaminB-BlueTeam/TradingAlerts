@@ -392,12 +392,12 @@
   .goal-bar__marker { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.35); z-index: 1; pointer-events: none; }
   .goal-dot {
     position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 2; cursor: default;
-    width: 20px; height: 20px;
+    width: 22px; height: 22px;
     background: url('/ballon.png') center/contain no-repeat;
     filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
   }
   .goal-dot--conceded {
-    opacity: 0.35;
+    opacity: 0.5;
   }
 
   @media (max-width: 1200px) {
