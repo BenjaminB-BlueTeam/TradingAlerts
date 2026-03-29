@@ -4,11 +4,12 @@
 
   let alerts = [];
   let loading = true;
-  let selectedDay = -1;
+  let selectedDay = null; // null = tous
   let expandedId = null;
   let teamMatchesCache = {};
 
   const days = [
+    { label: 'Passés', offset: -3 },
     { label: "Aujourd'hui", offset: 0 },
     { label: 'Demain', offset: 1 },
     { label: 'Après-demain', offset: 2 },
@@ -25,16 +26,23 @@
     const { data, error } = await supabase
       .from('alerts')
       .select('*')
-      .gte('match_date', getDateStr(0))
+      .gte('match_date', getDateStr(-3))
       .lte('match_date', getDateStr(2))
-      .order('match_date', { ascending: true })
+      .in('signal_type', ['FHG', 'FHG+DC'])
+      .order('match_date', { ascending: false })
       .order('kickoff_unix', { ascending: true });
     alerts = error ? [] : (data || []);
     loading = false;
   }
 
+  function isInPlay(a) {
+    if (!a.kickoff_unix) return false;
+    const now = Math.floor(Date.now() / 1000);
+    return a.kickoff_unix <= now && (now - a.kickoff_unix) < 7200;
+  }
+
   $: filteredAlerts = alerts.filter(a => {
-    if (selectedDay !== -1 && a.match_date !== getDateStr(selectedDay)) return false;
+    if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
     return true;
   });
 
@@ -163,18 +171,18 @@
   onMount(() => { loadAlerts(); });
 </script>
 
-<div class="page-title">🔔 Alertes</div>
+<div class="page-title">⚡ Sélection FHG</div>
 <div class="page-subtitle">
-  {alerts.length} alerte{alerts.length > 1 ? 's' : ''} sur les 3 prochains jours
+  {alerts.length} signal{alerts.length > 1 ? 's' : ''} FHG — 3 derniers jours + à venir
 </div>
 
 <div class="alerts-filters">
-  <button class="alerts-filter-btn" class:active={selectedDay === -1} on:click={() => selectedDay = -1}>
+  <button class="alerts-filter-btn" class:active={selectedDay === null} on:click={() => selectedDay = null}>
     Tous ({alerts.length})
   </button>
-  {#each days as day, i}
-    {@const count = alerts.filter(a => a.match_date === getDateStr(i)).length}
-    <button class="alerts-filter-btn" class:active={selectedDay === i} on:click={() => selectedDay = i}>
+  {#each days as day}
+    {@const count = alerts.filter(a => a.match_date === getDateStr(day.offset)).length}
+    <button class="alerts-filter-btn" class:active={selectedDay === day.offset} on:click={() => selectedDay = (selectedDay === day.offset ? null : day.offset)}>
       {day.label} ({count})
     </button>
   {/each}
@@ -197,7 +205,12 @@
   <div class="alerts-list">
     {#each filteredAlerts as a (a.id)}
       <!-- svelte-ignore a11y-click-events-have-key-events -->
-      <div class="alert-card" class:alert-card--expanded={expandedId === a.id}>
+      <div class="alert-card"
+        class:alert-card--expanded={expandedId === a.id}
+        class:alert-card--validated={a.status === 'validated'}
+        class:alert-card--lost={a.status === 'lost'}
+        class:alert-card--live={a.status === 'pending' && isInPlay(a)}
+      >
         <div class="alert-card__header" on:click={() => toggleExpand(a)} role="button" tabindex="0">
           <div class="alert-card__time">
             <div class="alert-card__day">{a.match_date}</div>
@@ -226,13 +239,17 @@
             </div>
           </div>
           <div class="alert-card__badges">
-            {#if a.signal_type === 'FHG' || a.signal_type === 'FHG+DC'}
-              <span class="alert-badge alert-badge--fhg">FHG</span>
-            {/if}
-            {#if a.signal_type === 'DC' || a.signal_type === 'FHG+DC'}
-              <span class="alert-badge alert-badge--dc">DC</span>
+            {#if a.signal_type === 'FHG+DC'}
+              <span class="alert-badge alert-badge--dc">+DC</span>
             {/if}
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
+            {#if a.status === 'validated'}
+              <span class="alert-badge alert-badge--validated">✓ Validé</span>
+            {:else if a.status === 'lost'}
+              <span class="alert-badge alert-badge--lost">✗ Perdu</span>
+            {:else if isInPlay(a)}
+              <span class="alert-badge alert-badge--live">EN COURS</span>
+            {/if}
           </div>
           <span class="alert-card__arrow">{expandedId === a.id ? '▼' : '▶'}</span>
         </div>
@@ -339,6 +356,9 @@
   .alert-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
   .alert-card:hover { border-color: var(--color-accent-blue); }
   .alert-card--expanded { border-color: var(--color-accent-blue); }
+  .alert-card--validated { border-color: var(--color-accent-green) !important; background: rgba(29,158,117,0.04); }
+  .alert-card--lost { border-color: var(--color-danger) !important; background: rgba(226,75,74,0.04); }
+  .alert-card--live { border-color: var(--color-signal-moyen) !important; background: rgba(239,159,39,0.04); }
 
   .alert-card__header { display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; transition: background 0.15s; }
   .alert-card__header:hover { background: rgba(255,255,255,0.02); }
@@ -362,6 +382,10 @@
   .alert-badge--dc { background: rgba(55, 138, 221, 0.15); color: var(--color-accent-blue); }
   .alert-badge--fort { background: rgba(29, 158, 117, 0.15); color: var(--color-accent-green); }
   .alert-badge--moyen { background: rgba(239, 159, 39, 0.15); color: var(--color-signal-moyen); }
+  .alert-badge--validated { background: rgba(29, 158, 117, 0.2); color: var(--color-accent-green); }
+  .alert-badge--lost { background: rgba(226, 75, 74, 0.2); color: var(--color-danger); }
+  .alert-badge--live { background: rgba(239, 159, 39, 0.2); color: var(--color-signal-moyen); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
   /* Expand */
   .alert-expand { border-top: 1px solid var(--color-border); padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

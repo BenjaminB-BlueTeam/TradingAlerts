@@ -14,13 +14,12 @@
   }
 
   const navItems = [
-    { href: '/',         icon: '📊', label: 'Dashboard'      },
-    { href: '/alerts',   icon: '🔔', label: 'Alertes'        },
-    { href: '/live',     icon: '📡', label: 'Live'           },
-    { href: '/dc',       icon: '🎯', label: 'Double Chance'  },
-    { href: '/matches',  icon: '⚽', label: 'Matchs à venir' },
-    { href: '/explore',  icon: '🌍', label: 'Classements ligues' },
-    { href: '/settings', icon: '⚙️', label: 'Paramètres'    },
+    { href: '/',              icon: '📊', label: 'Dashboard'        },
+    { href: '/alerts',        icon: '⚡', label: 'Sélection FHG'    },
+    { href: '/selection-dc',  icon: '🎯', label: 'Sélection DC'     },
+    { href: '/matches',       icon: '⚽', label: 'Matchs à venir'   },
+    { href: '/explore',       icon: '🌍', label: 'Classements ligues' },
+    { href: '/settings',      icon: '⚙️', label: 'Paramètres'      },
   ];
 
   const adminItems = [
@@ -100,7 +99,7 @@
       >
         <span class="sidebar__nav-icon">{item.icon}</span>
         <span class="sidebar__nav-label">{item.label}</span>
-        {#if item.href === '/alerts' && alertsBadgeCount > 0}
+        {#if (item.href === '/alerts' || item.href === '/selection-dc') && alertsBadgeCount > 0}
           <span class="sidebar__badge">{alertsBadgeCount}</span>
         {/if}
       </a>

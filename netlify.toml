@@ -4,3 +4,9 @@
 
 [functions]
   directory = "netlify/functions"
+
+[functions."generate-alerts"]
+  schedule = "0 */12 * * *"
+
+[functions."check-results"]
+  schedule = "0 * * * *"
