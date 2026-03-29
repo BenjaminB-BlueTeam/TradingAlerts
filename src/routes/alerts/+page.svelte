@@ -210,10 +210,11 @@
         </div>
 
         {#if expandedId === a.id}
+          {@const homeMatches = getTeamMatches(a.home_team_id, 'home')}
+          {@const homeStats = computeTeamStats(homeMatches, 'home')}
+          {@const awayMatches = getTeamMatches(a.away_team_id, 'away')}
+          {@const awayStats = computeTeamStats(awayMatches, 'away')}
           <div class="alert-expand">
-            <!-- Équipe domicile -->
-            {@const homeMatches = getTeamMatches(a.home_team_id, 'home')}
-            {@const homeStats = computeTeamStats(homeMatches, 'home')}
             <div class="team-detail">
               <div class="team-detail__header">
                 <span class="team-detail__name">{a.home_team_name}</span>
@@ -233,7 +234,7 @@
                     {@const bar = goalBar(m, 'home')}
                     <div class="match-row">
                       <span class="match-row__date">{formatDate(m.match_date)}</span>
-                      <span class="match-row__home" class:match-row__bold={true}>{m.home_team_name}</span>
+                      <span class="match-row__home match-row__bold">{m.home_team_name}</span>
                       <span class="match-row__score">{m.home_goals}-{m.away_goals}</span>
                       <span class="match-row__away">{m.away_team_name}</span>
                       <div class="match-row__bar">
@@ -259,9 +260,6 @@
               {/if}
             </div>
 
-            <!-- Équipe extérieur -->
-            {@const awayMatches = getTeamMatches(a.away_team_id, 'away')}
-            {@const awayStats = computeTeamStats(awayMatches, 'away')}
             <div class="team-detail">
               <div class="team-detail__header">
                 <span class="team-detail__name">{a.away_team_name}</span>
@@ -283,7 +281,7 @@
                       <span class="match-row__date">{formatDate(m.match_date)}</span>
                       <span class="match-row__home">{m.home_team_name}</span>
                       <span class="match-row__score">{m.home_goals}-{m.away_goals}</span>
-                      <span class="match-row__away" class:match-row__bold={true}>{m.away_team_name}</span>
+                      <span class="match-row__away match-row__bold">{m.away_team_name}</span>
                       <div class="match-row__bar">
                         <div class="goal-bar">
                           <div class="goal-bar__half goal-bar__1mt">
