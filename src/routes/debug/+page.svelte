@@ -404,7 +404,15 @@
       {:else}
         ✓ {backfillResult.dates} jours traités — {backfillResult.completed} matchs terminés — {backfillResult.upserted} upserts
         {#if backfillResult.errors?.length > 0}
-          <br/><span style="color:var(--color-danger);">{backfillResult.errors.length} erreurs</span>
+          <br/><span style="color:var(--color-danger);">{backfillResult.errors.length} erreurs :</span>
+          <ul style="margin:4px 0 0;padding-left:16px;font-size:11px;max-height:150px;overflow:auto;">
+            {#each backfillResult.errors.slice(0, 10) as err}
+              <li>{err}</li>
+            {/each}
+            {#if backfillResult.errors.length > 10}
+              <li>... et {backfillResult.errors.length - 10} autres</li>
+            {/if}
+          </ul>
         {/if}
       {/if}
     </div>
