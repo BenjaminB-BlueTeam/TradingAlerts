@@ -212,15 +212,15 @@
               H2H — Historique : <strong>{favName}</strong> ne perd pas à {a.dc_defeat_pct}% ({a.h2h_count} matchs)
             </div>
             {#if h2h.length > 0}
-              <div class="h2h-list">
+              <div class="team-matches">
                 {#each h2h as m}
                   {@const res = h2hResult(m, a.dc_best_side, favId)}
-                  <div class="h2h-row">
-                    <span class="h2h-row__date">{formatDate(m.match_date)}</span>
-                    <span class="h2h-row__home" class:h2h-bold={m.home_team_id === favId}>{m.home_team_name}</span>
-                    <span class="h2h-row__score h2h-row__score--{res}">{m.home_goals ?? '?'}-{m.away_goals ?? '?'}</span>
-                    <span class="h2h-row__away" class:h2h-bold={m.away_team_id === favId}>{m.away_team_name}</span>
-                    <span class="h2h-row__result h2h-row__result--{res}">{res}</span>
+                  <div class="match-row">
+                    <span class="match-row__date">{formatDate(m.match_date)}</span>
+                    <span class="match-row__home" class:match-row__bold={m.home_team_id === favId}>{m.home_team_name}</span>
+                    <span class="match-row__score match-row__score--{res}">{m.home_goals ?? '?'}-{m.away_goals ?? '?'}</span>
+                    <span class="match-row__away" class:match-row__bold={m.away_team_id === favId}>{m.away_team_name}</span>
+                    <span class="h2h-result h2h-result--{res}">{res}</span>
                   </div>
                 {/each}
               </div>
@@ -277,20 +277,10 @@
   .dc-expand__title { font-size: 12px; color: var(--color-text-muted); margin-bottom: 10px; }
   .dc-expand__title strong { color: var(--color-text-primary); }
 
-  .h2h-list { display: table; width: 100%; border-collapse: collapse; }
-  .h2h-row { display: table-row; font-size: 11px; }
-  .h2h-row > span { display: table-cell; vertical-align: middle; padding: 4px 4px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-  .h2h-row__date { width: 44px; color: var(--color-text-muted); font-size: 10px; }
-  .h2h-row__home, .h2h-row__away { width: 100px; max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .h2h-bold { font-weight: 700; color: var(--color-text-primary); }
-  .h2h-row__score { width: 32px; font-weight: 700; text-align: center; }
-  .h2h-row__score--W { color: var(--color-accent-green); }
-  .h2h-row__score--D { color: var(--color-signal-moyen); }
-  .h2h-row__score--L { color: var(--color-danger); }
-  .h2h-row__result { width: 24px; font-size: 10px; font-weight: 800; text-align: right; }
-  .h2h-row__result--W { color: var(--color-accent-green); }
-  .h2h-row__result--D { color: var(--color-signal-moyen); }
-  .h2h-row__result--L { color: var(--color-danger); }
+  .h2h-result { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 3px; text-align: center; min-width: 20px; }
+  .h2h-result--W { background: rgba(29,158,117,0.15); color: var(--color-accent-green); }
+  .h2h-result--D { background: rgba(239,159,39,0.15); color: var(--color-signal-moyen); }
+  .h2h-result--L { background: rgba(226,75,74,0.15); color: var(--color-danger); }
 
   @media (max-width: 768px) {
     .dc-card__header { flex-wrap: wrap; }
