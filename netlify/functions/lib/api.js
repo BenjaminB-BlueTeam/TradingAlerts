@@ -28,7 +28,7 @@ async function footyRequest(endpoint, params = {}) {
  */
 async function supabaseQuery(table, query = '') {
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
   const url = `${supabaseUrl}/rest/v1/${table}?${query}`;
   const res = await fetch(url, {
     headers: {
