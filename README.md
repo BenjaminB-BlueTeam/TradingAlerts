@@ -48,6 +48,7 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 
 ### Matchs a venir (`/matches`)
 - Matchs par date avec filtre par ligue
+- Badge FHG 31-45% par equipe (saison en cours, contexte dom/ext)
 - Cards avec expand (meme schema que Selection FHG)
 
 ### Autres pages

@@ -150,7 +150,7 @@ src/
 
 % bruts calculés par équipe (domicile ET extérieur, meilleur retenu) :
 
-1. **Filtre H2H Clean Sheet** (exclusion totale) — si >=3 H2H et 0 but avant 45min
+1. **Filtre H2H Clean Sheet** (exclusion totale) — si >=3 H2H et l'équipe n'a jamais marqué (toutes minutes)
 2. **Filtre adversaire** — l'adversaire doit encaisser en 1MT dans >=2 de ses 5 derniers matchs
 3. **Score composite** (moyenne pondérée) :
    - `pct1MT` — % matchs où l'équipe marque en 1MT (poids **50%**)
@@ -171,14 +171,14 @@ Même formule composite avec les mêmes poids (50/25/15/10), mais :
 
 ## Ce qui est implémenté
 
-- **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) + `analysis.cjs` : FHG (récurrence 1MT, 2+ buts 1MT, réaction, clean sheet H2H, filtre adversaire) + DC (H2H % défaite), tags FHG/DC/FHG+DC, confiance fort/moyen, table Supabase `alerts`
+- **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) + `analysis.cjs` : FHG et DC créent des alertes séparées (pas de tag combiné), confiance fort/moyen, table Supabase `alerts`
 - **Vérification auto résultats** — `check-results.js` (cron 1h) : FHG sur buts 31-45 min via goal_events, DC sur résultat final, statut -> validated/lost/expired (cleanup 48h)
 - **Daily seed auto** — `daily-seed.js` (cron 6h UTC) : seed matchs d'hier dans `h2h_matches`
 - **Dashboard** (`/`) — KPIs + alertes du jour/a venir depuis Supabase
 - **Selection FHG** (`/alerts`) — alertes FHG/FHG+DC, filtres par jour, expand detaille par equipe (15 derniers matchs dom/ext), barres timing buts avec ballons PNG, curseur interactif, scores colores, stats resume (1MT%, AVG), badges Valide/Perdu/EN COURS
 - **Selection DC** (`/selection-dc`) — alertes DC/FHG+DC, filtres par jour, expand H2H (10 derniers matchs W/D/L), % defaite colore, badges confiance
 - **Historique** (`/historique`) — stats globales (Global/FHG/DC/fort/moyen), tableau par ligue trie, liste filtree paginee (90 jours + bouton "Charger plus")
-- **Matchs a venir** (`/matches`) — cards cliquables avec expand, barres timing buts, curseur interactif
+- **Matchs a venir** (`/matches`) — cards cliquables avec expand, barres timing buts, curseur interactif, badge FHG 31-45% par équipe (saison, contexte dom/ext)
 - **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout selectionner/deselectionner
 - **Classements ligues** (`/explore`) — par pays, stats, classements
 - **Parametres** (`/settings`) — 5 sous-composants (ApiTest, TradeJournal, TradeStats, BankrollCalc, DangerZone)
