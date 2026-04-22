@@ -199,7 +199,6 @@
 {/if}
 
 <style>
-  .error-msg { color: var(--color-danger, #e74c3c); text-align: center; padding: 1rem; }
   .dc-filters { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
   .dc-filter-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 5px 12px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
   .dc-filter-btn.active { background: var(--color-accent-blue); border-color: var(--color-accent-blue); color: white; }

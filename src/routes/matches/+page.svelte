@@ -122,7 +122,6 @@
 
   onMount(() => {
     loadLeagueNames();
-    loadMatches(filtrePlage);
   });
 </script>
 
@@ -293,7 +292,6 @@
 {/if}
 
 <style>
-  .error-msg { color: var(--color-danger, #e74c3c); text-align: center; padding: 1rem; }
   .matches-list { display: flex; flex-direction: column; gap: 6px; }
 
   .match-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
@@ -314,46 +312,10 @@
   /* Expand */
   .match-expand { border-top: 1px solid var(--color-border); padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-  .team-detail { background: rgba(255,255,255,0.02); border-radius: 8px; padding: 10px; }
-  .team-detail__header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-  .team-detail__name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
-  .team-detail__context { font-size: 9px; font-weight: 600; text-transform: uppercase; color: var(--color-accent-blue); background: rgba(55,138,221,0.12); padding: 2px 5px; border-radius: 4px; flex-shrink: 0; }
-  .team-detail__summary { display: flex; gap: 8px; margin-left: auto; font-size: 10px; color: var(--color-text-muted); flex-shrink: 0; }
-  .team-detail__summary strong { color: var(--color-text-primary); }
-  .team-detail__empty { padding: 12px; text-align: center; color: var(--color-text-muted); font-size: 12px; }
-
-  .team-matches { display: table; width: 100%; border-collapse: collapse; }
-
-  .match-row { display: table-row; font-size: 11px; }
-  .match-row > span, .match-row > div { display: table-cell; vertical-align: middle; padding: 3px 3px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-  .match-row__date { width: 44px; color: var(--color-text-muted); font-size: 10px; }
-  .match-row__home, .match-row__away { width: 75px; max-width: 75px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .match-row__bold { font-weight: 600; color: var(--color-text-primary); }
-  .match-row__score { width: 28px; font-weight: 700; text-align: center; border-radius: 3px; }
-  .match-row__score--W { color: var(--color-accent-green); }
-  .match-row__score--D { color: var(--color-signal-moyen); }
-  .match-row__score--L { color: var(--color-danger); }
-
-  .match-row__bar { width: auto; }
-  .goal-bar { position: relative; height: 20px; min-width: 160px; background: linear-gradient(90deg, #2a7a52 0%, #2a7a52 50%, #1e6340 50%, #1e6340 100%); border-radius: 3px; }
-  .goal-bar__marker { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.35); z-index: 1; pointer-events: none; }
-  .goal-dot {
-    position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 2; cursor: default;
-    width: 22px; height: 22px;
-    background: url('/ballon.png') center/contain no-repeat;
-    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
-  }
-  .goal-dot--conceded { opacity: 0.5; }
-
-  .goal-cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(0,0,0,0.75); transform: translateX(-50%); pointer-events: none; z-index: 3; }
-  .bar-hover-min { font-size: 11px; font-weight: 700; color: var(--color-text-primary); background: rgba(255,255,255,0.1); padding: 1px 6px; border-radius: 4px; }
-
   @media (max-width: 1200px) {
     .match-expand { grid-template-columns: 1fr; }
   }
   @media (max-width: 768px) {
     .match-card__header { flex-wrap: wrap; }
-    .match-row__home, .match-row__away { width: 55px; max-width: 55px; }
-    .team-detail__summary { margin-left: 0; width: 100%; }
   }
 </style>

@@ -179,8 +179,6 @@
 {/if}
 
 <style>
-  .error-msg { color: var(--color-danger, #e74c3c); text-align: center; padding: 1rem; }
-
   .dashboard-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
   .dashboard-header__date { font-size: 13px; color: var(--color-text-muted); margin-top: 2px; text-transform: capitalize; }
 
@@ -214,18 +212,6 @@
   .dash-pill { font-size: 12px; font-weight: 700; background: rgba(255,255,255,0.04); border-radius: 5px; padding: 2px 8px; }
 
   .dash-alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; }
-  .alert-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
-  .alert-badge--fort { background: rgba(29, 158, 117, 0.15); color: var(--color-accent-green); }
-  .alert-badge--moyen { background: rgba(239, 159, 39, 0.15); color: var(--color-signal-moyen); }
-  .alert-badge--dc { background: rgba(55, 138, 221, 0.15); color: var(--color-accent-blue); }
-  .alert-badge--validated { background: rgba(29, 158, 117, 0.2); color: var(--color-accent-green); }
-  .alert-badge--lost { background: rgba(226, 75, 74, 0.2); color: var(--color-danger); }
-  .alert-badge--live { background: rgba(239, 159, 39, 0.2); color: var(--color-signal-moyen); animation: pulse 2s infinite; }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-  }
 
   @media (max-width: 768px) {
     .metric-grid { grid-template-columns: repeat(2, 1fr); }

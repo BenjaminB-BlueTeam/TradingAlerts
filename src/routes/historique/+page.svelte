@@ -7,6 +7,8 @@
   let loading = $state(true);
   let error = $state('');
   let activeFilter = $state('tous');
+  let daysRange = $state(90);
+  let hasMore = $state(true);
 
   const filters = [
     { key: 'tous',      label: 'Tous'      },
@@ -17,12 +19,20 @@
     { key: 'encours',   label: 'En cours'  },
   ];
 
+  function getCutoffDate(days) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    return cutoff.toISOString().split('T')[0];
+  }
+
   async function loadAlerts() {
     loading = true;
     error = '';
+    const cutoffISO = getCutoffDate(daysRange);
     const { data, error: dbError } = await supabase
       .from('alerts')
       .select('*')
+      .gte('match_date', cutoffISO)
       .order('kickoff_unix', { ascending: false });
     if (dbError) {
       console.error('loadAlerts historique error:', dbError);
@@ -30,8 +40,15 @@
       alerts = [];
     } else {
       alerts = data || [];
+      // Check if there might be older data
+      hasMore = (data || []).length > 0;
     }
     loading = false;
+  }
+
+  async function loadMore() {
+    daysRange += 90;
+    await loadAlerts();
   }
 
   // Stats — uniquement sur alertes terminées
@@ -260,10 +277,18 @@
       </table>
     {/if}
   </div>
+
+  {#if hasMore}
+    <div class="load-more-wrap">
+      <button class="btn btn--secondary" on:click={loadMore}>
+        Charger plus (au-dela de {daysRange} jours)
+      </button>
+    </div>
+  {/if}
 {/if}
 
 <style>
-  .error-msg { color: var(--color-danger, #e74c3c); text-align: center; padding: 1rem; }
+  .load-more-wrap { display: flex; justify-content: center; margin-top: 16px; }
   .hist-filters { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
   .hist-filter-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 5px 12px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
   .hist-filter-btn.active { background: var(--color-accent-blue); border-color: var(--color-accent-blue); color: white; }
