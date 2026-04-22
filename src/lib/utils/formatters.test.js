@@ -92,18 +92,18 @@ describe('isInPlay', () => {
 });
 
 describe('fhgColor', () => {
-  it('returns green for pct >= 80', () => {
-    expect(fhgColor(80)).toBe('var(--color-accent-green)');
+  it('returns green for pct >= 65', () => {
+    expect(fhgColor(65)).toBe('var(--color-accent-green)');
     expect(fhgColor(95)).toBe('var(--color-accent-green)');
   });
 
-  it('returns moyen color for pct >= 70 and < 80', () => {
-    expect(fhgColor(70)).toBe('var(--color-signal-moyen)');
-    expect(fhgColor(79)).toBe('var(--color-signal-moyen)');
+  it('returns moyen color for pct >= 50 and < 65', () => {
+    expect(fhgColor(50)).toBe('var(--color-signal-moyen)');
+    expect(fhgColor(64)).toBe('var(--color-signal-moyen)');
   });
 
-  it('returns muted color for pct < 70', () => {
-    expect(fhgColor(69)).toBe('var(--color-text-muted)');
+  it('returns muted color for pct < 50', () => {
+    expect(fhgColor(49)).toBe('var(--color-text-muted)');
     expect(fhgColor(0)).toBe('var(--color-text-muted)');
   });
 });

@@ -51,8 +51,8 @@ export function isInPlay(a) {
  * @returns {string}
  */
 export function fhgColor(pct) {
-  if (pct >= 80) return 'var(--color-accent-green)';
-  if (pct >= 70) return 'var(--color-signal-moyen)';
+  if (pct >= 65) return 'var(--color-accent-green)';
+  if (pct >= 50) return 'var(--color-signal-moyen)';
   return 'var(--color-text-muted)';
 }
 

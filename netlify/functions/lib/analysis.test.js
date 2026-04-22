@@ -285,7 +285,7 @@ describe('analyzeFHGFromMatches', () => {
   });
 
   it('returns correct confidence levels', () => {
-    // Score >= 80 => fort
+    // Score >= 65 => fort
     const matchesFort = Array(10).fill(null).map(() =>
       makeTeamMatch({ goalEvents: [{ min: 35, home: true }] })
     );

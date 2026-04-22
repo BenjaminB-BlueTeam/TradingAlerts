@@ -5,8 +5,8 @@
    ================================================ */
 
 const MIN_MATCHES = 5;
-const FHG_SEUIL_MOYEN = 70;
-const FHG_SEUIL_FORT = 80;
+const FHG_SEUIL_MOYEN = 50;
+const FHG_SEUIL_FORT = 65;
 const DC_SEUIL_MOYEN = 30;
 const DC_SEUIL_FORT = 20;
 

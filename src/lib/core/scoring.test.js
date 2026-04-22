@@ -66,7 +66,7 @@ describe('calculerScoreFHG — raw percentages', () => {
     expect(result.compositeScore).toBe(50);
   });
 
-  it('confidence is fort when compositeScore >= 80', () => {
+  it('confidence is fort when compositeScore >= 65', () => {
     const equipe = makeEquipe({
       matches_scored_first_half: 19,        // 95%
       matches_2plus_goals_first_half: 14,   // 70%
@@ -78,28 +78,29 @@ describe('calculerScoreFHG — raw percentages', () => {
     expect(result.isAlert).toBe(true);
   });
 
-  it('confidence is moyen when compositeScore >= 70 and < 80', () => {
+  it('confidence is moyen when compositeScore >= 50 and < 65', () => {
     const equipe = makeEquipe({
-      matches_scored_first_half: 18,        // 90%
-      matches_2plus_goals_first_half: 8,    // 40%
+      matches_scored_first_half: 12,        // 60%
+      matches_2plus_goals_first_half: 4,    // 20%
     });
-    const adv = makeAdversaire({ goals_conceded_first_half: 12 }); // 60%
+    const adv = makeAdversaire({ goals_conceded_first_half: 10 }); // 50%
     const result = calculerScoreFHG(equipe, [], { adversaire: adv });
 
-    // 90*0.55 + 60*0.28 + 40*0.17 = 49.5 + 16.8 + 6.8 = 73
-    expect(result.compositeScore).toBe(73);
+    // 60*0.55 + 50*0.28 + 20*0.17 = 33 + 14 + 3.4 = 50.4 => 50
+    expect(result.compositeScore).toBeGreaterThanOrEqual(50);
+    expect(result.compositeScore).toBeLessThan(65);
     expect(result.confidence).toBe('moyen');
     expect(result.isAlert).toBe(true);
   });
 
-  it('confidence is null when compositeScore < 70', () => {
+  it('confidence is null when compositeScore < 50', () => {
     const equipe = makeEquipe({
-      matches_scored_first_half: 8,         // 40%
-      matches_2plus_goals_first_half: 2,    // 10%
+      matches_scored_first_half: 4,         // 20%
+      matches_2plus_goals_first_half: 1,    // 5%
     });
     const result = calculerScoreFHG(equipe, []);
 
-    expect(result.compositeScore).toBeLessThan(70);
+    expect(result.compositeScore).toBeLessThan(50);
     expect(result.confidence).toBeNull();
     expect(result.isAlert).toBe(false);
   });
@@ -205,8 +206,8 @@ describe('calculerScoreFHG — edge cases', () => {
 });
 
 describe('calculerScoreDC', () => {
-  it('returns null when FHG score < 70', () => {
-    expect(calculerScoreDC(makeEquipe(), 69)).toBeNull();
+  it('returns null when FHG score < 50', () => {
+    expect(calculerScoreDC(makeEquipe(), 49)).toBeNull();
     expect(calculerScoreDC(makeEquipe(), 0)).toBeNull();
   });
 
@@ -214,7 +215,7 @@ describe('calculerScoreDC', () => {
     expect(calculerScoreDC(makeEquipe(), null)).toBeNull();
   });
 
-  it('calculates DC score when FHG >= 70', () => {
+  it('calculates DC score when FHG >= 50', () => {
     const equipe = makeEquipe();
     const result = calculerScoreDC(equipe, 80);
     expect(result).toBeGreaterThan(0);

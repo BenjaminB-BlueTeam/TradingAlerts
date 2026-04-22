@@ -4,8 +4,8 @@
    ================================================ */
 
 const MIN_MATCHES = 5;
-const FHG_SEUIL_FORT = 80;
-const FHG_SEUIL_MOYEN = 70;
+const FHG_SEUIL_FORT = 65;
+const FHG_SEUIL_MOYEN = 50;
 
 /**
  * Calcule le score FHG pour une équipe ciblée face à un adversaire.
@@ -145,7 +145,7 @@ export function calculerScoreFHG(equipe, h2h = [], config = {}) {
  * Calcule le score DC pour une équipe, uniquement si FHG validé.
  */
 export function calculerScoreDC(equipe, scoreFHG) {
-  if (!scoreFHG || scoreFHG < 70) return null;
+  if (!scoreFHG || scoreFHG < FHG_SEUIL_MOYEN) return null;
 
   let score = 0;
 
