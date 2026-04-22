@@ -2,12 +2,15 @@
   import { onMount } from 'svelte';
   import { leagues } from '$lib/stores/appStore.js';
   import { getTodaysMatches, getAllLeagues } from '$lib/api/footystats.js';
+  import { supabase } from '$lib/api/supabase.js';
 
   let filtrePlage = 0;
   let filtreLigue = 'toutes';
   let allMatches = [];
   let loading = false;
   let leagueNames = {}; // competition_id → nom de la ligue
+  let expandedId = null;
+  let teamMatchesCache = {};
 
   $: activeLeagues = $leagues.filter(l => l.active);
 
@@ -38,9 +41,15 @@
     return new Date(unix * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function formatDate(unix) {
+  function formatDateUnix(unix) {
     if (!unix) return '';
     return new Date(unix * 1000).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+  }
+
+  function formatDateStr(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
   }
 
   async function loadMatches(plage) {
@@ -65,7 +74,6 @@
     try {
       const leagues = await getAllLeagues();
       for (const l of leagues) {
-        // Mapper chaque season_id vers le nom de la ligue
         if (l.id) leagueNames[l.id] = l.name;
         if (l.seasons) {
           for (const s of l.seasons) {
@@ -73,8 +81,101 @@
           }
         }
       }
-      leagueNames = leagueNames; // trigger reactivity
+      leagueNames = leagueNames;
     } catch {}
+  }
+
+  // Charger les derniers matchs d'une équipe dans son contexte
+  async function loadTeamMatches(teamId, context) {
+    const key = `${teamId}_${context}`;
+    if (teamMatchesCache[key]) return teamMatchesCache[key];
+
+    const col = context === 'home' ? 'home_team_id' : 'away_team_id';
+    const today = new Date().toISOString().split('T')[0];
+    const { data } = await supabase
+      .from('h2h_matches')
+      .select('*')
+      .eq(col, teamId)
+      .lt('match_date', today)
+      .order('match_date', { ascending: false })
+      .limit(15);
+
+    teamMatchesCache[key] = data || [];
+    teamMatchesCache = teamMatchesCache;
+    return data || [];
+  }
+
+  async function toggleExpand(match) {
+    const id = match.id;
+    if (expandedId === id) {
+      expandedId = null;
+      return;
+    }
+    if (match.homeID && match.awayID) {
+      await Promise.all([
+        loadTeamMatches(match.homeID, 'home'),
+        loadTeamMatches(match.awayID, 'away'),
+      ]);
+    }
+    expandedId = id;
+  }
+
+  function getTeamMatches(teamId, context) {
+    return teamMatchesCache[`${teamId}_${context}`] || [];
+  }
+
+  function computeTeamStats(matches, context) {
+    if (!matches.length) return null;
+    const scored = matches.map(m => context === 'home' ? (m.home_goals || 0) : (m.away_goals || 0));
+    const conceded = matches.map(m => context === 'home' ? (m.away_goals || 0) : (m.home_goals || 0));
+    const scoredHT = matches.map(m => context === 'home' ? (m.home_goals_ht || 0) : (m.away_goals_ht || 0));
+
+    const total = matches.length;
+    const avgGoals = +((scored.reduce((a, b) => a + b, 0) + conceded.reduce((a, b) => a + b, 0)) / total).toFixed(2);
+    const pctGoal1MT = Math.round(scoredHT.filter(g => g > 0).length / total * 100);
+    const pctBTTS = Math.round(matches.filter((_, i) => scored[i] > 0 && conceded[i] > 0).length / total * 100);
+    const pctOver25 = Math.round(matches.filter((_, i) => scored[i] + conceded[i] > 2).length / total * 100);
+
+    return { avgGoals, pctGoal1MT, pctBTTS, pctOver25, total };
+  }
+
+  function goalBar(match, context) {
+    const isHome = context === 'home';
+    const teamGoals = isHome ? (match.home_goals || 0) : (match.away_goals || 0);
+    const oppGoals = isHome ? (match.away_goals || 0) : (match.home_goals || 0);
+    const totalGoals = teamGoals + oppGoals;
+
+    const result = teamGoals > oppGoals ? 'W' : teamGoals === oppGoals ? 'D' : 'L';
+    const events = match.goal_events || [];
+
+    if (events.length > 0 && events[0]?.min) {
+      const goals = events.map(g => ({
+        min: g.min,
+        pct: Math.min((g.min / 95) * 100, 98),
+        scored: isHome ? g.home : !g.home,
+      }));
+      return { goals, total: totalGoals, result };
+    }
+
+    const scoredHT = isHome ? (match.home_goals_ht || 0) : (match.away_goals_ht || 0);
+    const concededHT = isHome ? (match.away_goals_ht || 0) : (match.home_goals_ht || 0);
+    const scored2MT = teamGoals - scoredHT;
+    const conceded2MT = oppGoals - concededHT;
+
+    const goals = [];
+    for (let i = 0; i < scoredHT; i++) goals.push({ min: 10 + i * 12, pct: (10 + i * 12) / 95 * 100, scored: true });
+    for (let i = 0; i < concededHT; i++) goals.push({ min: 15 + i * 12, pct: (15 + i * 12) / 95 * 100, scored: false });
+    for (let i = 0; i < scored2MT; i++) goals.push({ min: 55 + i * 12, pct: (55 + i * 12) / 95 * 100, scored: true });
+    for (let i = 0; i < conceded2MT; i++) goals.push({ min: 60 + i * 12, pct: (60 + i * 12) / 95 * 100, scored: false });
+    goals.sort((a, b) => a.min - b.min);
+
+    return { goals, total: totalGoals, result };
+  }
+
+  function fhgColor(pct) {
+    if (pct >= 80) return 'var(--color-accent-green)';
+    if (pct >= 70) return 'var(--color-signal-moyen)';
+    return 'var(--color-text-muted)';
   }
 
   onMount(() => {
@@ -85,7 +186,7 @@
 
 <div class="page-title">⚽ Matchs à venir</div>
 <div class="page-subtitle">
-  {filteredMatches.length} match{filteredMatches.length > 1 ? 's' : ''} trouves
+  {filteredMatches.length} match{filteredMatches.length > 1 ? 's' : ''} trouvés
 </div>
 
 <!-- FILTERS BAR -->
@@ -109,39 +210,188 @@
   {/if}
 </div>
 
-<!-- TABLE -->
+<!-- LISTE -->
 {#if loading}
   <div class="empty-state">
     <div class="empty-state__icon">⏳</div>
     <div class="empty-state__title">Chargement des matchs...</div>
   </div>
 {:else if filteredMatches.length > 0}
-  <div class="table-wrapper">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Heure</th>
-          <th>Match</th>
-          <th>Ligue</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each filteredMatches as m (m.id)}
-          <tr>
-            <td>{formatDate(m.date_unix)}</td>
-            <td>{formatTime(m.date_unix)}</td>
-            <td style="font-weight:600;">{m.home_name || '?'} vs {m.away_name || '?'}</td>
-            <td style="font-size:12px;color:var(--color-text-muted);">{getLeagueName(m)}</td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
+  <div class="matches-list">
+    {#each filteredMatches as m (m.id)}
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <div class="match-card" class:match-card--expanded={expandedId === m.id}>
+        <div class="match-card__header" on:click={() => toggleExpand(m)} role="button" tabindex="0">
+          <div class="match-card__time">
+            <div class="match-card__day">{formatDateUnix(m.date_unix)}</div>
+            <div class="match-card__hour">{formatTime(m.date_unix)}</div>
+          </div>
+          <div class="match-card__match">
+            <div class="match-card__teams">{m.home_name || '?'} - {m.away_name || '?'}</div>
+            <div class="match-card__league">{getLeagueName(m)}</div>
+          </div>
+          <span class="match-card__arrow">{expandedId === m.id ? '▼' : '▶'}</span>
+        </div>
+
+        {#if expandedId === m.id}
+          {@const homeMatches = getTeamMatches(m.homeID, 'home')}
+          {@const homeStats = computeTeamStats(homeMatches, 'home')}
+          {@const awayMatches = getTeamMatches(m.awayID, 'away')}
+          {@const awayStats = computeTeamStats(awayMatches, 'away')}
+          <div class="match-expand">
+            <!-- Équipe domicile -->
+            <div class="team-detail">
+              <div class="team-detail__header">
+                <span class="team-detail__name">{m.home_name || '?'}</span>
+                <span class="team-detail__context">Domicile</span>
+                {#if homeStats}
+                  <div class="team-detail__summary">
+                    <span>1MT: <strong style:color={fhgColor(homeStats.pctGoal1MT)}>{homeStats.pctGoal1MT}%</strong></span>
+                    <span>AVG: <strong>{homeStats.avgGoals}</strong></span>
+                    <span>BTTS: <strong>{homeStats.pctBTTS}%</strong></span>
+                    <span>O2.5: <strong>{homeStats.pctOver25}%</strong></span>
+                  </div>
+                {/if}
+              </div>
+              {#if homeMatches.length > 0}
+                <div class="team-matches">
+                  {#each homeMatches as hm}
+                    {@const bar = goalBar(hm, 'home')}
+                    <div class="match-row">
+                      <span class="match-row__date">{formatDateStr(hm.match_date)}</span>
+                      <span class="match-row__home match-row__bold">{hm.home_team_name}</span>
+                      <span class="match-row__score match-row__score--{bar.result}">{hm.home_goals}-{hm.away_goals}</span>
+                      <span class="match-row__away">{hm.away_team_name}</span>
+                      <div class="match-row__bar">
+                        <div class="goal-bar">
+                          <span class="goal-bar__marker" style="left:50%">HT</span>
+                          <span class="goal-bar__marker" style="left:98%">FT</span>
+                          {#each bar.goals as g}
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'"></span>
+                          {/each}
+                        </div>
+                      </div>
+                      <span class="match-row__total">{bar.total}</span>
+                    </div>
+                  {/each}
+                </div>
+              {:else}
+                <div class="team-detail__empty">Aucun match récent en base</div>
+              {/if}
+            </div>
+
+            <!-- Équipe extérieure -->
+            <div class="team-detail">
+              <div class="team-detail__header">
+                <span class="team-detail__name">{m.away_name || '?'}</span>
+                <span class="team-detail__context">Extérieur</span>
+                {#if awayStats}
+                  <div class="team-detail__summary">
+                    <span>1MT: <strong style:color={fhgColor(awayStats.pctGoal1MT)}>{awayStats.pctGoal1MT}%</strong></span>
+                    <span>AVG: <strong>{awayStats.avgGoals}</strong></span>
+                    <span>BTTS: <strong>{awayStats.pctBTTS}%</strong></span>
+                    <span>O2.5: <strong>{awayStats.pctOver25}%</strong></span>
+                  </div>
+                {/if}
+              </div>
+              {#if awayMatches.length > 0}
+                <div class="team-matches">
+                  {#each awayMatches as am}
+                    {@const bar = goalBar(am, 'away')}
+                    <div class="match-row">
+                      <span class="match-row__date">{formatDateStr(am.match_date)}</span>
+                      <span class="match-row__home">{am.home_team_name}</span>
+                      <span class="match-row__score match-row__score--{bar.result}">{am.home_goals}-{am.away_goals}</span>
+                      <span class="match-row__away match-row__bold">{am.away_team_name}</span>
+                      <div class="match-row__bar">
+                        <div class="goal-bar">
+                          <span class="goal-bar__marker" style="left:50%">HT</span>
+                          <span class="goal-bar__marker" style="left:98%">FT</span>
+                          {#each bar.goals as g}
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'"></span>
+                          {/each}
+                        </div>
+                      </div>
+                      <span class="match-row__total">{bar.total}</span>
+                    </div>
+                  {/each}
+                </div>
+              {:else}
+                <div class="team-detail__empty">Aucun match récent en base</div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+      </div>
+    {/each}
   </div>
 {:else}
   <div class="empty-state">
     <div class="empty-state__icon">⚽</div>
-    <div class="empty-state__title">Aucun match trouve</div>
-    <div class="empty-state__desc">Changez la date ou la ligue et cliquez sur Rechercher</div>
+    <div class="empty-state__title">Aucun match trouvé</div>
+    <div class="empty-state__desc">Changez la date ou la ligue</div>
   </div>
 {/if}
+
+<style>
+  .matches-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .match-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
+  .match-card:hover { border-color: var(--color-accent-blue); }
+  .match-card--expanded { border-color: var(--color-accent-blue); }
+
+  .match-card__header { display: flex; align-items: center; gap: 14px; padding: 10px 16px; cursor: pointer; transition: background 0.15s; }
+  .match-card__header:hover { background: rgba(255,255,255,0.02); }
+
+  .match-card__time { min-width: 55px; text-align: center; flex-shrink: 0; }
+  .match-card__day { font-size: 10px; color: var(--color-text-muted); }
+  .match-card__hour { font-size: 14px; font-weight: 600; }
+  .match-card__match { flex: 1; min-width: 0; }
+  .match-card__teams { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .match-card__league { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+  .match-card__arrow { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
+
+  /* Expand */
+  .match-expand { border-top: 1px solid var(--color-border); padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .team-detail { background: rgba(255,255,255,0.02); border-radius: 8px; padding: 10px; }
+  .team-detail__header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .team-detail__name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+  .team-detail__context { font-size: 9px; font-weight: 600; text-transform: uppercase; color: var(--color-accent-blue); background: rgba(55,138,221,0.12); padding: 2px 5px; border-radius: 4px; flex-shrink: 0; }
+  .team-detail__summary { display: flex; gap: 8px; margin-left: auto; font-size: 10px; color: var(--color-text-muted); flex-shrink: 0; }
+  .team-detail__summary strong { color: var(--color-text-primary); }
+  .team-detail__empty { padding: 12px; text-align: center; color: var(--color-text-muted); font-size: 12px; }
+
+  .team-matches { display: table; width: 100%; border-collapse: collapse; }
+
+  .match-row { display: table-row; font-size: 11px; }
+  .match-row > span, .match-row > div { display: table-cell; vertical-align: middle; padding: 3px 3px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .match-row__date { width: 44px; color: var(--color-text-muted); font-size: 10px; }
+  .match-row__home, .match-row__away { width: 75px; max-width: 75px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .match-row__bold { font-weight: 600; color: var(--color-text-primary); }
+  .match-row__score { width: 28px; font-weight: 700; text-align: center; border-radius: 3px; }
+  .match-row__score--W { color: var(--color-accent-green); }
+  .match-row__score--D { color: var(--color-signal-moyen); }
+  .match-row__score--L { color: var(--color-danger); }
+  .match-row__total { width: 20px; text-align: right; font-weight: 700; color: var(--color-text-primary); }
+
+  .match-row__bar { width: auto; }
+  .goal-bar { position: relative; height: 20px; min-width: 160px; background: linear-gradient(90deg, #2a7a52 0%, #2a7a52 50%, #1e6340 50%, #1e6340 100%); border-radius: 3px; }
+  .goal-bar__marker { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.35); z-index: 1; pointer-events: none; }
+  .goal-dot {
+    position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 2; cursor: default;
+    width: 22px; height: 22px;
+    background: url('/ballon.png') center/contain no-repeat;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
+  }
+  .goal-dot--conceded { opacity: 0.5; }
+
+  @media (max-width: 1200px) {
+    .match-expand { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 768px) {
+    .match-card__header { flex-wrap: wrap; }
+    .match-row__home, .match-row__away { width: 55px; max-width: 55px; }
+    .team-detail__summary { margin-left: 0; width: 100%; }
+  }
+</style>
