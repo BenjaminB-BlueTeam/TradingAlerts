@@ -55,6 +55,10 @@
     }
     allMatches = results;
     loading = false;
+    // Pré-charger les stats FHG 31-45 pour les matchs visibles (en arrière-plan)
+    for (const m of results.slice(0, 30)) {
+      if (m.homeID && m.awayID) loadFhgStats(m.homeID, m.awayID);
+    }
   }
 
   // Recharger quand la plage change
@@ -105,6 +109,39 @@
 
   function getTeamMatches(teamId, context) {
     return teamMatchesCache[`${teamId}_${context}`] || [];
+  }
+
+  // Stats FHG 31-45 par équipe (saison en cours, contexte dom/ext)
+  let fhgStatsCache = $state({});
+
+  function computeFhg3145(matches, context) {
+    if (!matches || matches.length === 0) return null;
+    const isHome = context === 'home';
+    let withGoal = 0;
+    for (const m of matches) {
+      const events = Array.isArray(m.goal_events) ? m.goal_events : [];
+      const has3145 = events.some(e => e.min >= 31 && e.min <= 45 && e.home === isHome);
+      if (has3145) withGoal++;
+    }
+    return Math.round((withGoal / matches.length) * 100);
+  }
+
+  async function loadFhgStats(homeId, awayId) {
+    const homeKey = `${homeId}_home`;
+    const awayKey = `${awayId}_away`;
+    if (fhgStatsCache[homeKey] !== undefined && fhgStatsCache[awayKey] !== undefined) return;
+
+    const [homeMatches, awayMatches] = await Promise.all([
+      loadTeamMatches(homeId, 'home'),
+      loadTeamMatches(awayId, 'away'),
+    ]);
+    fhgStatsCache[homeKey] = computeFhg3145(homeMatches, 'home');
+    fhgStatsCache[awayKey] = computeFhg3145(awayMatches, 'away');
+    fhgStatsCache = fhgStatsCache;
+  }
+
+  function getFhgStat(teamId, context) {
+    return fhgStatsCache[`${teamId}_${context}`];
   }
 
   let hoverBar = $state(null); // { key, pct, min }
@@ -171,7 +208,17 @@
             <div class="match-card__hour">{formatTime(m.date_unix)}</div>
           </div>
           <div class="match-card__match">
-            <div class="match-card__teams">{m.home_name || '?'} - {m.away_name || '?'}</div>
+            <div class="match-card__teams">
+              {m.home_name || '?'}
+              {#if getFhgStat(m.homeID, 'home') !== null && getFhgStat(m.homeID, 'home') !== undefined}
+                <span class="fhg-badge" style:color={fhgColor(getFhgStat(m.homeID, 'home'))}>{getFhgStat(m.homeID, 'home')}%</span>
+              {/if}
+              -
+              {#if getFhgStat(m.awayID, 'away') !== null && getFhgStat(m.awayID, 'away') !== undefined}
+                <span class="fhg-badge" style:color={fhgColor(getFhgStat(m.awayID, 'away'))}>{getFhgStat(m.awayID, 'away')}%</span>
+              {/if}
+              {m.away_name || '?'}
+            </div>
             <div class="match-card__league">{getLeagueName(m)}</div>
           </div>
           <span class="match-card__arrow">{expandedId === m.id ? '▼' : '▶'}</span>
@@ -305,7 +352,8 @@
   .match-card__day { font-size: 10px; color: var(--color-text-muted); }
   .match-card__hour { font-size: 14px; font-weight: 600; }
   .match-card__match { flex: 1; min-width: 0; }
-  .match-card__teams { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .match-card__teams { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+  .fhg-badge { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: rgba(255,255,255,0.06); }
   .match-card__league { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
   .match-card__arrow { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
 
