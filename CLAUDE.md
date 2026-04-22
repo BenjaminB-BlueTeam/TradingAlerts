@@ -216,12 +216,15 @@ src/
 - [x] Settings splitté en 5 composants
 - [x] `doubleChance.js` supprimé (code mort confirmé)
 
-### Priorité basse
+### Priorité basse (fait session 2026-04-22)
+- [x] Tests : `h2h.js` (19), `cache.js` (19), `tradeStore.js` (17) — total 135+ tests
+- [x] Catch blocks vides corrigés (10 fichiers)
+- [x] Skip-to-content link + `<h1>` sur toutes les pages
+- [x] Contraste WCAG : `--color-text-muted` → `#a0a098`
+
+### Reste (optionnel)
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API
-- [ ] Tests manquants : `h2h.js`, `cache.js`, `tradeStore.js`, `tradeStats.js`
-- [ ] Catch blocks vides restants (matches L77, explore L57)
-- [ ] Skip-to-content link + hiérarchie `<h1>` correcte
-- [ ] Contraste couleur `#888780` sur fond sombre (WCAG)
+- [ ] Tests pour `tradeStats.js`
 
 ### Décisions actées
 1. FHG = analyse comportementale par équipe (pas H2H), dom/ext séparés
