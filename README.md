@@ -44,7 +44,7 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 ### Historique (`/historique`)
 - Stats globales (Global/FHG/DC/fort/moyen)
 - Tableau par ligue trie
-- Liste filtree de toutes les alertes
+- Liste filtree des alertes (90 derniers jours, bouton "Charger plus")
 
 ### Matchs a venir (`/matches`)
 - Matchs par date avec filtre par ligue
@@ -65,10 +65,10 @@ Analyse de **recurrence individuelle par equipe** dans son contexte (domicile ou
 
 | Critere | Description | Poids |
 |---------|-------------|-------|
-| **Recurrence 1MT** | % matchs ou l'equipe marque en 1MT | 50-55% |
-| **2+ buts 1MT** | % matchs avec 2+ buts marques en 1MT | 15-17% |
-| **Adversaire encaisse** | % matchs ou l'adversaire encaisse en 1MT | 25-28% |
-| **Reaction quand menee** | L'equipe repond-elle en 1MT si menee ? | 10% |
+| **pct1MT** | % matchs ou l'equipe marque en 1MT | 50% |
+| **pctAdversaire** | % matchs ou l'adversaire encaisse en 1MT | 25% |
+| **pct2Plus1MT** | % matchs avec 2+ buts marques en 1MT | 15% |
+| **pctReaction** | L'equipe repond-elle en 1MT si menee ? | 10% |
 
 **Filtres** : min 5 matchs, clean sheet H2H (chat noir), adversaire trop solide (< 2/5 encaisse)
 
@@ -98,6 +98,7 @@ Basee sur les confrontations directes (5 saisons, min 5 H2H).
     +-- generate-alerts.js  (cron 12h) --> FootyStats + Supabase
     +-- check-results.js    (cron 1h)  --> FootyStats + Supabase
     +-- seed-data.js        (manuel)   --> FootyStats + Supabase
+    +-- daily-seed.js       (cron 6h)  --> FootyStats + Supabase (matchs d'hier)
 ```
 
 ### Tables Supabase (RLS actif)
@@ -117,7 +118,7 @@ Basee sur les confrontations directes (5 saisons, min 5 H2H).
 ```bash
 npm install
 npm run dev
-npm test          # vitest — 80 tests unitaires
+npm test          # vitest — 80+ tests unitaires
 npm run test:watch
 ```
 
@@ -130,11 +131,10 @@ npm run test:watch
 | `SUPABASE_SERVICE_ROLE_KEY` | Cle service_role (bypass RLS, serveur uniquement) |
 | `SEED_AUTH_TOKEN` | Token auth pour seed-data (optionnel) |
 
-### Seed initial
+### Seed
 
-1. Aller sur `/debug`
-2. Cliquer sur "Seed complet (toutes les ligues)"
-3. Le seed traite 50 ligues x 5 saisons (~15 min)
+- **Initial** : aller sur `/debug` → "Seed complet" (50 ligues x 5 saisons, ~15 min)
+- **Auto** : `daily-seed.js` tourne chaque jour a 6h UTC et insere les matchs d'hier
 
 ### Structure cle
 

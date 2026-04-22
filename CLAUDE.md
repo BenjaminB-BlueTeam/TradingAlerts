@@ -40,6 +40,7 @@ netlify/functions/
   generate-alerts.js    ← cron 12h — génère alertes FHG/DC pour J, J+1, J+2
   check-results.js      ← cron 1h — vérifie résultats matchs pending terminés (fenêtre 31-45 min)
   seed-data.js          ← seed Supabase (team_seasons, h2h_matches) (auth token requis)
+  daily-seed.js         ← cron quotidien 6h UTC — seed matchs d'hier dans h2h_matches
   lib/
     api.js              ← helpers partagés (footyRequest, supabaseQuery)
     analysis.cjs        ← logique FHG/DC extraite et testable
@@ -78,11 +79,11 @@ src/
       tradeStore.js     ← CRUD trades (Supabase + localStorage)
       tradeStats.js     ← calcul stats trades (fonction pure)
     core/
-      scoring.js        ← algorithme FHG + DC
-      scoring.test.js   ← tests unitaires scoring
+      scoring.js        ← algorithme FHG (% bruts) + DC
+      scoring.test.js   ← tests unitaires scoring (29 tests)
       doubleChance.js   ← analyse DC basée H2H (% défaite, comeback, MT≠FT)
       h2h.js            ← analyse head-to-head
-      filters.js        ← filtrage/tri des signaux
+      filters.js        ← isWindowActive (fenêtre 31-45 min)
     utils/
       formatters.js     ← fonctions partagées (formatDate, formatTime, isInPlay, etc.)
       formatters.test.js← tests unitaires formatters
@@ -124,19 +125,19 @@ src/
 
 ---
 
-## Algorithme FHG actuel (scoring.js)
+## Algorithme FHG actuel (scoring.js + analysis.cjs)
 
-Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
+% bruts calculés par équipe (domicile ET extérieur, meilleur retenu) :
 
 1. **Filtre H2H Clean Sheet** (priorité absolue) — si ≥3 H2H et 0 but avant 45min → exclusion totale
-2. **Score de base** : 60% × taux N + 25% × taux N-1 + 15% × forme 5 derniers matchs
-3. **Bonus 1MT** : +4 pts (≥50%) ou +8 pts (≥65%) si l'équipe score souvent en 1MT
-4. **Stabilité inter-saisons** : +3 pts si écart ≤8%, -5 pts si >15%
-5. **Malus début de saison** : -10 pts si <8 matchs joués
+2. **Filtre adversaire** — l'adversaire doit encaisser en 1MT dans ≥2 de ses 5 derniers matchs
+3. **pct1MT** — % des 10 derniers matchs où l'équipe marque en 1MT (poids 50%)
+4. **pctAdversaire** — % matchs où l'adversaire encaisse en 1MT (poids 25%)
+5. **pct2Plus1MT** — % matchs avec 2+ buts marqués en 1MT (poids 15%)
+6. **pctReaction** — réaction quand menée en 1MT (poids 10%)
+7. **compositeScore** — moyenne pondérée des 4 métriques ci-dessus
 
-**Seuils** : Fort ≥75 | Moyen ≥60 | Faible <60
-
-> ⚠ Ce système de scoring est **prévu pour être remplacé** par des % bruts — voir roadmap.
+**Seuils** : Fort ≥80% | Moyen ≥70%
 
 ---
 
@@ -166,7 +167,7 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - **Matchs à venir** — table remplacée par cards cliquables avec expand : 15 derniers matchs dom/ext de chaque équipe, barres de timing buts (même schéma que Sélection FHG), curseur interactif (ligne verticale + minute dans header), "vs" → "-", colonne score supprimée
 - **Barres de timing buts** (Sélection FHG + Matchs à venir) — curseur souris : ligne noire sur toutes les barres du bloc, minute affichée dans le header à côté du nom d'équipe. Colonne total buts supprimée. Stats résumé : 1MT% + AVG uniquement (BTTS/O2.5 retirés)
 - Proxy Netlify sécurisé (whitelist endpoints, CORS restreint), cache localStorage TTL + éviction auto
-- **Tests unitaires** — vitest, 80 tests (scoring, DC/FHG analysis, formatters, teamData)
+- **Tests unitaires** — vitest, 80+ tests (scoring 29, analysis 14, formatters 17, teamData 17)
 - **Code dédupliqué** — utilitaires partagés `$lib/utils/` (formatters.js, teamData.js), helpers serverless `lib/api.js`
 - **Chart.js tree-shaké** — imports sélectifs au lieu de `chart.js/auto`
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
@@ -178,6 +179,11 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - **Supabase RLS activé** — policies read-only anon, service_role pour les Netlify Functions
 - **Gestion d'erreurs** — messages utilisateur sur toutes les pages (plus de catch vides)
 - **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5 avec `Promise.all`
+- **Daily seed auto** — `daily-seed.js` cron 6h UTC, seed matchs d'hier dans `h2h_matches`
+- **Refonte algo % bruts** — `scoring.js` utilise pct1MT/pctAdversaire/pct2Plus1MT/pctReaction (plus de score 0-100)
+- **Historique paginé** — limite 90 jours + bouton "Charger plus"
+- **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css` (plus de duplication)
+- **Code mort nettoyé** — `filters.js` réduit à `isWindowActive` seul
 
 ---
 
@@ -188,12 +194,22 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - [x] **Page Historique des Alertes** — `/historique` avec KPIs, tableau ligues, liste filtrée
 - [x] **Affiner FHG fenêtre 31-45 min** — `generate-alerts.js` utilise `goal_events` filtré min 31-45 au lieu de `home_goals_ht`
 
-### Priorité moyenne
-- [ ] Refonte algo — % bruts sans scoring 0-100 (scoring.js encore utilisé par MatchCard)
+### Priorité moyenne (prochaine session)
+- [ ] Extraire logique partagée leagues/explore (60% dupliqué)
+- [ ] Extraire `parseMatchRow` partagé entre `daily-seed.js` et `seed-data.js`
+- [ ] Ajouter `console.warn` dans `supabaseQuery` quand erreur (silent fail actuel)
+- [ ] Migrer `on:click` → `onclick` (syntaxe Svelte 5 native)
+- [ ] Corriger `get(config)` non réactif dans MatchCard → utiliser `$config`
+- [ ] Déplacer Supabase key dans `import.meta.env` au lieu de hardcoder
+- [ ] Splitter `settings/+page.svelte` (478L monolithique) en sous-composants
+- [ ] Vérifier si `doubleChance.js` est encore importé (potentiel code mort)
 
 ### Priorité basse
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API
-- [ ] Seed auto de la saison en cours (mise à jour quotidienne)
+- [ ] Tests manquants : `h2h.js`, `cache.js`, `tradeStore.js`, `tradeStats.js`
+- [ ] Catch blocks vides restants (matches L77, explore L57)
+- [ ] Skip-to-content link + hiérarchie `<h1>` correcte
+- [ ] Contraste couleur `#888780` sur fond sombre (WCAG)
 
 ### Décisions actées
 1. FHG = analyse comportementale par équipe (pas H2H), dom/ext séparés
