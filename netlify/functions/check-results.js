@@ -132,6 +132,13 @@ exports.handler = async () => {
     results.errors.push(e.message);
   }
 
+  // Monitoring: flag suspicious lost rate
+  const dayAlerts = results.checked;
+  const dayLost = results.lost || 0;
+  if (dayAlerts >= 5 && dayLost / dayAlerts > 0.8) {
+    console.error(`[check-results] ALERT: suspicious lost rate ${dayLost}/${dayAlerts} (${Math.round(dayLost/dayAlerts*100)}%). Possible parsing bug or API field change.`);
+  }
+
   return {
     statusCode: 200,
     body: JSON.stringify(results),

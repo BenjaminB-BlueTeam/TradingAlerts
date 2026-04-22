@@ -10,8 +10,6 @@ const STORAGE_KEYS = {
   TRADES:        'fhg_trades',
   LEAGUES:       'fhg_leagues',
   PREFERENCES:   'fhg_prefs',
-  PAUSE_SESSION: 'fhg_pause',
-  WATCHLIST:     'fhg_watchlist',
 };
 
 // ---- Valeurs par défaut ----
@@ -46,21 +44,13 @@ export const defaultPrefs = {
 
 // ---- Stores ----
 export const apiConnected    = writable(false);
-export const matches         = writable([]);
-export const matchesUpcoming = writable([]);
 export const leagues         = writable(getDefaultLeagues());
-export const allLeagues      = writable([]);
-export const signaux         = writable([]);
-export const exclus          = writable([]);
 export const config          = writable({ ...defaultConfig });
 export const prefs           = writable({ ...defaultPrefs });
 export const trades          = writable([]);
-export const loading         = writable(false);
-export const lastUpdate      = writable(null);
 export const pauseSession    = writable(false);
 export const alertesActives  = writable([]);
 export const apiRequestsRemaining = writable(null); // Requêtes API restantes (sur 1800/h)
-export const watchlist       = writable([]);  // Matchs pris (cochés dans l'historique)
 
 // ---- Persistance localStorage ----
 
@@ -70,13 +60,11 @@ export function loadFromStorage() {
     const savedTrades  = JSON.parse(localStorage.getItem(STORAGE_KEYS.TRADES)      || '[]');
     const savedLeagues = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAGUES)     || 'null');
     const savedPrefs   = JSON.parse(localStorage.getItem(STORAGE_KEYS.PREFERENCES) || 'null');
-    const savedWatch   = JSON.parse(localStorage.getItem(STORAGE_KEYS.WATCHLIST)   || '[]');
 
     config.set(savedConfig  ? { ...defaultConfig, ...savedConfig }  : { ...defaultConfig });
     trades.set(Array.isArray(savedTrades) ? savedTrades : []);
     leagues.set(savedLeagues || getDefaultLeagues());
     prefs.set(savedPrefs ? { ...defaultPrefs, ...savedPrefs } : { ...defaultPrefs });
-    watchlist.set(Array.isArray(savedWatch) ? savedWatch : []);
     return true;
   } catch (e) {
     console.warn('Store: erreur chargement localStorage', e);
@@ -106,30 +94,6 @@ export function savePrefs(newPrefs) {
     const merged = { ...p, ...newPrefs };
     localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(merged));
     return merged;
-  });
-}
-
-// ---- Watchlist (matchs alertes pour le Live) ----
-
-export function saveWatchlist(items) {
-  localStorage.setItem(STORAGE_KEYS.WATCHLIST, JSON.stringify(items));
-  watchlist.set(items);
-}
-
-export function addToWatchlist(match) {
-  watchlist.update(list => {
-    if (list.find(m => m.id === match.id)) return list;
-    const updated = [...list, match];
-    localStorage.setItem(STORAGE_KEYS.WATCHLIST, JSON.stringify(updated));
-    return updated;
-  });
-}
-
-export function removeFromWatchlist(matchId) {
-  watchlist.update(list => {
-    const updated = list.filter(m => m.id !== matchId);
-    localStorage.setItem(STORAGE_KEYS.WATCHLIST, JSON.stringify(updated));
-    return updated;
   });
 }
 
