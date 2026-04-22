@@ -151,6 +151,8 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - **Sidebar** — Dashboard, Sélection FHG, Sélection DC, Historique, Matchs à venir, Classements ligues, Paramètres + Admin (Ligues, Config, Debug)
 - **Page Live supprimée** — les statuts EN COURS sont affichés directement sur les pages Sélection FHG, DC et Historique
 - **Paramètres / Config ligues** — charge les 50 ligues depuis l'API (plus hardcodé), boutons Tout activer / Tout désactiver
+- **Matchs à venir** — table remplacée par cards cliquables avec expand : 15 derniers matchs dom/ext de chaque équipe, barres de timing buts (même schéma que Sélection FHG), curseur interactif (ligne verticale + minute dans header), "vs" → "-", colonne score supprimée
+- **Barres de timing buts** (Sélection FHG + Matchs à venir) — curseur souris : ligne noire sur toutes les barres du bloc, minute affichée dans le header à côté du nom d'équipe. Colonne total buts supprimée. Stats résumé : 1MT% + AVG uniquement (BTTS/O2.5 retirés)
 - Proxy Netlify sécurisé, cache localStorage TTL
 
 ---
