@@ -54,6 +54,22 @@
       }
     }
     allMatches = results;
+
+    // Charger toutes les stats FHG 31-45 AVANT d'afficher
+    const uniqueTeams = new Set();
+    for (const m of results) {
+      if (m.homeID && m.awayID) {
+        uniqueTeams.add(`${m.homeID}_home`);
+        uniqueTeams.add(`${m.awayID}_away`);
+      }
+    }
+    // Charger par batch de 10 équipes en parallèle
+    const teamPairs = results.filter(m => m.homeID && m.awayID);
+    for (let i = 0; i < teamPairs.length; i += 10) {
+      const batch = teamPairs.slice(i, i + 10);
+      await Promise.all(batch.map(m => loadFhgStats(m.homeID, m.awayID)));
+    }
+
     loading = false;
   }
 
@@ -139,13 +155,6 @@
   function getFhgStat(teamId, context) {
     return fhgStatsCache[`${teamId}_${context}`];
   }
-
-  // Charger les stats FHG pour tous les matchs filtrés quand la liste change
-  $effect(() => {
-    for (const m of filteredMatches) {
-      if (m.homeID && m.awayID) loadFhgStats(m.homeID, m.awayID);
-    }
-  });
 
   let hoverBar = $state(null); // { key, pct, min }
 
