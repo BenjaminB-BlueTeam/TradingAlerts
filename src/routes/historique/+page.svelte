@@ -5,6 +5,7 @@
 
   let alerts = [];
   let loading = true;
+  let error = '';
   let activeFilter = 'tous';
 
   const filters = [
@@ -18,11 +19,18 @@
 
   async function loadAlerts() {
     loading = true;
-    const { data, error } = await supabase
+    error = '';
+    const { data, error: dbError } = await supabase
       .from('alerts')
       .select('*')
       .order('kickoff_unix', { ascending: false });
-    alerts = error ? [] : (data || []);
+    if (dbError) {
+      console.error('loadAlerts historique error:', dbError);
+      error = 'Impossible de charger l\'historique des alertes.';
+      alerts = [];
+    } else {
+      alerts = data || [];
+    }
     loading = false;
   }
 
@@ -127,6 +135,10 @@
     </button>
   {/each}
 </div>
+
+{#if error}
+  <p class="error-msg">{error}</p>
+{/if}
 
 {#if loading}
   <div class="empty-state">
@@ -251,6 +263,7 @@
 {/if}
 
 <style>
+  .error-msg { color: var(--color-danger, #e74c3c); text-align: center; padding: 1rem; }
   .hist-filters { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
   .hist-filter-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 5px 12px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
   .hist-filter-btn.active { background: var(--color-accent-blue); border-color: var(--color-accent-blue); color: white; }

@@ -11,8 +11,8 @@
   export let match;         // résultat de analyserMatch()
   export let onTrade = null; // callback optionnel pour ouvrir la fiche trade
 
-  const m  = match;
-  const sc = m.scoreChoisi || {};
+  $: m  = match;
+  $: sc = m.scoreChoisi || {};
 
   let expanded = false;
   let chartCanvas;

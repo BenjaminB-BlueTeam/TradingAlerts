@@ -10,6 +10,7 @@
   let filtreLigue = 'toutes';
   let allMatches = [];
   let loading = false;
+  let error = '';
   let leagueNames = {}; // competition_id -> nom de la ligue
   let expandedId = null;
   let teamMatchesCache = {};
@@ -41,6 +42,7 @@
 
   async function loadMatches(plage) {
     loading = true;
+    error = '';
     const offsets = plage === -1 ? [0, 1, 2] : [plage];
     const results = [];
     for (const offset of offsets) {
@@ -48,7 +50,10 @@
         const dateStr = getDateStr(offset);
         const matches = await getTodaysMatches(dateStr);
         if (Array.isArray(matches)) results.push(...matches);
-      } catch {}
+      } catch (e) {
+        console.error('loadMatches error:', e);
+        error = 'Impossible de charger les matchs.';
+      }
     }
     allMatches = results;
     loading = false;
@@ -146,6 +151,10 @@
     <span style="font-size:12px;color:var(--color-text-muted);">⏳ Chargement...</span>
   {/if}
 </div>
+
+{#if error}
+  <p class="error-msg">{error}</p>
+{/if}
 
 <!-- LISTE -->
 {#if loading}
@@ -285,6 +294,7 @@
 {/if}
 
 <style>
+  .error-msg { color: var(--color-danger, #e74c3c); text-align: center; padding: 1rem; }
   .matches-list { display: flex; flex-direction: column; gap: 6px; }
 
   .match-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }

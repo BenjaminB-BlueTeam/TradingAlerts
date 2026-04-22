@@ -5,6 +5,7 @@
 
   let alerts = [];
   let loading = true;
+  let error = '';
   let selectedDay = null;
   let expandedId = null;
   let h2hCache = {};
@@ -18,7 +19,8 @@
 
   async function loadAlerts() {
     loading = true;
-    const { data, error } = await supabase
+    error = '';
+    const { data, error: dbError } = await supabase
       .from('alerts')
       .select('*')
       .gte('match_date', getDateStr(-3))
@@ -26,7 +28,13 @@
       .in('signal_type', ['DC', 'FHG+DC'])
       .order('match_date', { ascending: false })
       .order('kickoff_unix', { ascending: true });
-    alerts = error ? [] : (data || []);
+    if (dbError) {
+      console.error('loadAlerts DC error:', dbError);
+      error = 'Impossible de charger les alertes DC.';
+      alerts = [];
+    } else {
+      alerts = data || [];
+    }
     loading = false;
   }
 
@@ -93,6 +101,10 @@
     </button>
   {/each}
 </div>
+
+{#if error}
+  <p class="error-msg">{error}</p>
+{/if}
 
 {#if loading}
   <div class="empty-state" style="padding:40px;">
@@ -188,6 +200,7 @@
 {/if}
 
 <style>
+  .error-msg { color: var(--color-danger, #e74c3c); text-align: center; padding: 1rem; }
   .dc-filters { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
   .dc-filter-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 5px 12px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
   .dc-filter-btn.active { background: var(--color-accent-blue); border-color: var(--color-accent-blue); color: white; }

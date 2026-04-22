@@ -85,59 +85,74 @@ exports.handler = async (event) => {
 
     const newAlerts = [];
 
-    for (const m of allMatches) {
-      if (!m.id || !m.homeID || !m.awayID) continue;
-      if (existingIds.has(m.id)) continue;
-      results.analyzed++;
+    // Filter matches to analyze
+    const matchesToAnalyze = allMatches.filter(m => m.id && m.homeID && m.awayID && !existingIds.has(m.id));
+    results.analyzed = matchesToAnalyze.length;
 
-      // FHG analyse — chaque équipe dans son contexte + matchs adversaire
-      const homeMatches = await getRecentMatches(m.homeID, 'home', 10);
-      const awayMatches = await getRecentMatches(m.awayID, 'away', 10);
-      const h2h = await getH2H(m.homeID, m.awayID);
-      // Matchs de l'adversaire dans son contexte (5 derniers)
-      const oppMatchesForHome = await getRecentMatches(m.awayID, 'away', 5);  // adversaire joue ext
-      const oppMatchesForAway = await getRecentMatches(m.homeID, 'home', 5);  // adversaire joue dom
+    // Process matches in batches of 5 for concurrency control
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < matchesToAnalyze.length; i += BATCH_SIZE) {
+      const batch = matchesToAnalyze.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.allSettled(batch.map(async (m) => {
+        // Parallelize all Supabase queries per match
+        const [homeMatches, awayMatches, h2h, oppMatchesForHome, oppMatchesForAway] = await Promise.all([
+          getRecentMatches(m.homeID, 'home', 10),
+          getRecentMatches(m.awayID, 'away', 10),
+          getH2H(m.homeID, m.awayID),
+          getRecentMatches(m.awayID, 'away', 5),   // adversaire joue ext
+          getRecentMatches(m.homeID, 'home', 5),    // adversaire joue dom
+        ]);
 
-      const fhgHome = analyzeFHGFromMatches(homeMatches, 'home', h2h, m.homeID, oppMatchesForHome);
-      const fhgAway = analyzeFHGFromMatches(awayMatches, 'away', h2h, m.awayID, oppMatchesForAway);
+        const fhgHome = analyzeFHGFromMatches(homeMatches, 'home', h2h, m.homeID, oppMatchesForHome);
+        const fhgAway = analyzeFHGFromMatches(awayMatches, 'away', h2h, m.awayID, oppMatchesForAway);
 
-      const bestFHG = (fhgHome?.isAlert && fhgAway?.isAlert)
-        ? (fhgHome.score >= fhgAway.score ? fhgHome : fhgAway)
-        : fhgHome?.isAlert ? fhgHome
-        : fhgAway?.isAlert ? fhgAway
-        : null;
+        const bestFHG = (fhgHome?.isAlert && fhgAway?.isAlert)
+          ? (fhgHome.score >= fhgAway.score ? fhgHome : fhgAway)
+          : fhgHome?.isAlert ? fhgHome
+          : fhgAway?.isAlert ? fhgAway
+          : null;
 
-      // DC analyse
-      const dc = analyzeDCFromH2H(h2h, m.homeID);
+        // DC analyse
+        const dc = analyzeDCFromH2H(h2h, m.homeID);
 
-      const hasFHG = bestFHG !== null;
-      const hasDC = dc?.isAlert === true;
-      if (!hasFHG && !hasDC) continue;
+        const hasFHG = bestFHG !== null;
+        const hasDC = dc?.isAlert === true;
+        if (!hasFHG && !hasDC) return null;
 
-      const signalType = hasFHG && hasDC ? 'FHG+DC' : hasFHG ? 'FHG' : 'DC';
-      const confidence = (hasFHG && bestFHG.confidence === 'fort') || (hasDC && dc.confidence === 'fort')
-        ? 'fort' : 'moyen';
+        const signalType = hasFHG && hasDC ? 'FHG+DC' : hasFHG ? 'FHG' : 'DC';
+        const confidence = (hasFHG && bestFHG.confidence === 'fort') || (hasDC && dc.confidence === 'fort')
+          ? 'fort' : 'moyen';
 
-      newAlerts.push({
-        match_id: m.id,
-        match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : getDateStr(0),
-        kickoff_unix: m.date_unix || null,
-        home_team_id: m.homeID,
-        away_team_id: m.awayID,
-        home_team_name: m.home_name || null,
-        away_team_name: m.away_name || null,
-        league_name: m.competition_name || null,
-        signal_type: signalType,
-        fhg_pct: bestFHG?.score || null,
-        fhg_confidence: bestFHG?.confidence || null,
-        fhg_factors: bestFHG?.factors || null,
-        dc_defeat_pct: hasDC ? dc.bestDefeatPct : null,
-        dc_best_side: hasDC ? dc.bestSide : null,
-        dc_confidence: hasDC ? dc.confidence : null,
-        h2h_count: h2h.length,
-        confidence,
-        status: 'pending',
-      });
+        return {
+          match_id: m.id,
+          match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : getDateStr(0),
+          kickoff_unix: m.date_unix || null,
+          home_team_id: m.homeID,
+          away_team_id: m.awayID,
+          home_team_name: m.home_name || null,
+          away_team_name: m.away_name || null,
+          league_name: m.competition_name || null,
+          signal_type: signalType,
+          fhg_pct: bestFHG?.score || null,
+          fhg_confidence: bestFHG?.confidence || null,
+          fhg_factors: bestFHG?.factors || null,
+          dc_defeat_pct: hasDC ? dc.bestDefeatPct : null,
+          dc_best_side: hasDC ? dc.bestSide : null,
+          dc_confidence: hasDC ? dc.confidence : null,
+          h2h_count: h2h.length,
+          confidence,
+          status: 'pending',
+        };
+      }));
+
+      for (const result of batchResults) {
+        if (result.status === 'fulfilled' && result.value !== null) {
+          newAlerts.push(result.value);
+        } else if (result.status === 'rejected') {
+          console.error(`[generate-alerts] Match analysis failed: ${result.reason?.message}`);
+          results.errors.push(result.reason?.message || 'Unknown error');
+        }
+      }
     }
 
     // Insérer les nouvelles alertes
