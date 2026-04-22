@@ -284,10 +284,10 @@
   .dc-expand__title strong { color: var(--color-text-primary); }
 
   .h2h-fav { font-weight: 800; color: var(--color-text-primary); text-decoration: underline; text-underline-offset: 2px; }
-  .h2h-result { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 3px; text-align: center; min-width: 20px; }
-  .h2h-result--W { background: rgba(29,158,117,0.15); color: var(--color-accent-green); }
-  .h2h-result--D { background: rgba(239,159,39,0.15); color: var(--color-signal-moyen); }
-  .h2h-result--L { background: rgba(226,75,74,0.15); color: var(--color-danger); }
+  .h2h-result { font-size: 9px; font-weight: 800; width: 16px; height: 16px; line-height: 16px; border-radius: 3px; text-align: center; display: inline-block; }
+  .h2h-result--W { background: var(--color-accent-green); color: #fff; }
+  .h2h-result--D { background: var(--color-signal-moyen); color: #fff; }
+  .h2h-result--L { background: var(--color-danger); color: #fff; }
 
   @media (max-width: 768px) {
     .dc-card__header { flex-wrap: wrap; }
