@@ -18,14 +18,15 @@ App **SvelteKit** de **trading sportif football**. Identifie les matchs avec for
 
 | Couche | Tech |
 |--------|------|
-| Frontend | SvelteKit 2 + Svelte 5 (SPA, ssr: false) |
+| Frontend | SvelteKit 2 + Svelte 5 runes (SPA, ssr: false) |
 | Build | Vite 6 |
 | Déploiement | Netlify (adapter-netlify) + Netlify Functions |
 | Données | API FootyStats (`football-data-api.com`) via proxy Netlify sécurisé |
 | Persistance | Supabase (PostgreSQL) — trades, team_seasons, h2h_matches, seed_jobs |
 | Charts | Chart.js 4.4 |
 | Clé API | `FOOTYSTATS_API_KEY` en variable d'env Netlify (jamais côté browser) |
-| Supabase (serveur) | `SUPABASE_URL` + `SUPABASE_ANON_KEY` en env vars Netlify (pour seed-data function) |
+| Supabase (serveur) | `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` en env vars Netlify (RLS bypass) |
+| Tests | Vitest |
 
 ---
 
@@ -49,7 +50,7 @@ src/
   routes/
     +layout.svelte      ← layout global (Sidebar, Toast, init)
     +layout.js           ← ssr: false, prerender: false
-    +page.svelte         ← Dashboard signaux FHG
+    +page.svelte         ← Dashboard KPIs + alertes du jour (Supabase)
     alerts/+page.svelte       ← Sélection FHG — alertes FHG depuis Supabase
     selection-dc/+page.svelte ← Sélection DC — alertes DC depuis Supabase
     historique/+page.svelte   ← Historique alertes + stats performance (KPI, ligues, filtres)
@@ -73,7 +74,9 @@ src/
       Modal.svelte      ← modale globale
       charts.js         ← graphiques Chart.js
     stores/
-      appStore.js       ← stores Svelte (config, leagues, trades, etc.)
+      appStore.js       ← stores Svelte (config, leagues, prefs, persistence localStorage)
+      tradeStore.js     ← CRUD trades (Supabase + localStorage)
+      tradeStats.js     ← calcul stats trades (fonction pure)
     core/
       scoring.js        ← algorithme FHG + DC
       scoring.test.js   ← tests unitaires scoring
@@ -85,7 +88,7 @@ src/
       formatters.test.js← tests unitaires formatters
       teamData.js       ← fonctions partagées (loadTeamMatches, computeTeamStats, goalBar)
       teamData.test.js  ← tests unitaires teamData
-    data.js             ← orchestration chargement données
+    data.js             ← initApp (test connexion API)
 ```
 
 ---
@@ -111,13 +114,13 @@ src/
 
 ## Tables Supabase
 
-| Table | Rôle | RLS |
-|-------|------|-----|
-| `trades` | Journal des trades | OFF |
-| `team_seasons` | Stats équipes par saison (3 ans, buts/min) | OFF |
-| `h2h_matches` | Historique matchs H2H avec goal_events | OFF |
-| `seed_jobs` | Suivi progression seed | OFF |
-| `alerts` | Alertes FHG/DC générées (status: pending/validated/lost) | OFF |
+| Table | Rôle | RLS | anon |
+|-------|------|-----|------|
+| `alerts` | Alertes FHG/DC (status: pending/validated/lost/expired) | ON | SELECT |
+| `trades` | Journal des trades | ON | ALL |
+| `team_seasons` | Stats équipes par saison (3 ans, buts/min) | ON | SELECT |
+| `h2h_matches` | Historique matchs H2H avec goal_events | ON | SELECT |
+| `seed_jobs` | Suivi progression seed | ON | SELECT |
 
 ---
 
@@ -168,6 +171,13 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - **Chart.js tree-shaké** — imports sélectifs au lieu de `chart.js/auto`
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
 - **Logging** — console.log structuré dans les 4 fonctions Netlify
+- **Dashboard unifié** — KPIs + alertes du jour/à venir depuis Supabase (ancien scoring pipeline supprimé)
+- **Svelte 5 runes** — migration complète : `$state`, `$derived`, `$effect`, `$props()` sur 16 fichiers
+- **Accessibilité** — keyboard handlers (`on:keydown`), `aria-pressed`/`aria-expanded`, `.sr-only`
+- **appStore splitté** — `tradeStore.js` (CRUD), `tradeStats.js` (calculs), `appStore.js` (stores + persistence)
+- **Supabase RLS activé** — policies read-only anon, service_role pour les Netlify Functions
+- **Gestion d'erreurs** — messages utilisateur sur toutes les pages (plus de catch vides)
+- **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5 avec `Promise.all`
 
 ---
 
@@ -179,8 +189,7 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - [x] **Affiner FHG fenêtre 31-45 min** — `generate-alerts.js` utilise `goal_events` filtré min 31-45 au lieu de `home_goals_ht`
 
 ### Priorité moyenne
-- [ ] Refonte algo — % bruts sans scoring 0-100
-- [ ] Refonte cartes dashboard — badges FHG + DC indépendants
+- [ ] Refonte algo — % bruts sans scoring 0-100 (scoring.js encore utilisé par MatchCard)
 - [ ] Bouton "Analyse IA" (Claude API, résultat mis en cache Supabase)
 
 ### Priorité basse
@@ -200,6 +209,7 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 
 ## Conventions de développement
 
+- **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()` (pas de `$:` ni `export let`)
 - **SvelteKit** — composants .svelte, stores Svelte, routing fichier
 - **Pas de modification du store global** sans vérifier les subscribers existants
 - **Toute nouvelle feature** : légère, compatible Netlify static + Supabase
