@@ -137,21 +137,50 @@
   let backfillTo = $state('');
   let backfillRunning = $state(false);
   let backfillResult = $state(null);
+  let backfillProgress = $state('');
+
+  function getDatesBetween(from, to) {
+    const dates = [];
+    const d = new Date(from + 'T00:00:00Z');
+    const end = new Date(to + 'T00:00:00Z');
+    while (d <= end) {
+      dates.push(d.toISOString().split('T')[0]);
+      d.setDate(d.getDate() + 1);
+    }
+    return dates;
+  }
 
   async function handleBackfill() {
     if (!backfillFrom) return;
     backfillRunning = true;
     backfillResult = null;
-    try {
-      const to = backfillTo || new Date().toISOString().split('T')[0];
-      const url = `/.netlify/functions/daily-seed?from=${backfillFrom}&to=${to}`;
-      const res = await fetch(url);
-      backfillResult = await res.json();
-      if (window.showToast) window.showToast(`Rattrapage : ${backfillResult.upserted} matchs mis à jour`, 'success');
-    } catch (e) {
-      backfillResult = { error: e.message };
-      if (window.showToast) window.showToast(e.message, 'error');
+    backfillProgress = '';
+    const to = backfillTo || new Date().toISOString().split('T')[0];
+    const dates = getDatesBetween(backfillFrom, to);
+    const results = { dates: dates.length, fetched: 0, completed: 0, upserted: 0, errors: [] };
+
+    for (let i = 0; i < dates.length; i++) {
+      const date = dates[i];
+      backfillProgress = `${i + 1}/${dates.length} — ${date}`;
+      try {
+        const res = await fetch(`/.netlify/functions/daily-seed?from=${date}&to=${date}`);
+        const data = await res.json();
+        results.fetched += data.fetched || 0;
+        results.completed += data.completed || 0;
+        results.upserted += data.upserted || 0;
+        if (data.errors?.length) results.errors.push(...data.errors);
+      } catch (e) {
+        results.errors.push(`${date}: ${e.message}`);
+      }
+      // Pause 1.5s entre chaque appel pour éviter le rate limit API
+      if (i < dates.length - 1) {
+        await new Promise(r => setTimeout(r, 1500));
+      }
     }
+
+    backfillResult = results;
+    backfillProgress = '';
+    if (window.showToast) window.showToast(`Rattrapage : ${results.upserted} matchs mis à jour`, 'success');
     backfillRunning = false;
   }
 
@@ -363,6 +392,11 @@
       {backfillRunning ? '⏳ Rattrapage en cours...' : '🚀 Lancer le rattrapage'}
     </button>
   </div>
+  {#if backfillProgress}
+    <div class="info-box mb-16">
+      En cours : <strong>{backfillProgress}</strong>
+    </div>
+  {/if}
   {#if backfillResult}
     <div class="debug-result" class:success={!backfillResult.error} class:error={backfillResult.error}>
       {#if backfillResult.error}

@@ -62,6 +62,7 @@ export function cacheEvict() {
   const now = Date.now();
   let evicted = 0;
   const keys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX));
+  // Supprimer les entrées expirées
   keys.forEach(k => {
     try {
       const entry = JSON.parse(localStorage.getItem(k));
@@ -74,7 +75,30 @@ export function cacheEvict() {
       evicted++;
     }
   });
-  if (evicted > 0) console.info(`Cache: ${evicted} entrée(s) expirée(s) supprimée(s)`);
+  // Si le cache est encore trop gros (>3MB), supprimer les plus anciennes entrées
+  const remaining = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX));
+  let totalSize = 0;
+  const entries = [];
+  remaining.forEach(k => {
+    const raw = localStorage.getItem(k);
+    if (!raw) return;
+    totalSize += raw.length * 2; // UTF-16
+    try {
+      const entry = JSON.parse(raw);
+      entries.push({ key: k, cachedAt: entry.cachedAt || 0, size: raw.length * 2 });
+    } catch {}
+  });
+  const MAX_SIZE = 3 * 1024 * 1024; // 3 MB
+  if (totalSize > MAX_SIZE) {
+    entries.sort((a, b) => a.cachedAt - b.cachedAt); // plus ancien en premier
+    while (totalSize > MAX_SIZE && entries.length > 0) {
+      const oldest = entries.shift();
+      localStorage.removeItem(oldest.key);
+      totalSize -= oldest.size;
+      evicted++;
+    }
+  }
+  if (evicted > 0) console.info(`Cache: ${evicted} entrée(s) supprimée(s)`);
 }
 
 export function cacheKey(endpoint, params = {}) {
