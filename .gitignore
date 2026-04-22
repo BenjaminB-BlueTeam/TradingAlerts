@@ -17,6 +17,9 @@ Thumbs.db
 # Claude Code
 .claude/
 
+# Superpowers brainstorm sessions
+.superpowers/
+
 # SvelteKit
 .svelte-kit/
 build/
