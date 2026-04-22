@@ -257,6 +257,9 @@
               <div class="team-detail__header">
                 <span class="team-detail__name">{m.home_name || '?'}</span>
                 <span class="team-detail__context">Domicile</span>
+                {#if hoverBar?.key === `${m.id}_home`}
+                  <span class="bar-hover-min">{hoverBar.min}'</span>
+                {/if}
                 {#if homeStats}
                   <div class="team-detail__summary">
                     <span>1MT: <strong style:color={fhgColor(homeStats.pctGoal1MT)}>{homeStats.pctGoal1MT}%</strong></span>
@@ -284,9 +287,7 @@
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#if hoverBar?.key === barKey}
-                            <div class="goal-cursor" style="left:{hoverBar.pct}%">
-                              <span class="goal-cursor__label">{hoverBar.min}'</span>
-                            </div>
+                            <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
                           {/if}
                           {#each bar.goals as g}
                             <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'"></span>
@@ -306,6 +307,9 @@
               <div class="team-detail__header">
                 <span class="team-detail__name">{m.away_name || '?'}</span>
                 <span class="team-detail__context">Extérieur</span>
+                {#if hoverBar?.key === `${m.id}_away`}
+                  <span class="bar-hover-min">{hoverBar.min}'</span>
+                {/if}
                 {#if awayStats}
                   <div class="team-detail__summary">
                     <span>1MT: <strong style:color={fhgColor(awayStats.pctGoal1MT)}>{awayStats.pctGoal1MT}%</strong></span>
@@ -333,9 +337,7 @@
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#if hoverBar?.key === barKey}
-                            <div class="goal-cursor" style="left:{hoverBar.pct}%">
-                              <span class="goal-cursor__label">{hoverBar.min}'</span>
-                            </div>
+                            <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
                           {/if}
                           {#each bar.goals as g}
                             <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'"></span>
@@ -415,7 +417,7 @@
   .goal-dot--conceded { opacity: 0.5; }
 
   .goal-cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(0,0,0,0.75); transform: translateX(-50%); pointer-events: none; z-index: 3; }
-  .goal-cursor__label { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #fff; font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px; white-space: nowrap; margin-bottom: 2px; }
+  .bar-hover-min { font-size: 11px; font-weight: 700; color: var(--color-text-primary); background: rgba(255,255,255,0.1); padding: 1px 6px; border-radius: 4px; }
 
   @media (max-width: 1200px) {
     .match-expand { grid-template-columns: 1fr; }
