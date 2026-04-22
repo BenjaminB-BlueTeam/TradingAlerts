@@ -203,13 +203,13 @@ describe('analyzeFHGFromMatches', () => {
     expect(result.factors.recurrence1MT).toBe(100);
   });
 
-  it('activates clean sheet block when no goals in H2H 31-45 window', () => {
+  it('activates clean sheet block when team never scored in H2H', () => {
     const matches = Array(5).fill(null).map(() =>
       makeTeamMatch({ goalEvents: [{ min: 35, home: true }] })
     );
-    // H2H: 3 matches, no goals in 31-45 for this team
+    // H2H: 3 matches, team 100 never scored (0 goals when home, 0 goals when away)
     const h2h = Array(3).fill(null).map(() =>
-      makeH2HMatch({ homeId: 100, awayId: 200, goalEvents: [{ min: 10, home: true }] })
+      makeH2HMatch({ homeId: 100, awayId: 200, homeGoals: 0, awayGoals: 1, goalEvents: [{ min: 10, home: false }] })
     );
     const result = analyzeFHGFromMatches(matches, 'home', h2h, 100, []);
 

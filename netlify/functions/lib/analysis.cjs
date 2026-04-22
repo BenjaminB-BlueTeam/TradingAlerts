@@ -39,13 +39,13 @@ function analyzeFHGFromMatches(matches, context, h2h, teamId, opponentMatches) {
     pctReaction1MT = Math.round((reactions / oppScored.length) * 100);
   }
 
-  // Clean sheet H2H
+  // Clean sheet H2H — l'équipe n'a JAMAIS marqué dans les H2H (toutes minutes)
   let cleanSheetBlock = false;
   if (h2h.length >= 3) {
     const h2hGoals = h2h.filter(m => {
-      const events = Array.isArray(m.goal_events) ? m.goal_events : [];
       const teamIsHomeInH2H = m.home_team_id === teamId;
-      return events.some(e => e.min >= 31 && e.min <= 45 && e.home === teamIsHomeInH2H);
+      const scored = teamIsHomeInH2H ? (m.home_goals || 0) : (m.away_goals || 0);
+      return scored > 0;
     }).length;
     if (h2hGoals === 0) cleanSheetBlock = true;
   }

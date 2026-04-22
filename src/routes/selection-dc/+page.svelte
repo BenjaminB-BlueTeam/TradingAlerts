@@ -25,7 +25,7 @@
       .select('*')
       .gte('match_date', getDateStr(-3))
       .lte('match_date', getDateStr(2))
-      .in('signal_type', ['DC', 'FHG+DC'])
+      .eq('signal_type', 'DC')
       .order('match_date', { ascending: false })
       .order('kickoff_unix', { ascending: true });
     if (dbError) {
@@ -152,9 +152,6 @@
             </div>
           </div>
           <div class="dc-card__badges">
-            {#if a.signal_type === 'FHG+DC'}
-              <span class="dc-badge dc-badge--fhg">+FHG</span>
-            {/if}
             <span class="dc-badge {confidenceClass(a.confidence)}">{a.confidence}<span class="sr-only"> — confiance {a.confidence === 'fort' ? 'forte' : 'moyenne'}</span></span>
             {#if a.status === 'validated'}
               <span class="dc-badge dc-badge--validated">✓ Validé</span>

@@ -100,10 +100,6 @@ exports.handler = async () => {
           newStatus = evaluateFHG(matchData);
         } else if (signalType === 'DC') {
           newStatus = evaluateDC(matchData, alert.dc_best_side);
-        } else if (signalType === 'FHG+DC') {
-          const fhgResult = evaluateFHG(matchData);
-          const dcResult = evaluateDC(matchData, alert.dc_best_side);
-          newStatus = (fhgResult === 'validated' && dcResult === 'validated') ? 'validated' : 'lost';
         } else {
           continue;
         }

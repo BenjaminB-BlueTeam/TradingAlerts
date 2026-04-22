@@ -59,12 +59,12 @@
     ? Math.round((terminated.filter(a => a.status === 'validated').length / terminated.length) * 100)
     : null);
 
-  let fhgTerminated = $derived(terminated.filter(a => a.signal_type === 'FHG' || a.signal_type === 'FHG+DC'));
+  let fhgTerminated = $derived(terminated.filter(a => a.signal_type === 'FHG'));
   let fhgPct = $derived(fhgTerminated.length
     ? Math.round((fhgTerminated.filter(a => a.status === 'validated').length / fhgTerminated.length) * 100)
     : null);
 
-  let dcTerminated = $derived(terminated.filter(a => a.signal_type === 'DC' || a.signal_type === 'FHG+DC'));
+  let dcTerminated = $derived(terminated.filter(a => a.signal_type === 'DC'));
   let dcPct = $derived(dcTerminated.length
     ? Math.round((dcTerminated.filter(a => a.status === 'validated').length / dcTerminated.length) * 100)
     : null);
@@ -108,8 +108,8 @@
 
   // Liste filtrée
   let filteredAlerts = $derived(alerts.filter(a => {
-    if (activeFilter === 'fhg')       return a.signal_type === 'FHG' || a.signal_type === 'FHG+DC';
-    if (activeFilter === 'dc')        return a.signal_type === 'DC'  || a.signal_type === 'FHG+DC';
+    if (activeFilter === 'fhg')       return a.signal_type === 'FHG';
+    if (activeFilter === 'dc')        return a.signal_type === 'DC';
     if (activeFilter === 'validated') return a.status === 'validated';
     if (activeFilter === 'lost')      return a.status === 'lost';
     if (activeFilter === 'encours')   return a.status === 'pending' && isInPlay(a);
@@ -118,8 +118,8 @@
 
   function countFor(key) {
     if (key === 'tous')      return alerts.length;
-    if (key === 'fhg')       return alerts.filter(a => a.signal_type === 'FHG' || a.signal_type === 'FHG+DC').length;
-    if (key === 'dc')        return alerts.filter(a => a.signal_type === 'DC'  || a.signal_type === 'FHG+DC').length;
+    if (key === 'fhg')       return alerts.filter(a => a.signal_type === 'FHG').length;
+    if (key === 'dc')        return alerts.filter(a => a.signal_type === 'DC').length;
     if (key === 'validated') return alerts.filter(a => a.status === 'validated').length;
     if (key === 'lost')      return alerts.filter(a => a.status === 'lost').length;
     if (key === 'encours')   return alerts.filter(a => a.status === 'pending' && isInPlay(a)).length;
@@ -347,7 +347,6 @@
   .type-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; }
   .type-badge--fhg   { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
   .type-badge--dc    { background: rgba(239,159,39,0.15);  color: var(--color-signal-moyen); }
-  .type-badge--fhgdc { background: rgba(29,158,117,0.15);  color: var(--color-accent-green); }
 
   .res-label { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
   .res--validated { background: rgba(29,158,117,0.15); color: var(--color-accent-green); }

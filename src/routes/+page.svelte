@@ -10,8 +10,8 @@
   // Stats calculees
   let todayStr = $derived(getDateStr(0));
   let todayAlerts = $derived(alerts.filter(a => a.match_date === todayStr));
-  let fhgAlerts = $derived(todayAlerts.filter(a => a.signal_type === 'FHG' || a.signal_type === 'FHG+DC'));
-  let dcAlerts = $derived(todayAlerts.filter(a => a.signal_type === 'DC' || a.signal_type === 'FHG+DC'));
+  let fhgAlerts = $derived(todayAlerts.filter(a => a.signal_type === 'FHG'));
+  let dcAlerts = $derived(todayAlerts.filter(a => a.signal_type === 'DC'));
   let validatedToday = $derived(todayAlerts.filter(a => a.status === 'validated'));
   let lostToday = $derived(todayAlerts.filter(a => a.status === 'lost'));
   let pendingToday = $derived(todayAlerts.filter(a => a.status === 'pending'));
@@ -121,9 +121,6 @@
           </div>
           <div class="dash-alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}<span class="sr-only"> — confiance {a.confidence === 'fort' ? 'forte' : 'moyenne'}</span></span>
-            {#if a.signal_type === 'FHG+DC'}
-              <span class="alert-badge alert-badge--dc">+DC</span>
-            {/if}
             {#if a.status === 'validated'}
               <span class="alert-badge alert-badge--validated">Valide</span>
             {:else if a.status === 'lost'}
@@ -167,9 +164,6 @@
           </div>
           <div class="dash-alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}<span class="sr-only"> — confiance {a.confidence === 'fort' ? 'forte' : 'moyenne'}</span></span>
-            {#if a.signal_type === 'FHG+DC'}
-              <span class="alert-badge alert-badge--dc">+DC</span>
-            {/if}
           </div>
         </div>
       {/each}

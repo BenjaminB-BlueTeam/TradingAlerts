@@ -119,12 +119,7 @@ exports.handler = async (event) => {
         const hasDC = dc?.isAlert === true;
         if (!hasFHG && !hasDC) return null;
 
-        const signalType = hasFHG && hasDC ? 'FHG+DC' : hasFHG ? 'FHG' : 'DC';
-        const confidence = (hasFHG && bestFHG.confidence === 'fort') || (hasDC && dc.confidence === 'fort')
-          ? 'fort' : 'moyen';
-
-        return {
-          match_id: m.id,
+        const baseFields = {
           match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : getDateStr(0),
           kickoff_unix: m.date_unix || null,
           home_team_id: m.homeID,
@@ -132,22 +127,46 @@ exports.handler = async (event) => {
           home_team_name: m.home_name || null,
           away_team_name: m.away_name || null,
           league_name: m.competition_name || null,
-          signal_type: signalType,
-          fhg_pct: bestFHG?.score || null,
-          fhg_confidence: bestFHG?.confidence || null,
-          fhg_factors: bestFHG?.factors || null,
-          dc_defeat_pct: hasDC ? dc.bestDefeatPct : null,
-          dc_best_side: hasDC ? dc.bestSide : null,
-          dc_confidence: hasDC ? dc.confidence : null,
           h2h_count: h2h.length,
-          confidence,
           status: 'pending',
         };
+
+        // Créer des alertes séparées pour FHG et DC (pas de tag combiné)
+        const alerts = [];
+        if (hasFHG) {
+          alerts.push({
+            ...baseFields,
+            match_id: m.id,
+            signal_type: 'FHG',
+            fhg_pct: bestFHG.score,
+            fhg_confidence: bestFHG.confidence,
+            fhg_factors: bestFHG.factors,
+            dc_defeat_pct: null,
+            dc_best_side: null,
+            dc_confidence: null,
+            confidence: bestFHG.confidence,
+          });
+        }
+        if (hasDC) {
+          alerts.push({
+            ...baseFields,
+            match_id: hasFHG ? m.id * -1 : m.id, // ID unique si les deux existent
+            signal_type: 'DC',
+            fhg_pct: null,
+            fhg_confidence: null,
+            fhg_factors: null,
+            dc_defeat_pct: dc.bestDefeatPct,
+            dc_best_side: dc.bestSide,
+            dc_confidence: dc.confidence,
+            confidence: dc.confidence,
+          });
+        }
+        return alerts;
       }));
 
       for (const result of batchResults) {
         if (result.status === 'fulfilled' && result.value !== null) {
-          newAlerts.push(result.value);
+          newAlerts.push(...result.value);
         } else if (result.status === 'rejected') {
           console.error(`[generate-alerts] Match analysis failed: ${result.reason?.message}`);
           results.errors.push(result.reason?.message || 'Unknown error');
