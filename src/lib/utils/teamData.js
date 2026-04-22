@@ -33,10 +33,22 @@ export async function loadTeamMatches(teamId, context, supabaseClient) {
     .eq(col, teamId)
     .gte('match_date', seasonStart)
     .lt('match_date', today)
+    .not('goal_events', 'is', null)
     .order('match_date', { ascending: false })
     .limit(30);
 
-  return data || [];
+  // Filtrer les matchs pré-seedés sans données réelles (goal_events vide)
+  return (data || []).filter(m => {
+    const events = m.goal_events;
+    // Garder les matchs avec goal_events remplis OU avec au moins 1 but (0-0 réel possible)
+    if (Array.isArray(events) && events.length > 0) return true;
+    // Si goal_events est vide [] mais le match a des buts HT → c'est un vrai match
+    if ((m.home_goals_ht || 0) > 0 || (m.away_goals_ht || 0) > 0) return true;
+    // Si home_goals + away_goals = 0 et pas de goal_events → pourrait être un 0-0 réel ou un match non joué
+    // On garde si last_updated existe (= le daily-seed l'a traité)
+    if (m.last_updated) return true;
+    return false;
+  });
 }
 
 /**
