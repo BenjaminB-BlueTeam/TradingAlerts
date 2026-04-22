@@ -46,12 +46,12 @@ src/
     +layout.svelte      ← layout global (Sidebar, Toast, init)
     +layout.js           ← ssr: false, prerender: false
     +page.svelte         ← Dashboard signaux FHG
-    alerts/+page.svelte  ← Sélection FHG — alertes FHG depuis Supabase
+    alerts/+page.svelte       ← Sélection FHG — alertes FHG depuis Supabase
     selection-dc/+page.svelte ← Sélection DC — alertes DC depuis Supabase
-    matches/+page.svelte ← Matchs à venir (table)
-    leagues/+page.svelte ← Ligues actives (toggle, stats, classement)
-    explore/+page.svelte ← Explorer toutes les ligues (par pays, stats, classement)
-    dc/+page.svelte      ← (legacy, non lié dans la nav)
+    historique/+page.svelte   ← Historique alertes + stats performance (KPI, ligues, filtres)
+    matches/+page.svelte      ← Matchs à venir (table)
+    leagues/+page.svelte      ← Ligues actives (toggle, stats, classement)
+    explore/+page.svelte      ← Explorer toutes les ligues (par pays, stats, classement)
     config/+page.svelte  ← Configuration algo (profil, seuils, trades)
     settings/+page.svelte← Paramètres, journal trades, bankroll
     debug/+page.svelte   ← Debug (test API/Supabase, seed, testeur API brut)
@@ -147,8 +147,10 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - **Seed** — Netlify Function fetch + client insert REST API Supabase, batch 200
 - **Compteur API** — req restantes affiché dans la sidebar en temps réel
 - **Mode démo supprimé** — toutes les données viennent de l'API/Supabase
-- **Sidebar** — Dashboard, Sélection FHG, Sélection DC, Matchs à venir, Classements ligues, Paramètres + Admin (Ligues, Config, Debug)
-- **Page Live supprimée** — les statuts EN COURS sont affichés directement sur les pages Sélection FHG et DC
+- **Page Historique** (`/historique`) — stats globales (Global/FHG/DC/fort/moyen), tableau par ligue trié, liste filtrée de toutes les alertes (Tous/FHG/DC/Validé/Perdu/En cours)
+- **Sidebar** — Dashboard, Sélection FHG, Sélection DC, Historique, Matchs à venir, Classements ligues, Paramètres + Admin (Ligues, Config, Debug)
+- **Page Live supprimée** — les statuts EN COURS sont affichés directement sur les pages Sélection FHG, DC et Historique
+- **Paramètres / Config ligues** — charge les 50 ligues depuis l'API (plus hardcodé), boutons Tout activer / Tout désactiver
 - Proxy Netlify sécurisé, cache localStorage TTL
 
 ---
@@ -157,8 +159,8 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 
 ### Priorité haute
 - [x] **Vérification auto résultats** — `check-results.js` cron 1h, FHG sur buts MT, DC sur résultat final
-- [ ] **Page Historique des Alertes** — toutes les alertes passées + stats performance (taux réussite par type, ligue, confiance)
-- [ ] **Affiner FHG fenêtre 31-45 min** — utiliser goal_events pour cibler spécifiquement la fenêtre au lieu de toute la 1MT
+- [x] **Page Historique des Alertes** — `/historique` avec KPIs, tableau ligues, liste filtrée
+- [x] **Affiner FHG fenêtre 31-45 min** — `generate-alerts.js` utilise `goal_events` filtré min 31-45 au lieu de `home_goals_ht`
 
 ### Priorité moyenne
 - [ ] Refonte algo — % bruts sans scoring 0-100
