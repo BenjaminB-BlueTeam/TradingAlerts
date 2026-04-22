@@ -81,13 +81,46 @@
     return 'L';
   }
 
+  let generating = $state(false);
+  let genMessage = $state('');
+
+  async function handleGenerate() {
+    generating = true;
+    genMessage = '';
+    try {
+      const res = await fetch('/.netlify/functions/generate-alerts?type=DC');
+      const data = await res.json();
+      if (data.error) {
+        genMessage = `Erreur : ${data.error}`;
+      } else if (data.alerts_created > 0) {
+        genMessage = `${data.alerts_created} alerte${data.alerts_created > 1 ? 's' : ''} DC créée${data.alerts_created > 1 ? 's' : ''}`;
+        await loadAlerts();
+      } else {
+        genMessage = `Aucune alerte DC — ${data.analyzed} matchs analysés, aucun ne correspond`;
+      }
+    } catch (e) {
+      genMessage = `Erreur : ${e.message}`;
+    }
+    generating = false;
+  }
+
   onMount(() => { loadAlerts(); });
 </script>
 
-<h1 class="page-title">🎯 Sélection DC</h1>
-<p class="page-subtitle">
-  {alerts.length} signal{alerts.length > 1 ? 's' : ''} Double Chance — 3 derniers jours + à venir
-</p>
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+  <div>
+    <h1 class="page-title">🎯 Sélection DC</h1>
+    <p class="page-subtitle">
+      {alerts.length} signal{alerts.length > 1 ? 's' : ''} Double Chance — 3 derniers jours + à venir
+    </p>
+  </div>
+  <button class="btn btn--secondary btn--sm" onclick={handleGenerate} disabled={generating}>
+    {generating ? '⏳...' : '🔄 Actualiser'}
+  </button>
+</div>
+{#if genMessage}
+  <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--color-text-muted);">{genMessage}</div>
+{/if}
 
 <div class="dc-filters">
   <button class="dc-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} onclick={() => selectedDay = null}>
@@ -118,6 +151,12 @@
     <div style="font-size:12px;color:var(--color-text-muted);margin-top:8px;">
       Les signaux sont générés automatiquement toutes les 12h
     </div>
+    <button class="btn btn--primary" style="margin-top:12px;" onclick={handleGenerate} disabled={generating}>
+      {generating ? '⏳ Analyse en cours...' : '🎯 Lancer l\'analyse DC maintenant'}
+    </button>
+    {#if genMessage}
+      <div style="font-size:12px;margin-top:8px;color:var(--color-text-muted);">{genMessage}</div>
+    {/if}
   </div>
 {:else}
   <div class="dc-list">

@@ -18,6 +18,29 @@
     { label: 'Apr\u00e8s-demain', offset: 2 },
   ];
 
+  let generating = $state(false);
+  let genMessage = $state('');
+
+  async function handleGenerate() {
+    generating = true;
+    genMessage = '';
+    try {
+      const res = await fetch('/.netlify/functions/generate-alerts?type=FHG');
+      const data = await res.json();
+      if (data.error) {
+        genMessage = `Erreur : ${data.error}`;
+      } else if (data.alerts_created > 0) {
+        genMessage = `${data.alerts_created} alerte${data.alerts_created > 1 ? 's' : ''} FHG créée${data.alerts_created > 1 ? 's' : ''}`;
+        await loadAlerts(); // Recharger
+      } else {
+        genMessage = `Aucune alerte FHG — ${data.analyzed} matchs analysés, aucun ne correspond`;
+      }
+    } catch (e) {
+      genMessage = `Erreur : ${e.message}`;
+    }
+    generating = false;
+  }
+
   async function loadAlerts() {
     loading = true;
     error = '';
@@ -92,10 +115,20 @@
   onMount(() => { loadAlerts(); });
 </script>
 
-<h1 class="page-title">⚡ Sélection FHG</h1>
-<p class="page-subtitle">
-  {alerts.length} signal{alerts.length > 1 ? 's' : ''} FHG — 3 derniers jours + à venir
-</p>
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+  <div>
+    <h1 class="page-title">⚡ Sélection FHG</h1>
+    <p class="page-subtitle">
+      {alerts.length} signal{alerts.length > 1 ? 's' : ''} FHG — 3 derniers jours + à venir
+    </p>
+  </div>
+  <button class="btn btn--secondary btn--sm" onclick={handleGenerate} disabled={generating}>
+    {generating ? '⏳...' : '🔄 Actualiser'}
+  </button>
+</div>
+{#if genMessage}
+  <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--color-text-muted);">{genMessage}</div>
+{/if}
 
 <div class="alerts-filters">
   <button class="alerts-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} onclick={() => selectedDay = null}>
@@ -123,8 +156,14 @@
     <div class="empty-state__icon">🔔</div>
     <div class="empty-state__title">Aucune alerte</div>
     <div style="font-size:12px;color:var(--color-text-muted);margin-top:8px;">
-      Les alertes sont generees automatiquement toutes les 12h
+      Les alertes sont générées automatiquement toutes les 12h
     </div>
+    <button class="btn btn--primary" style="margin-top:12px;" onclick={handleGenerate} disabled={generating}>
+      {generating ? '⏳ Analyse en cours...' : '⚡ Lancer l\'analyse FHG maintenant'}
+    </button>
+    {#if genMessage}
+      <div style="font-size:12px;margin-top:8px;color:var(--color-text-muted);">{genMessage}</div>
+    {/if}
   </div>
 {:else}
   <div class="alerts-list">
