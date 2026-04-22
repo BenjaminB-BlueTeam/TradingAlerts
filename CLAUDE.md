@@ -36,6 +36,8 @@ package.json / svelte.config.js / vite.config.js
 netlify.toml
 netlify/functions/
   footystats.js         ← proxy sécurisé API FootyStats
+  generate-alerts.js    ← cron 12h — génère alertes FHG/DC pour J, J+1, J+2
+  check-results.js      ← cron 1h — vérifie résultats matchs pending terminés
   seed-data.js          ← seed Supabase (team_seasons, h2h_matches)
 src/
   app.css               ← styles globaux (variables CSS, composants, responsive)
@@ -44,12 +46,12 @@ src/
     +layout.svelte      ← layout global (Sidebar, Toast, init)
     +layout.js           ← ssr: false, prerender: false
     +page.svelte         ← Dashboard signaux FHG
-    dc/+page.svelte      ← Double Chance — analyse H2H (3 jours)
+    alerts/+page.svelte  ← Sélection FHG — alertes FHG depuis Supabase
+    selection-dc/+page.svelte ← Sélection DC — alertes DC depuis Supabase
     matches/+page.svelte ← Matchs à venir (table)
     leagues/+page.svelte ← Ligues actives (toggle, stats, classement)
     explore/+page.svelte ← Explorer toutes les ligues (par pays, stats, classement)
-    alerts/+page.svelte  ← Alertes FHG + DC (matchs pertinents à surveiller)
-    live/+page.svelte    ← Live — matchs alertés en cours, scores temps réel (refresh 10s)
+    dc/+page.svelte      ← (legacy, non lié dans la nav)
     config/+page.svelte  ← Configuration algo (profil, seuils, trades)
     settings/+page.svelte← Paramètres, journal trades, bankroll
     debug/+page.svelte   ← Debug (test API/Supabase, seed, testeur API brut)
@@ -106,6 +108,7 @@ src/
 | `team_seasons` | Stats équipes par saison (3 ans, buts/min) | OFF |
 | `h2h_matches` | Historique matchs H2H avec goal_events | OFF |
 | `seed_jobs` | Suivi progression seed | OFF |
+| `alerts` | Alertes FHG/DC générées (status: pending/validated/lost) | OFF |
 
 ---
 
@@ -125,16 +128,16 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 
 ---
 
-## Ce qui est implémenté (état 2026-03-29)
+## Ce qui est implémenté (état 2026-04-22)
 
 - **Système d'alertes autonome** — `generate-alerts.js` (Netlify Scheduled Function, cron 12h) + `alertEngine.js`
   - FHG : analyse comportementale par équipe (récurrence 1MT, 2+ buts 1MT, réaction quand menée, clean sheet H2H, filtre adversaire encaisse 2/5)
   - DC : analyse H2H (% défaite ≤ 20-30%, min 5 H2H)
   - Tags FHG / DC / FHG+DC, confiance fort/moyen
   - Table Supabase `alerts` (match_id unique, status pending/validated/lost)
-- **Page Alertes** (`/alerts`) — lit depuis Supabase `alerts`, expand détaillé par équipe (15 derniers matchs dom/ext), barre de timing buts avec ballons positionnés par minute exacte (PNG custom), scores colorés (vert victoire, orange nul, rouge défaite), stats résumé (1MT%, AVG, BTTS%, O2.5%)
-- **Page Live** (`/live`) — matchs alertés en cours uniquement (kickoff passé, pas terminé), refresh 10s, scores live
-- **Page Double Chance** (`/dc`) — analyse H2H depuis Supabase (toutes saisons), plus d'appels API
+- **Vérification auto résultats** — `check-results.js` (cron 1h) : récupère les matchs `pending` terminés, évalue FHG (buts MT) et DC (résultat final), met à jour `status` → `validated`/`lost`
+- **Page Sélection FHG** (`/alerts`) — alertes FHG/FHG+DC depuis Supabase, filtres par jour, expand détaillé par équipe (15 derniers matchs dom/ext), barre de timing buts avec ballons PNG, scores colorés, stats résumé (1MT%, AVG, BTTS%, O2.5%), badges Validé/Perdu/EN COURS
+- **Page Sélection DC** (`/selection-dc`) — alertes DC/FHG+DC depuis Supabase, filtres par jour, expand H2H (10 derniers matchs W/D/L), % défaite coloré, badges confiance fort/moyen
 - **Page Matchs à venir** (`/matches`) — fetch API par date, filtres réactifs (date + ligue), exclut matchs commencés
 - **Page Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner, stats
 - **Page Classements ligues** (`/explore`) — par pays, stats, classements
@@ -144,7 +147,8 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - **Seed** — Netlify Function fetch + client insert REST API Supabase, batch 200
 - **Compteur API** — req restantes affiché dans la sidebar en temps réel
 - **Mode démo supprimé** — toutes les données viennent de l'API/Supabase
-- **Sidebar** — Dashboard, Alertes, Live, DC, Matchs, Classements ligues, Paramètres + Admin (Ligues, Config, Debug)
+- **Sidebar** — Dashboard, Sélection FHG, Sélection DC, Matchs à venir, Classements ligues, Paramètres + Admin (Ligues, Config, Debug)
+- **Page Live supprimée** — les statuts EN COURS sont affichés directement sur les pages Sélection FHG et DC
 - Proxy Netlify sécurisé, cache localStorage TTL
 
 ---
@@ -152,7 +156,7 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 ## Roadmap — prochaines étapes
 
 ### Priorité haute
-- [ ] **Vérification auto résultats** — check à la MT (FHG) et fin de match (DC), statut Validé/Perdu
+- [x] **Vérification auto résultats** — `check-results.js` cron 1h, FHG sur buts MT, DC sur résultat final
 - [ ] **Page Historique des Alertes** — toutes les alertes passées + stats performance (taux réussite par type, ligue, confiance)
 - [ ] **Affiner FHG fenêtre 31-45 min** — utiliser goal_events pour cibler spécifiquement la fenêtre au lieu de toute la 1MT
 
