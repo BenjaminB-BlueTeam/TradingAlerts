@@ -238,10 +238,9 @@
                 {#if hoverBar?.key === `${m.id}_home`}
                   <span class="bar-hover-min">{hoverBar.min}'</span>
                 {/if}
-                {#if homeStats}
+                {#if getFhgStat(m.homeID, 'home') != null}
                   <div class="team-detail__summary">
-                    <span>1MT: <strong style:color={fhgColor(homeStats.pctGoal1MT)}>{homeStats.pctGoal1MT}%</strong></span>
-                    <span>AVG: <strong>{homeStats.avgGoals}</strong></span>
+                    <span>FHG 31-45: <strong style:color={fhgColor(getFhgStat(m.homeID, 'home'))}>{getFhgStat(m.homeID, 'home')}%</strong></span>
                   </div>
                 {/if}
               </div>
@@ -286,10 +285,9 @@
                 {#if hoverBar?.key === `${m.id}_away`}
                   <span class="bar-hover-min">{hoverBar.min}'</span>
                 {/if}
-                {#if awayStats}
+                {#if getFhgStat(m.awayID, 'away') != null}
                   <div class="team-detail__summary">
-                    <span>1MT: <strong style:color={fhgColor(awayStats.pctGoal1MT)}>{awayStats.pctGoal1MT}%</strong></span>
-                    <span>AVG: <strong>{awayStats.avgGoals}</strong></span>
+                    <span>FHG 31-45: <strong style:color={fhgColor(getFhgStat(m.awayID, 'away'))}>{getFhgStat(m.awayID, 'away')}%</strong></span>
                   </div>
                 {/if}
               </div>
