@@ -45,6 +45,7 @@ netlify/functions/
     api.js              ← helpers partagés (footyRequest, supabaseQuery)
     analysis.cjs        ← logique FHG/DC extraite et testable
     analysis.test.js    ← tests unitaires analyse FHG/DC (31 tests)
+    parseMatch.js       ← parseMatchRow partagé (daily-seed + seed-data)
 src/
   app.css               ← styles globaux (variables CSS, composants, responsive)
   app.html              ← template HTML
@@ -74,6 +75,12 @@ src/
       Toast.svelte      ← notifications toast
       Modal.svelte      ← modale globale
       charts.js         ← graphiques Chart.js
+      settings/
+        ApiTest.svelte    ← test connexion API
+        TradeJournal.svelte← journal des trades
+        TradeStats.svelte ← stats personnelles
+        BankrollCalc.svelte← calcul bankroll
+        DangerZone.svelte ← zone danger (reset)
     stores/
       appStore.js       ← stores Svelte (config, leagues, prefs, persistence localStorage)
       tradeStore.js     ← CRUD trades (Supabase + localStorage)
@@ -81,7 +88,6 @@ src/
     core/
       scoring.js        ← algorithme FHG (% bruts) + DC
       scoring.test.js   ← tests unitaires scoring (29 tests)
-      doubleChance.js   ← analyse DC basée H2H (% défaite, comeback, MT≠FT)
       h2h.js            ← analyse head-to-head
       filters.js        ← isWindowActive (fenêtre 31-45 min)
     utils/
@@ -89,6 +95,7 @@ src/
       formatters.test.js← tests unitaires formatters
       teamData.js       ← fonctions partagées (loadTeamMatches, computeTeamStats, goalBar)
       teamData.test.js  ← tests unitaires teamData
+      leagueHelpers.js  ← fonctions partagées leagues/explore (stats, expand, couleurs)
     data.js             ← initApp (test connexion API)
 ```
 
@@ -183,7 +190,12 @@ src/
 - **Refonte algo % bruts** — `scoring.js` utilise pct1MT/pctAdversaire/pct2Plus1MT/pctReaction (plus de score 0-100)
 - **Historique paginé** — limite 90 jours + bouton "Charger plus"
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css` (plus de duplication)
-- **Code mort nettoyé** — `filters.js` réduit à `isWindowActive` seul
+- **Code mort nettoyé** — `filters.js` réduit à `isWindowActive`, `doubleChance.js` supprimé
+- **Settings splitté** — 5 sous-composants (ApiTest, TradeJournal, TradeStats, BankrollCalc, DangerZone)
+- **leagueHelpers.js** — logique partagée leagues/explore extraite
+- **parseMatch.js** — parseMatchRow partagé daily-seed/seed-data
+- **Svelte 5 events** — `on:click` → `onclick` sur 15 fichiers
+- **Supabase credentials** — `import.meta.env` avec fallback hardcodé
 
 ---
 
@@ -194,15 +206,15 @@ src/
 - [x] **Page Historique des Alertes** — `/historique` avec KPIs, tableau ligues, liste filtrée
 - [x] **Affiner FHG fenêtre 31-45 min** — `generate-alerts.js` utilise `goal_events` filtré min 31-45 au lieu de `home_goals_ht`
 
-### Priorité moyenne (prochaine session)
-- [ ] Extraire logique partagée leagues/explore (60% dupliqué)
-- [ ] Extraire `parseMatchRow` partagé entre `daily-seed.js` et `seed-data.js`
-- [ ] Ajouter `console.warn` dans `supabaseQuery` quand erreur (silent fail actuel)
-- [ ] Migrer `on:click` → `onclick` (syntaxe Svelte 5 native)
-- [ ] Corriger `get(config)` non réactif dans MatchCard → utiliser `$config`
-- [ ] Déplacer Supabase key dans `import.meta.env` au lieu de hardcoder
-- [ ] Splitter `settings/+page.svelte` (478L monolithique) en sous-composants
-- [ ] Vérifier si `doubleChance.js` est encore importé (potentiel code mort)
+### Priorité moyenne (fait session 2026-04-22)
+- [x] Extraire logique partagée leagues/explore → `leagueHelpers.js`
+- [x] Extraire `parseMatchRow` → `lib/parseMatch.js`
+- [x] `supabaseQuery` log les erreurs HTTP
+- [x] Migrer `on:click` → `onclick` (Svelte 5 natif, 15 fichiers)
+- [x] `get(config)` → `$config` dans MatchCard
+- [x] Supabase key → `import.meta.env` avec fallback
+- [x] Settings splitté en 5 composants
+- [x] `doubleChance.js` supprimé (code mort confirmé)
 
 ### Priorité basse
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API
