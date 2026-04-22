@@ -132,6 +132,25 @@
     seedProgress = seedProgress;
   }
 
+  // --- Génération alertes manuelle ---
+  let genRunning = $state(null); // 'FHG' | 'DC' | 'ALL' | null
+  let genResult = $state(null);
+
+  async function handleGenerate(type) {
+    genRunning = type;
+    genResult = null;
+    try {
+      const url = type === 'ALL'
+        ? '/.netlify/functions/generate-alerts'
+        : `/.netlify/functions/generate-alerts?type=${type}`;
+      const res = await fetch(url);
+      genResult = await res.json();
+    } catch (e) {
+      genResult = { error: e.message };
+    }
+    genRunning = null;
+  }
+
   // --- Auth token (pour seed + backfill protégés) ---
   let seedToken = $state(localStorage.getItem('fhg_seed_token') || '');
   function saveSeedToken() { localStorage.setItem('fhg_seed_token', seedToken); }
@@ -304,6 +323,42 @@
           <span class="debug-count-value">{count}</span>
         </div>
       {/each}
+    </div>
+  {/if}
+</div>
+
+<!-- GÉNÉRATION ALERTES -->
+<div class="settings-block">
+  <div class="settings-block__title">⚡ Générer les alertes (J, J+1, J+2)</div>
+  <p style="font-size:13px;color:var(--color-text-muted);margin-bottom:12px;">
+    Lance l'analyse manuellement au lieu d'attendre le cron (8h/20h).
+  </p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button class="btn btn--primary" onclick={() => handleGenerate('FHG')} disabled={genRunning}>
+      {genRunning === 'FHG' ? '⏳ Analyse FHG...' : '⚡ Sélection FHG'}
+    </button>
+    <button class="btn btn--primary" onclick={() => handleGenerate('DC')} disabled={genRunning}>
+      {genRunning === 'DC' ? '⏳ Analyse DC...' : '🎯 Sélection DC'}
+    </button>
+    <button class="btn btn--secondary" onclick={() => handleGenerate('ALL')} disabled={genRunning}>
+      {genRunning === 'ALL' ? '⏳ Analyse complète...' : '🔄 Les deux'}
+    </button>
+  </div>
+  {#if genResult}
+    <div class="debug-result" class:success={!genResult.error && genResult.alerts_created > 0} class:error={genResult.error || genResult.alerts_created === 0} style="margin-top:12px;">
+      {#if genResult.error}
+        ✗ Erreur : {genResult.error}
+      {:else if genResult.alerts_created > 0}
+        ✓ {genResult.alerts_created} alerte{genResult.alerts_created > 1 ? 's' : ''} créée{genResult.alerts_created > 1 ? 's' : ''} — {genResult.analyzed} matchs analysés
+        {#if genResult.errors?.length > 0}
+          <br/><span style="color:var(--color-signal-moyen);">{genResult.errors.length} erreurs lors de l'analyse</span>
+        {/if}
+      {:else}
+        ⚠ Aucune alerte générée — {genResult.analyzed} matchs analysés, aucun ne correspond aux critères {genResult.type || ''}
+        {#if genResult.errors?.length > 0}
+          <br/><span style="color:var(--color-danger);">{genResult.errors.length} erreurs</span>
+        {/if}
+      {/if}
     </div>
   {/if}
 </div>

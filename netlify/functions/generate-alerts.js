@@ -57,7 +57,12 @@ exports.handler = async (event) => {
     return { statusCode: 503, body: JSON.stringify({ error: 'Supabase non configuré' }) };
   }
 
-  const results = { analyzed: 0, alerts_created: 0, errors: [] };
+  // Paramètre optionnel : ?type=FHG ou ?type=DC pour filtrer le type d'alerte
+  const typeFilter = (event.queryStringParameters?.type || '').toUpperCase();
+  const doFHG = !typeFilter || typeFilter === 'FHG';
+  const doDC = !typeFilter || typeFilter === 'DC';
+
+  const results = { type: typeFilter || 'ALL', analyzed: 0, alerts_created: 0, errors: [] };
 
   try {
     // Charger les matchs des 3 prochains jours
@@ -103,17 +108,21 @@ exports.handler = async (event) => {
           getRecentMatches(m.homeID, 'home', 5),    // adversaire joue dom
         ]);
 
-        const fhgHome = analyzeFHGFromMatches(homeMatches, 'home', h2h, m.homeID, oppMatchesForHome);
-        const fhgAway = analyzeFHGFromMatches(awayMatches, 'away', h2h, m.awayID, oppMatchesForAway);
+        let bestFHG = null;
+        if (doFHG) {
+          const fhgHome = analyzeFHGFromMatches(homeMatches, 'home', h2h, m.homeID, oppMatchesForHome);
+          const fhgAway = analyzeFHGFromMatches(awayMatches, 'away', h2h, m.awayID, oppMatchesForAway);
+          bestFHG = (fhgHome?.isAlert && fhgAway?.isAlert)
+            ? (fhgHome.score >= fhgAway.score ? fhgHome : fhgAway)
+            : fhgHome?.isAlert ? fhgHome
+            : fhgAway?.isAlert ? fhgAway
+            : null;
+        }
 
-        const bestFHG = (fhgHome?.isAlert && fhgAway?.isAlert)
-          ? (fhgHome.score >= fhgAway.score ? fhgHome : fhgAway)
-          : fhgHome?.isAlert ? fhgHome
-          : fhgAway?.isAlert ? fhgAway
-          : null;
-
-        // DC analyse
-        const dc = analyzeDCFromH2H(h2h, m.homeID);
+        let dc = null;
+        if (doDC) {
+          dc = analyzeDCFromH2H(h2h, m.homeID);
+        }
 
         const hasFHG = bestFHG !== null;
         const hasDC = dc?.isAlert === true;
