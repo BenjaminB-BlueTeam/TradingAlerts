@@ -49,6 +49,20 @@
     apiTesting = false;
   }
 
+  function activateAll() {
+    const merged = apiLeagues.map(l => {
+      const existing = $leagues.find(s => s.id === l.id);
+      return existing ? { ...existing, active: true } : { id: l.id, name: l.name, country: l.country, flag: l.flag, active: true };
+    });
+    saveLeagues(merged);
+    if (typeof window !== 'undefined' && window.showToast) window.showToast('Toutes les ligues activées', 'success');
+  }
+
+  function deactivateAll() {
+    saveLeagues($leagues.map(l => ({ ...l, active: false })));
+    if (typeof window !== 'undefined' && window.showToast) window.showToast('Toutes les ligues désactivées', 'info');
+  }
+
   function toggleLeague(id, checked, name, country, flag) {
     const current = [...$leagues];
     const actives = current.filter(l => l.active).length;
@@ -247,8 +261,12 @@
       placeholder="Bundesliga, Premier League..."
       bind:value={leagueSearch} />
   </div>
-  <div style="margin-bottom:10px;font-size:12px;color:var(--color-text-muted);">
-    {activesCount}/50 ligues actives
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <span style="font-size:12px;color:var(--color-text-muted);">{activesCount}/{apiLeagues.length || 50} ligues actives</span>
+    <div style="display:flex;gap:6px;">
+      <button class="btn btn--secondary btn--sm" on:click={activateAll}>✓ Tout activer</button>
+      <button class="btn btn--secondary btn--sm" on:click={deactivateAll}>✗ Tout désactiver</button>
+    </div>
   </div>
   <div style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;">
     {#each filteredLeagues as l (l.id)}
