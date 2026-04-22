@@ -4,34 +4,10 @@
    Cron : toutes les heures via Netlify Scheduled Functions.
    ================================================ */
 
-const FOOTYSTATS_BASE = 'https://api.football-data-api.com';
+const { footyRequest, supabaseQuery } = require('./lib/api');
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
-
-async function footyRequest(endpoint, params = {}) {
-  const apiKey = process.env.FOOTYSTATS_API_KEY;
-  if (!apiKey) throw new Error('FOOTYSTATS_API_KEY non configurée');
-  const url = new URL(`${FOOTYSTATS_BASE}/${endpoint}`);
-  url.searchParams.set('key', apiKey);
-  Object.entries(params).forEach(([k, v]) => {
-    if (v != null) url.searchParams.set(k, String(v));
-  });
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`FootyStats ${endpoint}: HTTP ${res.status}`);
-  return await res.json();
-}
-
-async function supabaseQuery(table, query = '') {
-  const url = `${SUPABASE_URL}/rest/v1/${table}?${query}`;
-  const res = await fetch(url, {
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-    },
-  });
-  if (!res.ok) return [];
-  return await res.json();
-}
 
 async function supabaseUpdate(table, matchId, updates) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?match_id=eq.${matchId}`;
@@ -44,6 +20,7 @@ async function supabaseUpdate(table, matchId, updates) {
       'Prefer': 'return=minimal',
     },
     body: JSON.stringify(updates),
+    signal: AbortSignal.timeout(8000),
   });
   return res.ok;
 }

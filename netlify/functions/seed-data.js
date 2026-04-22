@@ -4,7 +4,7 @@
    Orchestration côté client : 1 ligue par appel.
    ================================================ */
 
-const FOOTYSTATS_BASE = 'https://api.football-data-api.com';
+const { footyRequest } = require('./lib/api');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
@@ -19,7 +19,7 @@ async function supabaseRequest(table, method, body, query = '') {
     'Content-Type': 'application/json',
     'Prefer': method === 'POST' ? 'resolution=merge-duplicates,return=minimal' : 'return=minimal',
   };
-  const opts = { method, headers };
+  const opts = { method, headers, signal: AbortSignal.timeout(8000) };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(url, opts);
   if (!res.ok) {
@@ -39,23 +39,9 @@ async function supabaseSelect(table, query = '') {
       'apikey': SUPABASE_KEY,
       'Authorization': `Bearer ${SUPABASE_KEY}`,
     },
+    signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) throw new Error(`Supabase GET ${table}: ${res.status}`);
-  return await res.json();
-}
-
-// --- Helper FootyStats API ---
-
-async function footyRequest(endpoint, params = {}) {
-  const apiKey = process.env.FOOTYSTATS_API_KEY;
-  if (!apiKey) throw new Error('FOOTYSTATS_API_KEY non configurée');
-  const url = new URL(`${FOOTYSTATS_BASE}/${endpoint}`);
-  url.searchParams.set('key', apiKey);
-  Object.entries(params).forEach(([k, v]) => {
-    if (v != null) url.searchParams.set(k, String(v));
-  });
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`FootyStats ${endpoint}: HTTP ${res.status}`);
   return await res.json();
 }
 

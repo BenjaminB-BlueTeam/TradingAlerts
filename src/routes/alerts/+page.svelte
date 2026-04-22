@@ -1,6 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/api/supabase.js';
+  import { getDateStr, formatDate, formatTime, isInPlay, fhgColor, defeatColor } from '$lib/utils/formatters.js';
+  import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
 
   let alerts = [];
   let loading = true;
@@ -9,17 +11,11 @@
   let teamMatchesCache = {};
 
   const days = [
-    { label: 'Passés', offset: -3 },
+    { label: 'Pass\u00e9s', offset: -3 },
     { label: "Aujourd'hui", offset: 0 },
     { label: 'Demain', offset: 1 },
-    { label: 'Après-demain', offset: 2 },
+    { label: 'Apr\u00e8s-demain', offset: 2 },
   ];
-
-  function getDateStr(offset) {
-    const d = new Date();
-    d.setDate(d.getDate() + offset);
-    return d.toISOString().split('T')[0];
-  }
 
   async function loadAlerts() {
     loading = true;
@@ -35,35 +31,20 @@
     loading = false;
   }
 
-  function isInPlay(a) {
-    if (!a.kickoff_unix) return false;
-    const now = Math.floor(Date.now() / 1000);
-    return a.kickoff_unix <= now && (now - a.kickoff_unix) < 7200;
-  }
-
   $: filteredAlerts = alerts.filter(a => {
     if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
     return true;
   });
 
-  // Charger les derniers matchs d'une équipe dans son contexte
+  // Charger les derniers matchs d'une \u00e9quipe dans son contexte
   async function loadTeamMatches(teamId, context) {
     const key = `${teamId}_${context}`;
     if (teamMatchesCache[key]) return teamMatchesCache[key];
 
-    const col = context === 'home' ? 'home_team_id' : 'away_team_id';
-    const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase
-      .from('h2h_matches')
-      .select('*')
-      .eq(col, teamId)
-      .lt('match_date', today)
-      .order('match_date', { ascending: false })
-      .limit(15);
-
-    teamMatchesCache[key] = data || [];
+    const data = await _loadTeamMatches(teamId, context, supabase);
+    teamMatchesCache[key] = data;
     teamMatchesCache = teamMatchesCache;
-    return data || [];
+    return data;
   }
 
   async function toggleExpand(alert) {
@@ -71,7 +52,7 @@
       expandedId = null;
       return;
     }
-    // Charger les données AVANT d'ouvrir l'expand
+    // Charger les donn\u00e9es AVANT d'ouvrir l'expand
     await Promise.all([
       loadTeamMatches(alert.home_team_id, 'home'),
       loadTeamMatches(alert.away_team_id, 'away'),
@@ -83,89 +64,8 @@
     return teamMatchesCache[`${teamId}_${context}`] || [];
   }
 
-  // Stats résumé pour une équipe
-  function computeTeamStats(matches, context) {
-    if (!matches.length) return null;
-    const scored = matches.map(m => context === 'home' ? (m.home_goals || 0) : (m.away_goals || 0));
-    const conceded = matches.map(m => context === 'home' ? (m.away_goals || 0) : (m.home_goals || 0));
-    const scoredHT = matches.map(m => context === 'home' ? (m.home_goals_ht || 0) : (m.away_goals_ht || 0));
-    const concededHT = matches.map(m => context === 'home' ? (m.away_goals_ht || 0) : (m.home_goals_ht || 0));
-
-    const total = matches.length;
-    const avgGoals = +((scored.reduce((a, b) => a + b, 0) + conceded.reduce((a, b) => a + b, 0)) / total).toFixed(2);
-    const pctGoal1MT = Math.round(scoredHT.filter(g => g > 0).length / total * 100);
-    const pct2Plus1MT = Math.round(scoredHT.filter(g => g >= 2).length / total * 100);
-    const pctBTTS = Math.round(matches.filter((_, i) => scored[i] > 0 && conceded[i] > 0).length / total * 100);
-    const pctOver25 = Math.round(matches.filter((_, i) => scored[i] + conceded[i] > 2).length / total * 100);
-    const avgScored1MT = +(scoredHT.reduce((a, b) => a + b, 0) / total).toFixed(2);
-    const avgScored2MT = +((scored.reduce((a, b) => a + b, 0) - scoredHT.reduce((a, b) => a + b, 0)) / total).toFixed(2);
-
-    return { avgGoals, pctGoal1MT, pct2Plus1MT, pctBTTS, pctOver25, avgScored1MT, avgScored2MT, total };
-  }
-
-  function formatDate(dateStr) {
-    if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-  }
-
-  function formatTime(unix) {
-    if (!unix) return '—';
-    return new Date(unix * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  }
-
-  function defeatColor(pct) {
-    if (pct <= 20) return 'var(--color-accent-green)';
-    if (pct <= 30) return 'var(--color-signal-moyen)';
-    return 'var(--color-danger)';
-  }
-
-  function fhgColor(pct) {
-    if (pct >= 80) return 'var(--color-accent-green)';
-    if (pct >= 70) return 'var(--color-signal-moyen)';
-    return 'var(--color-text-muted)';
-  }
-
   function confidenceClass(c) {
     return c === 'fort' ? 'alert-badge--fort' : 'alert-badge--moyen';
-  }
-
-  // Barre de timing + résultat du match
-  function goalBar(match, context) {
-    const isHome = context === 'home';
-    const teamGoals = isHome ? (match.home_goals || 0) : (match.away_goals || 0);
-    const oppGoals = isHome ? (match.away_goals || 0) : (match.home_goals || 0);
-    const totalGoals = teamGoals + oppGoals;
-
-    // Résultat : W/D/L
-    const result = teamGoals > oppGoals ? 'W' : teamGoals === oppGoals ? 'D' : 'L';
-
-    const events = match.goal_events || [];
-
-    // Si on a les goal_events avec minutes, les utiliser
-    if (events.length > 0 && events[0]?.min) {
-      const goals = events.map(g => ({
-        min: g.min,
-        pct: Math.min((g.min / 95) * 100, 98),
-        scored: isHome ? g.home : !g.home,
-      }));
-      return { goals, total: totalGoals, result };
-    }
-
-    // Fallback : répartir dans chaque mi-temps
-    const scoredHT = isHome ? (match.home_goals_ht || 0) : (match.away_goals_ht || 0);
-    const concededHT = isHome ? (match.away_goals_ht || 0) : (match.home_goals_ht || 0);
-    const scored2MT = teamGoals - scoredHT;
-    const conceded2MT = oppGoals - concededHT;
-
-    const goals = [];
-    for (let i = 0; i < scoredHT; i++) goals.push({ min: 10 + i * 12, pct: (10 + i * 12) / 95 * 100, scored: true });
-    for (let i = 0; i < concededHT; i++) goals.push({ min: 15 + i * 12, pct: (15 + i * 12) / 95 * 100, scored: false });
-    for (let i = 0; i < scored2MT; i++) goals.push({ min: 55 + i * 12, pct: (55 + i * 12) / 95 * 100, scored: true });
-    for (let i = 0; i < conceded2MT; i++) goals.push({ min: 60 + i * 12, pct: (60 + i * 12) / 95 * 100, scored: false });
-    goals.sort((a, b) => a.min - b.min);
-
-    return { goals, total: totalGoals, result };
   }
 
   let hoverBar = null; // { key, pct, min }
@@ -412,7 +312,6 @@
   .alert-badge--validated { background: rgba(29, 158, 117, 0.2); color: var(--color-accent-green); }
   .alert-badge--lost { background: rgba(226, 75, 74, 0.2); color: var(--color-danger); }
   .alert-badge--live { background: rgba(239, 159, 39, 0.2); color: var(--color-signal-moyen); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
   /* Expand */
   .alert-expand { border-top: 1px solid var(--color-border); padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

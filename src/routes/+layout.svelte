@@ -4,13 +4,12 @@
   import Sidebar from '$lib/components/Sidebar.svelte';
   import Toast from '$lib/components/Toast.svelte';
   import {
-    loadFromStorage, loadTradesFromSupabase,
-    isDemo, prefs, savePrefs
+    loadFromStorage, loadTradesFromSupabase
   } from '$lib/stores/appStore.js';
   import { initApp, loadData } from '$lib/data.js';
+  import { cacheEvict } from '$lib/api/cache.js';
 
   let toasts = [];
-  let demoBannerClosed = false;
   let initialized = false;
 
   // Expose showToast globalement pour les composants non-Svelte
@@ -27,8 +26,8 @@
   }
 
   onMount(async () => {
+    cacheEvict();
     loadFromStorage();
-    demoBannerClosed = $prefs.demoBannerClosed || false;
 
     // Test API + chargement données en parallèle
     const [apiStatus] = await Promise.all([
@@ -50,19 +49,7 @@
     return () => clearInterval(interval);
   });
 
-  function closeDemoBanner() {
-    demoBannerClosed = true;
-    savePrefs({ demoBannerClosed: true });
-  }
 </script>
-
-<!-- DEMO BANNER -->
-{#if $isDemo && !demoBannerClosed}
-  <div class="demo-banner">
-    <span>🎮 Mode démo — Configurez votre clé API FootyStats dans Paramètres pour les vrais signaux</span>
-    <button class="demo-banner__close" on:click={closeDemoBanner} aria-label="Fermer">✕</button>
-  </div>
-{/if}
 
 <div class="app-layout">
   <Sidebar />

@@ -58,6 +58,25 @@ export function cacheStats() {
   return { total, expired, active: total - expired };
 }
 
+export function cacheEvict() {
+  const now = Date.now();
+  let evicted = 0;
+  const keys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX));
+  keys.forEach(k => {
+    try {
+      const entry = JSON.parse(localStorage.getItem(k));
+      if (now > entry.expires) {
+        localStorage.removeItem(k);
+        evicted++;
+      }
+    } catch {
+      localStorage.removeItem(k);
+      evicted++;
+    }
+  });
+  if (evicted > 0) console.info(`Cache: ${evicted} entrée(s) expirée(s) supprimée(s)`);
+}
+
 export function cacheKey(endpoint, params = {}) {
   const parts = [endpoint];
   Object.entries(params)

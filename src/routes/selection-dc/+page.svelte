@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/api/supabase.js';
+  import { getDateStr, formatDate, formatTime, isInPlay, defeatColor } from '$lib/utils/formatters.js';
 
   let alerts = [];
   let loading = true;
@@ -9,17 +10,11 @@
   let h2hCache = {};
 
   const days = [
-    { label: 'Passés', offset: -3 },
+    { label: 'Pass\u00e9s', offset: -3 },
     { label: "Aujourd'hui", offset: 0 },
     { label: 'Demain', offset: 1 },
-    { label: 'Après-demain', offset: 2 },
+    { label: 'Apr\u00e8s-demain', offset: 2 },
   ];
-
-  function getDateStr(offset) {
-    const d = new Date();
-    d.setDate(d.getDate() + offset);
-    return d.toISOString().split('T')[0];
-  }
 
   async function loadAlerts() {
     loading = true;
@@ -33,12 +28,6 @@
       .order('kickoff_unix', { ascending: true });
     alerts = error ? [] : (data || []);
     loading = false;
-  }
-
-  function isInPlay(a) {
-    if (!a.kickoff_unix) return false;
-    const now = Math.floor(Date.now() / 1000);
-    return a.kickoff_unix <= now && (now - a.kickoff_unix) < 7200;
   }
 
   $: filteredAlerts = alerts.filter(a => {
@@ -68,22 +57,6 @@
 
   function getH2H(homeId, awayId) {
     return h2hCache[[homeId, awayId].sort().join('_')] || [];
-  }
-
-  function formatDate(dateStr) {
-    if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-  }
-
-  function formatTime(unix) {
-    if (!unix) return '—';
-    return new Date(unix * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  }
-
-  function defeatColor(pct) {
-    if (pct <= 20) return 'var(--color-accent-green)';
-    if (pct <= 30) return 'var(--color-signal-moyen)';
-    return 'var(--color-danger)';
   }
 
   function confidenceClass(c) {
@@ -252,7 +225,6 @@
   .dc-badge--validated { background: rgba(29, 158, 117, 0.2); color: var(--color-accent-green); }
   .dc-badge--lost { background: rgba(226, 75, 74, 0.2); color: var(--color-danger); }
   .dc-badge--live { background: rgba(239, 159, 39, 0.2); color: var(--color-signal-moyen); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
   .dc-expand { border-top: 1px solid var(--color-border); padding: 14px 16px; }
   .dc-expand__title { font-size: 12px; color: var(--color-text-muted); margin-bottom: 10px; }

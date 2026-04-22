@@ -8,7 +8,7 @@ import { analyserMatch } from '$lib/core/scoring.js';
 import { filtrerMatchs } from '$lib/core/filters.js';
 import {
   signaux, exclus, loading, lastUpdate,
-  isDemo, apiConnected, leagues, config,
+  apiConnected, leagues, config,
 } from '$lib/stores/appStore.js';
 import { get } from 'svelte/store';
 
@@ -79,7 +79,6 @@ async function analyseOneMatch(match, activeLeagues, cfg) {
 
 export async function initApp() {
   const status = await testApiConnection();
-  isDemo.set(!status.success);
   apiConnected.set(status.success);
   return status;
 }

@@ -3,12 +3,14 @@
   import { leagues } from '$lib/stores/appStore.js';
   import { getTodaysMatches, getAllLeagues } from '$lib/api/footystats.js';
   import { supabase } from '$lib/api/supabase.js';
+  import { getDateStr, formatDate, formatTime, fhgColor } from '$lib/utils/formatters.js';
+  import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
 
   let filtrePlage = 0;
   let filtreLigue = 'toutes';
   let allMatches = [];
   let loading = false;
-  let leagueNames = {}; // competition_id → nom de la ligue
+  let leagueNames = {}; // competition_id -> nom de la ligue
   let expandedId = null;
   let teamMatchesCache = {};
 
@@ -16,41 +18,26 @@
 
   function getLeagueName(m) {
     const compId = m.competition_id || m.league_id;
-    return leagueNames[compId] || m.competition_name || m.league_name || '—';
+    return leagueNames[compId] || m.competition_name || m.league_name || '\u2014';
   }
 
-  // Filtrage réactif : exclure terminés et en cours + filtre ligue
+  // Filtrage r\u00e9actif : exclure termin\u00e9s et en cours + filtre ligue
   $: filteredMatches = allMatches.filter(m => {
     const status = (m.status || '').toLowerCase();
     if (status === 'complete' || status === 'finished') return false;
-    // Si le kickoff est passé, le match a commencé → exclure
     if (m.date_unix && m.date_unix * 1000 < Date.now()) return false;
     if (filtreLigue === 'toutes') return true;
     const matchLeague = getLeagueName(m);
     return matchLeague.includes(filtreLigue) || filtreLigue.includes(matchLeague);
   }).sort((a, b) => (a.date_unix || 0) - (b.date_unix || 0));
 
-  function getDateStr(offset) {
-    const d = new Date();
-    d.setDate(d.getDate() + offset);
-    return d.toISOString().split('T')[0];
-  }
-
-  function formatTime(unix) {
-    if (!unix) return '—';
-    return new Date(unix * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  }
-
   function formatDateUnix(unix) {
     if (!unix) return '';
     return new Date(unix * 1000).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
   }
 
-  function formatDateStr(dateStr) {
-    if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-  }
+  // Alias: matches page used formatDateStr which is identical to formatDate
+  const formatDateStr = formatDate;
 
   async function loadMatches(plage) {
     loading = true;
@@ -85,24 +72,15 @@
     } catch {}
   }
 
-  // Charger les derniers matchs d'une équipe dans son contexte
+  // Charger les derniers matchs d'une \u00e9quipe dans son contexte
   async function loadTeamMatches(teamId, context) {
     const key = `${teamId}_${context}`;
     if (teamMatchesCache[key]) return teamMatchesCache[key];
 
-    const col = context === 'home' ? 'home_team_id' : 'away_team_id';
-    const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase
-      .from('h2h_matches')
-      .select('*')
-      .eq(col, teamId)
-      .lt('match_date', today)
-      .order('match_date', { ascending: false })
-      .limit(15);
-
-    teamMatchesCache[key] = data || [];
+    const data = await _loadTeamMatches(teamId, context, supabase);
+    teamMatchesCache[key] = data;
     teamMatchesCache = teamMatchesCache;
-    return data || [];
+    return data;
   }
 
   async function toggleExpand(match) {
@@ -122,60 +100,6 @@
 
   function getTeamMatches(teamId, context) {
     return teamMatchesCache[`${teamId}_${context}`] || [];
-  }
-
-  function computeTeamStats(matches, context) {
-    if (!matches.length) return null;
-    const scored = matches.map(m => context === 'home' ? (m.home_goals || 0) : (m.away_goals || 0));
-    const conceded = matches.map(m => context === 'home' ? (m.away_goals || 0) : (m.home_goals || 0));
-    const scoredHT = matches.map(m => context === 'home' ? (m.home_goals_ht || 0) : (m.away_goals_ht || 0));
-
-    const total = matches.length;
-    const avgGoals = +((scored.reduce((a, b) => a + b, 0) + conceded.reduce((a, b) => a + b, 0)) / total).toFixed(2);
-    const pctGoal1MT = Math.round(scoredHT.filter(g => g > 0).length / total * 100);
-    const pctBTTS = Math.round(matches.filter((_, i) => scored[i] > 0 && conceded[i] > 0).length / total * 100);
-    const pctOver25 = Math.round(matches.filter((_, i) => scored[i] + conceded[i] > 2).length / total * 100);
-
-    return { avgGoals, pctGoal1MT, pctBTTS, pctOver25, total };
-  }
-
-  function goalBar(match, context) {
-    const isHome = context === 'home';
-    const teamGoals = isHome ? (match.home_goals || 0) : (match.away_goals || 0);
-    const oppGoals = isHome ? (match.away_goals || 0) : (match.home_goals || 0);
-    const totalGoals = teamGoals + oppGoals;
-
-    const result = teamGoals > oppGoals ? 'W' : teamGoals === oppGoals ? 'D' : 'L';
-    const events = match.goal_events || [];
-
-    if (events.length > 0 && events[0]?.min) {
-      const goals = events.map(g => ({
-        min: g.min,
-        pct: Math.min((g.min / 95) * 100, 98),
-        scored: isHome ? g.home : !g.home,
-      }));
-      return { goals, total: totalGoals, result };
-    }
-
-    const scoredHT = isHome ? (match.home_goals_ht || 0) : (match.away_goals_ht || 0);
-    const concededHT = isHome ? (match.away_goals_ht || 0) : (match.home_goals_ht || 0);
-    const scored2MT = teamGoals - scoredHT;
-    const conceded2MT = oppGoals - concededHT;
-
-    const goals = [];
-    for (let i = 0; i < scoredHT; i++) goals.push({ min: 10 + i * 12, pct: (10 + i * 12) / 95 * 100, scored: true });
-    for (let i = 0; i < concededHT; i++) goals.push({ min: 15 + i * 12, pct: (15 + i * 12) / 95 * 100, scored: false });
-    for (let i = 0; i < scored2MT; i++) goals.push({ min: 55 + i * 12, pct: (55 + i * 12) / 95 * 100, scored: true });
-    for (let i = 0; i < conceded2MT; i++) goals.push({ min: 60 + i * 12, pct: (60 + i * 12) / 95 * 100, scored: false });
-    goals.sort((a, b) => a.min - b.min);
-
-    return { goals, total: totalGoals, result };
-  }
-
-  function fhgColor(pct) {
-    if (pct >= 80) return 'var(--color-accent-green)';
-    if (pct >= 70) return 'var(--color-signal-moyen)';
-    return 'var(--color-text-muted)';
   }
 
   let hoverBar = null; // { key, pct, min }

@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/api/supabase.js';
+  import { isInPlay } from '$lib/utils/formatters.js';
 
   let alerts = [];
   let loading = true;
@@ -10,7 +11,7 @@
     { key: 'tous',      label: 'Tous'      },
     { key: 'fhg',       label: 'FHG'       },
     { key: 'dc',        label: 'DC'        },
-    { key: 'validated', label: 'Validé'    },
+    { key: 'validated', label: 'Valid\u00e9'    },
     { key: 'lost',      label: 'Perdu'     },
     { key: 'encours',   label: 'En cours'  },
   ];
@@ -23,12 +24,6 @@
       .order('kickoff_unix', { ascending: false });
     alerts = error ? [] : (data || []);
     loading = false;
-  }
-
-  function isInPlay(a) {
-    if (!a.kickoff_unix) return false;
-    const now = Math.floor(Date.now() / 1000);
-    return a.kickoff_unix <= now && (now - a.kickoff_unix) < 7200;
   }
 
   // Stats — uniquement sur alertes terminées
@@ -289,7 +284,6 @@
   .res--lost      { background: rgba(226,75,74,0.15);  color: var(--color-danger); }
   .res--live      { background: rgba(239,159,39,0.2);  color: var(--color-signal-moyen); animation: pulse 2s infinite; }
   .res--pending   { background: rgba(255,255,255,0.05); color: var(--color-text-muted); }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
   @media (max-width: 768px) {
     .conf-row { grid-template-columns: 1fr; }

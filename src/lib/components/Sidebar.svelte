@@ -1,7 +1,7 @@
 <script>
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { isDemo, apiConnected, alertesActives, pauseSession, savePrefs, apiRequestsRemaining } from '$lib/stores/appStore.js';
+  import { apiConnected, alertesActives, pauseSession, savePrefs, apiRequestsRemaining } from '$lib/stores/appStore.js';
   import { cacheClear } from '$lib/api/cache.js';
 
   let sidebarOpen = false;
@@ -46,8 +46,8 @@
     return $page.url.pathname.startsWith(href);
   }
 
-  $: apiDotClass = $isDemo ? '' : $apiConnected ? 'connected' : 'error';
-  $: apiLabel = $isDemo ? 'Mode démo' : $apiConnected ? 'API connectée' : 'API déconnectée';
+  $: apiDotClass = $apiConnected ? 'connected' : 'error';
+  $: apiLabel = $apiConnected ? 'API connectée' : 'API déconnectée';
   $: alertsBadgeCount = $alertesActives?.length || 0;
   $: adminHasActive = adminItems.some(i => isActive(i.href));
   // Auto-ouvrir la section admin si on est sur une page admin

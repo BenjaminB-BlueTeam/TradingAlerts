@@ -50,7 +50,7 @@ exports.handler = async (event) => {
       if (v != null) url.searchParams.set(k, v);
     });
 
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
     if (!response.ok) {
       console.error(`[footystats-proxy] Upstream error: ${endpoint} -> HTTP ${response.status}`);
     }

@@ -41,13 +41,11 @@ export const defaultConfig = {
 export const defaultPrefs = {
   currentPage:      'dashboard',
   focusMode:        false,
-  demoBannerClosed: false,
   alertsFilter:     'today',
 };
 
 // ---- Stores ----
 export const apiConnected    = writable(false);
-export const isDemo          = writable(true);
 export const matches         = writable([]);
 export const matchesUpcoming = writable([]);
 export const leagues         = writable(getDefaultLeagues());
@@ -64,11 +62,6 @@ export const alertesActives  = writable([]);
 export const apiRequestsRemaining = writable(null); // Requêtes API restantes (sur 1800/h)
 export const watchlist       = writable([]);  // Matchs pris (cochés dans l'historique)
 
-// Helper pour footystats.js (lit isDemo de façon synchrone)
-export function getIsDemo() {
-  return get(isDemo);
-}
-
 // ---- Persistance localStorage ----
 
 export function loadFromStorage() {
@@ -84,8 +77,6 @@ export function loadFromStorage() {
     leagues.set(savedLeagues || getDefaultLeagues());
     prefs.set(savedPrefs ? { ...defaultPrefs, ...savedPrefs } : { ...defaultPrefs });
     watchlist.set(Array.isArray(savedWatch) ? savedWatch : []);
-    isDemo.set(true); // Sera mis à jour après testApiConnection dans +layout.svelte
-
     return true;
   } catch (e) {
     console.warn('Store: erreur chargement localStorage', e);
@@ -93,7 +84,6 @@ export function loadFromStorage() {
     trades.set([]);
     leagues.set(getDefaultLeagues());
     prefs.set({ ...defaultPrefs });
-    isDemo.set(true);
     return false;
   }
 }

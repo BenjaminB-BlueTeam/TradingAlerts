@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { leagues, saveLeagues, isDemo } from '$lib/stores/appStore.js';
+  import { leagues, saveLeagues, apiConnected } from '$lib/stores/appStore.js';
   import { getAllLeagues, getLeagueTable, getLeagueSeason, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
 
   let apiLeagues = [];
@@ -62,7 +62,7 @@
     statsLoading = statsLoading;
   }
 
-  $: if (!$isDemo && !loaded) loadLeagues();
+  $: if ($apiConnected && !loaded) loadLeagues();
 
   // Trouver l'entrée store correspondant à une ligue API
   function findStoreIndex(storeList, apiLeague) {

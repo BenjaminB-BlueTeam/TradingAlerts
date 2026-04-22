@@ -170,22 +170,6 @@ ul, ol { list-style: none; }
 .modal__close:hover { color: var(--color-text-primary); }
 .modal__body { padding: 20px 24px 24px; }
 
-/* ---- DEMO BANNER ---- */
-.demo-banner {
-  position: fixed; top: 0; left: 0; right: 0;
-  z-index: 300;
-  background: linear-gradient(135deg, rgba(127,119,221,0.9), rgba(55,138,221,0.9));
-  color: #fff;
-  font-size: 12px; font-weight: 500;
-  padding: 9px 16px;
-  text-align: center;
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-}
-.demo-banner__close { cursor: pointer; opacity: 0.7; font-size: 14px; padding: 2px 6px; }
-.demo-banner__close:hover { opacity: 1; }
-.demo-banner ~ .app-layout .sidebar { top: 38px; height: calc(100vh - 38px); }
-.demo-banner ~ .app-layout .main-content { padding-top: 38px; }
-
 /* ---- SCROLLBAR CUSTOM ---- */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -242,6 +226,7 @@ ul, ol { list-style: none; }
 .badge--debut-saison { background: rgba(239,159,39,0.12); color: var(--color-warning-orange); border: 1px solid rgba(239,159,39,0.2); }
 .badge--window-open  { background: rgba(29,158,117,0.2); color: var(--color-accent-green); border: 1px solid rgba(29,158,117,0.4); animation: pulse-badge 1.5s infinite; }
 @keyframes pulse-badge { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
 /* ---- BARRE DE PROGRESSION ---- */
 .progress-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; position: relative; }
@@ -535,8 +520,6 @@ td.td-grey   { color: var(--color-text-muted); }
   .chart-wrapper { height: 140px; }
   .h2h-item { flex-wrap: wrap; }
   .h2h-item__date { width: auto; }
-  .demo-banner { font-size: 11px; padding: 8px 12px; }
-  .demo-banner ~ .app-layout .sidebar { top: 38px; height: calc(100vh - 38px); }
   .match-card__detail { padding: 12px; }
   .focus-mode-overlay { padding: 16px; }
   .focus-mode-header { margin-bottom: 16px; }
@@ -557,7 +540,7 @@ td.td-grey   { color: var(--color-text-muted); }
 }
 
 @media print {
-  .sidebar, .topbar, .btn--pause, .demo-banner,
+  .sidebar, .topbar, .btn--pause,
   .burger-btn, .sidebar-overlay { display: none !important; }
   .main-content { margin-left: 0 !important; }
   body { background: white; color: black; }

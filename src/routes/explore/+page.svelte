@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { isDemo } from '$lib/stores/appStore.js';
+  import { apiConnected } from '$lib/stores/appStore.js';
   import { getAllLeagues, getLeagueTable, getLeagueSeason, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
 
   let allLeagues = [];
@@ -58,7 +58,7 @@
     statsLoading = statsLoading;
   }
 
-  $: if (!$isDemo && !loaded) loadLeagues();
+  $: if ($apiConnected && !loaded) loadLeagues();
 
   // Groupement par pays
   $: grouped = groupByCountry(filtered);

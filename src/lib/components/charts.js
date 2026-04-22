@@ -3,7 +3,36 @@
    FHG Tracker
    ================================================ */
 
-import Chart from 'chart.js/auto';
+import {
+  Chart,
+  BarController,
+  DoughnutController,
+  LineController,
+  BarElement,
+  ArcElement,
+  PointElement,
+  LineElement,
+  CategoryScale,
+  LinearScale,
+  Legend,
+  Tooltip,
+  Filler,
+} from 'chart.js';
+
+Chart.register(
+  BarController,
+  DoughnutController,
+  LineController,
+  BarElement,
+  ArcElement,
+  PointElement,
+  LineElement,
+  CategoryScale,
+  LinearScale,
+  Legend,
+  Tooltip,
+  Filler,
+);
 
 export function createGoalDistChart(canvas, dist) {
   if (!canvas) return null;

@@ -1,7 +1,7 @@
 <script>
   import { onMount, tick } from 'svelte';
   import {
-    isDemo, apiConnected, leagues, trades, saveLeagues,
+    apiConnected, leagues, trades, saveLeagues,
     updateTrade, deleteTrade, clearAllData, calcStatsTradesGlobal
   } from '$lib/stores/appStore.js';
   import { testApiConnection, getAllLeagues, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
@@ -222,7 +222,7 @@
   <div class="settings-block__title">🔌 Connexion API FootyStats</div>
 
   <div style="margin-bottom:16px;">
-    {#if $isDemo}
+    {#if !$apiConnected}
       <div class="danger-box">⚠ Mode demonstration — API non configuree</div>
     {:else}
       <div class="info-box" style="border-color:var(--color-accent-green);color:var(--color-accent-green);">
