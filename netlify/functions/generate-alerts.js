@@ -81,33 +81,39 @@ async function getH2H(teamAId, teamBId) {
 function analyzeFHGFromMatches(matches, context, h2h, teamId, opponentMatches) {
   if (matches.length < MIN_MATCHES) return null;
 
-  const teamGoalsHT = matches.map(m =>
-    context === 'home' ? (m.home_goals_ht || 0) : (m.away_goals_ht || 0)
-  );
-  const oppGoalsHT = matches.map(m =>
-    context === 'home' ? (m.away_goals_ht || 0) : (m.home_goals_ht || 0)
-  );
+  const teamIsHome = context === 'home';
 
-  const pctGoal1MT = Math.round((teamGoalsHT.filter(g => g > 0).length / matches.length) * 100);
-  const pct2Plus1MT = Math.round((teamGoalsHT.filter(g => g >= 2).length / matches.length) * 100);
+  // Compter les buts dans la fenêtre 31-45 min via goal_events
+  const teamGoals3145 = matches.map(m => {
+    const events = Array.isArray(m.goal_events) ? m.goal_events : [];
+    return events.filter(e => e.min >= 31 && e.min <= 45 && e.home === teamIsHome).length;
+  });
+  const oppGoals3145 = matches.map(m => {
+    const events = Array.isArray(m.goal_events) ? m.goal_events : [];
+    return events.filter(e => e.min >= 31 && e.min <= 45 && e.home !== teamIsHome).length;
+  });
 
-  // Réaction quand adversaire marque en 1MT
+  const pctGoal1MT = Math.round((teamGoals3145.filter(g => g > 0).length / matches.length) * 100);
+  const pct2Plus1MT = Math.round((teamGoals3145.filter(g => g >= 2).length / matches.length) * 100);
+
+  // Réaction quand adversaire marque en 31-45 min
   let pctReaction1MT = null;
-  const oppScored = matches.filter((_, i) => oppGoalsHT[i] > 0);
+  const oppScored = matches.filter((_, i) => oppGoals3145[i] > 0);
   if (oppScored.length >= 2) {
     const reactions = oppScored.filter((m, idx) => {
       const origIdx = matches.indexOf(m);
-      return teamGoalsHT[origIdx] > 0;
+      return teamGoals3145[origIdx] > 0;
     }).length;
     pctReaction1MT = Math.round((reactions / oppScored.length) * 100);
   }
 
-  // Clean sheet H2H
+  // Clean sheet H2H — jamais marqué en 31-45 min contre cet adversaire
   let cleanSheetBlock = false;
   if (h2h.length >= 3) {
     const h2hGoals = h2h.filter(m => {
-      const isHome = m.home_team_id === teamId;
-      return (isHome ? (m.home_goals_ht || 0) : (m.away_goals_ht || 0)) > 0;
+      const events = Array.isArray(m.goal_events) ? m.goal_events : [];
+      const teamIsHomeInH2H = m.home_team_id === teamId;
+      return events.some(e => e.min >= 31 && e.min <= 45 && e.home === teamIsHomeInH2H);
     }).length;
     if (h2hGoals === 0) cleanSheetBlock = true;
   }
