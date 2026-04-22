@@ -219,7 +219,7 @@
                             <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
                           {/if}
                           {#each bar.goals as g}
-                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'"></span>
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.label || g.min + '\''}"></span>
                           {/each}
                         </div>
                       </div>
@@ -227,7 +227,7 @@
                   {/each}
                 </div>
               {:else}
-                <div class="team-detail__empty">Aucun match recent</div>
+                <p style="color:var(--color-text-muted);text-align:center;padding:1rem;font-size:13px;">Aucun match joue cette saison</p>
               {/if}
             </div>
 
@@ -266,7 +266,7 @@
                             <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
                           {/if}
                           {#each bar.goals as g}
-                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'"></span>
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.label || g.min + '\''}"></span>
                           {/each}
                         </div>
                       </div>
@@ -274,7 +274,7 @@
                   {/each}
                 </div>
               {:else}
-                <div class="team-detail__empty">Aucun match recent</div>
+                <p style="color:var(--color-text-muted);text-align:center;padding:1rem;font-size:13px;">Aucun match joue cette saison</p>
               {/if}
             </div>
           </div>

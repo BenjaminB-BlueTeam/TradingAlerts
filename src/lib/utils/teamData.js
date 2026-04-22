@@ -4,7 +4,20 @@
  */
 
 /**
- * Loads the last 15 matches for a team in a given context (home/away) from Supabase.
+ * Returns the approximate start date of the current football season.
+ * European leagues typically start in July/August, so we use July 1 as cutoff.
+ * If current month >= 7 (July), season started this year; otherwise last year.
+ * @returns {string} Date string in YYYY-MM-DD format
+ */
+function getCurrentSeasonStart() {
+  const now = new Date();
+  const year = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${year}-07-01`;
+}
+
+/**
+ * Loads matches for a team in a given context (home/away) from Supabase,
+ * filtered to the current season only (since ~July 1).
  * @param {number|string} teamId
  * @param {'home'|'away'} context
  * @param {object} supabaseClient - The Supabase client instance (from '$lib/api/supabase.js')
@@ -13,13 +26,15 @@
 export async function loadTeamMatches(teamId, context, supabaseClient) {
   const col = context === 'home' ? 'home_team_id' : 'away_team_id';
   const today = new Date().toISOString().split('T')[0];
+  const seasonStart = getCurrentSeasonStart();
   const { data } = await supabaseClient
     .from('h2h_matches')
     .select('*')
     .eq(col, teamId)
+    .gte('match_date', seasonStart)
     .lt('match_date', today)
     .order('match_date', { ascending: false })
-    .limit(15);
+    .limit(30);
 
   return data || [];
 }
@@ -54,7 +69,7 @@ export function computeTeamStats(matches, context) {
  * Generates goal timing bar data for a match in a given context.
  * @param {object} match
  * @param {'home'|'away'} context
- * @returns {{ goals: Array<{min: number, pct: number, scored: boolean}>, total: number, result: 'W'|'D'|'L' }}
+ * @returns {{ goals: Array<{min: number, raw: string, pct: number, scored: boolean, label: string}>, total: number, result: 'W'|'D'|'L' }}
  */
 export function goalBar(match, context) {
   const isHome = context === 'home';
@@ -69,11 +84,18 @@ export function goalBar(match, context) {
 
   // If we have goal_events with minutes, use them
   if (events.length > 0 && events[0]?.min) {
-    const goals = events.map(g => ({
-      min: g.min,
-      pct: Math.min((g.min / 95) * 100, 98),
-      scored: isHome ? g.home : !g.home,
-    }));
+    const goals = events.map(g => {
+      const scored = isHome ? g.home : !g.home;
+      const displayMin = g.raw || String(g.min);
+      const label = scored ? `${displayMin}'` : `${displayMin}' \u2014 Encaiss\u00e9`;
+      return {
+        min: g.min,
+        raw: displayMin,
+        pct: Math.min((g.min / 95) * 100, 98),
+        scored,
+        label,
+      };
+    });
     return { goals, total: totalGoals, result };
   }
 
@@ -84,10 +106,10 @@ export function goalBar(match, context) {
   const conceded2MT = oppGoals - concededHT;
 
   const goals = [];
-  for (let i = 0; i < scoredHT; i++) goals.push({ min: 10 + i * 12, pct: (10 + i * 12) / 95 * 100, scored: true });
-  for (let i = 0; i < concededHT; i++) goals.push({ min: 15 + i * 12, pct: (15 + i * 12) / 95 * 100, scored: false });
-  for (let i = 0; i < scored2MT; i++) goals.push({ min: 55 + i * 12, pct: (55 + i * 12) / 95 * 100, scored: true });
-  for (let i = 0; i < conceded2MT; i++) goals.push({ min: 60 + i * 12, pct: (60 + i * 12) / 95 * 100, scored: false });
+  for (let i = 0; i < scoredHT; i++) { const m = 10 + i * 12; goals.push({ min: m, raw: String(m), pct: m / 95 * 100, scored: true, label: `${m}'` }); }
+  for (let i = 0; i < concededHT; i++) { const m = 15 + i * 12; goals.push({ min: m, raw: String(m), pct: m / 95 * 100, scored: false, label: `${m}' \u2014 Encaiss\u00e9` }); }
+  for (let i = 0; i < scored2MT; i++) { const m = 55 + i * 12; goals.push({ min: m, raw: String(m), pct: m / 95 * 100, scored: true, label: `${m}'` }); }
+  for (let i = 0; i < conceded2MT; i++) { const m = 60 + i * 12; goals.push({ min: m, raw: String(m), pct: m / 95 * 100, scored: false, label: `${m}' \u2014 Encaiss\u00e9` }); }
   goals.sort((a, b) => a.min - b.min);
 
   return { goals, total: totalGoals, result };
