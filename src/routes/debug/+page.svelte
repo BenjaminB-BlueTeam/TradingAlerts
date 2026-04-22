@@ -267,7 +267,7 @@
 <!-- TEST API FOOTYSTATS -->
 <div class="settings-block">
   <div class="settings-block__title">🔌 Test API FootyStats</div>
-  <button class="btn btn--secondary" on:click={handleTestApi} disabled={apiTesting}>
+  <button class="btn btn--secondary" onclick={handleTestApi} disabled={apiTesting}>
     {apiTesting ? '⏳ Test...' : '🔗 Tester API'}
   </button>
   {#if apiResult}
@@ -281,7 +281,7 @@
 <!-- TEST SUPABASE -->
 <div class="settings-block">
   <div class="settings-block__title">🗄 Test Supabase</div>
-  <button class="btn btn--secondary" on:click={handleTestSupabase} disabled={supaTesting}>
+  <button class="btn btn--secondary" onclick={handleTestSupabase} disabled={supaTesting}>
     {supaTesting ? '⏳ Test...' : '🔗 Tester Supabase'}
   </button>
   {#if supaResult}
@@ -310,8 +310,8 @@
     <span>Expires : <strong>{cache.expired}</strong></span>
   </div>
   <div style="display:flex;gap:8px;margin-top:8px;">
-    <button class="btn btn--secondary btn--sm" on:click={refreshCache}>🔄 Rafraichir</button>
-    <button class="btn btn--danger btn--sm" on:click={handleClearCache}>🗑 Vider cache</button>
+    <button class="btn btn--secondary btn--sm" onclick={refreshCache}>🔄 Rafraichir</button>
+    <button class="btn btn--danger btn--sm" onclick={handleClearCache}>🗑 Vider cache</button>
   </div>
 </div>
 
@@ -319,7 +319,7 @@
 <div class="settings-block">
   <div class="settings-block__title">🌱 Seed Data (FootyStats → Supabase)</div>
 
-  <button class="btn btn--primary mb-16" on:click={handleStartSeed} disabled={seedRunning}>
+  <button class="btn btn--primary mb-16" onclick={handleStartSeed} disabled={seedRunning}>
     {seedRunning ? `⏳ Seed en cours (${seedDone}/${seedTotal})...` : '🚀 Seed complet (toutes les ligues)'}
   </button>
 
@@ -355,7 +355,7 @@
           <span>{league.name} <span style="color:var(--color-text-muted);font-size:11px;">{league.country}</span></span>
           <button class="btn btn--secondary btn--sm"
             disabled={seedRunning}
-            on:click={() => handleSeedSingle(league.id, league.name)}>
+            onclick={() => handleSeedSingle(league.id, league.name)}>
             Seed
           </button>
           {#if seedProgress[league.id]}
@@ -388,7 +388,7 @@
       <label class="form-label">Au</label>
       <input type="date" class="form-input" bind:value={backfillTo} placeholder="aujourd'hui" style="width:160px;" />
     </div>
-    <button class="btn btn--primary" on:click={handleBackfill} disabled={backfillRunning || !backfillFrom}>
+    <button class="btn btn--primary" onclick={handleBackfill} disabled={backfillRunning || !backfillFrom}>
       {backfillRunning ? '⏳ Rattrapage en cours...' : '🚀 Lancer le rattrapage'}
     </button>
   </div>
@@ -436,14 +436,14 @@
       <input type="text" class="form-input" bind:value={rawParams}
         placeholder="league_id=82&season=2024" />
     </div>
-    <button class="btn btn--primary" on:click={handleRawCall} disabled={rawLoading}>
+    <button class="btn btn--primary" onclick={handleRawCall} disabled={rawLoading}>
       {rawLoading ? '⏳...' : '▶ Executer'}
     </button>
   </div>
   {#if rawResult}
     <div class="debug-raw-meta">
       Status: <strong>{rawResult.status}</strong> — Temps: <strong>{rawResult.elapsed}ms</strong>
-      <button class="btn-copy" on:click={copyRawResult} title="Copier le JSON">
+      <button class="btn-copy" onclick={copyRawResult} title="Copier le JSON">
         {copyLabel}
       </button>
     </div>

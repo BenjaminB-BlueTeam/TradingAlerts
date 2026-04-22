@@ -98,12 +98,12 @@
 </div>
 
 <div class="alerts-filters">
-  <button class="alerts-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} on:click={() => selectedDay = null}>
+  <button class="alerts-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} onclick={() => selectedDay = null}>
     Tous ({alerts.length})
   </button>
   {#each days as day}
     {@const count = alerts.filter(a => a.match_date === getDateStr(day.offset)).length}
-    <button class="alerts-filter-btn" class:active={selectedDay === day.offset} aria-pressed={selectedDay === day.offset} on:click={() => selectedDay = (selectedDay === day.offset ? null : day.offset)}>
+    <button class="alerts-filter-btn" class:active={selectedDay === day.offset} aria-pressed={selectedDay === day.offset} onclick={() => selectedDay = (selectedDay === day.offset ? null : day.offset)}>
       {day.label} ({count})
     </button>
   {/each}
@@ -135,7 +135,7 @@
         class:alert-card--lost={a.status === 'lost'}
         class:alert-card--live={a.status === 'pending' && isInPlay(a)}
       >
-        <div class="alert-card__header" on:click={() => toggleExpand(a)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }} role="button" tabindex="0" aria-expanded={expandedId === a.id}>
+        <div class="alert-card__header" onclick={() => toggleExpand(a)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }} role="button" tabindex="0" aria-expanded={expandedId === a.id}>
           <div class="alert-card__time">
             <div class="alert-card__day">{a.match_date}</div>
             <div class="alert-card__hour">{formatTime(a.kickoff_unix)}</div>
@@ -210,8 +210,8 @@
                       <span class="match-row__away">{m.away_team_name}</span>
                       <div class="match-row__bar">
                         <div class="goal-bar"
-                          on:mousemove={(e) => onBarMove(e, barKey)}
-                          on:mouseleave={onBarLeave}
+                          onmousemove={(e) => onBarMove(e, barKey)}
+                          onmouseleave={onBarLeave}
                         >
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
@@ -257,8 +257,8 @@
                       <span class="match-row__away match-row__bold">{m.away_team_name}</span>
                       <div class="match-row__bar">
                         <div class="goal-bar"
-                          on:mousemove={(e) => onBarMove(e, barKey)}
-                          on:mouseleave={onBarLeave}
+                          onmousemove={(e) => onBarMove(e, barKey)}
+                          onmouseleave={onBarLeave}
                         >
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>

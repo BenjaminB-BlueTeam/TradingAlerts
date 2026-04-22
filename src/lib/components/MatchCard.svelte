@@ -5,7 +5,6 @@
   import { formaterH2HTimeline } from '$lib/core/h2h.js';
   import { getTimerConseille } from '$lib/core/scoring.js';
   import { config } from '$lib/stores/appStore.js';
-  import { get } from 'svelte/store';
   import { isWindowActive } from '$lib/core/filters.js';
 
   let { match, onTrade = null } = $props();
@@ -52,7 +51,7 @@
     };
   }
 
-  let cfg = $derived(get(config));
+  let cfg = $derived($config);
   let timer = $derived(getTimerConseille(cfg?.profil || 'intermediaire'));
 </script>
 
@@ -175,11 +174,11 @@
           <span class="badge badge--h2h-gris">DC: {m.scoreDC}pts</span>
         {/if}
         {#if onTrade}
-          <button class="btn btn--primary btn--sm" on:click={() => onTrade(m)}>
+          <button class="btn btn--primary btn--sm" onclick={() => onTrade(m)}>
             + Trade
           </button>
         {/if}
-        <button class="btn btn--ghost btn--sm" on:click={toggleDetail}>
+        <button class="btn btn--ghost btn--sm" onclick={toggleDetail}>
           Analyse {expanded ? '▴' : '▾'}
         </button>
       </div>

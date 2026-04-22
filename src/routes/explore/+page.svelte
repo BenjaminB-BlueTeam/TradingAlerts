@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { apiConnected } from '$lib/stores/appStore.js';
-  import { getAllLeagues, getLeagueTable, getLeagueSeason, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
+  import { statColor, fetchLeagues, loadAllStats, toggleExpandLeague } from '$lib/utils/leagueHelpers.js';
 
   let allLeagues = $state([]);
   let loading = $state(true);
@@ -18,44 +18,23 @@
   async function loadLeagues() {
     if (loaded && allLeagues.length > 10) return;
     loading = true;
-    try {
-      const res = await rawApiCall('league-list', { chosen_leagues_only: 'true' });
-      if (res.status === 200) {
-        allLeagues = normalizeLeagues(res.data);
-        loaded = true;
-        loadAllStats();
-      } else {
-        allLeagues = await getAllLeagues();
-      }
-    } catch {
-      allLeagues = await getAllLeagues();
+    const result = await fetchLeagues();
+    allLeagues = result.leagues;
+    if (result.loaded) {
+      loaded = true;
+      loadAllStats(allLeagues, leagueStats, (id, stats) => {
+        if (stats === undefined) {
+          statsLoading[id] = true;
+          statsLoading = statsLoading;
+        } else {
+          leagueStats[id] = stats;
+          leagueStats = leagueStats;
+          statsLoading[id] = false;
+          statsLoading = statsLoading;
+        }
+      });
     }
     loading = false;
-  }
-
-  async function loadAllStats() {
-    for (let i = 0; i < allLeagues.length; i += 3) {
-      const batch = allLeagues.slice(i, i + 3);
-      await Promise.all(batch.map(l => loadLeagueStats(l.id)));
-      if (i + 3 < allLeagues.length) {
-        await new Promise(r => setTimeout(r, 500));
-      }
-    }
-  }
-
-  async function loadLeagueStats(seasonId) {
-    if (leagueStats[seasonId]) return;
-    statsLoading[seasonId] = true;
-    statsLoading = statsLoading;
-    try {
-      const stats = await getLeagueSeason(seasonId);
-      if (stats) {
-        leagueStats[seasonId] = stats;
-        leagueStats = leagueStats;
-      }
-    } catch {}
-    statsLoading[seasonId] = false;
-    statsLoading = statsLoading;
   }
 
   $effect(() => { if ($apiConnected && !loaded) loadLeagues(); });
@@ -89,19 +68,10 @@
     expandedLeague = leagueId;
     leagueTable = null;
     tableLoading = true;
-    try {
-      leagueTable = await getLeagueTable(leagueId);
-    } catch (e) {
-      leagueTable = [];
-      if (window.showToast) window.showToast(`Erreur : ${e.message}`, 'error');
-    }
-    tableLoading = false;
-  }
-
-  function statColor(val, green, orange) {
-    if (val >= green) return 'var(--color-accent-green)';
-    if (val >= orange) return 'var(--color-signal-moyen)';
-    return 'var(--color-text-muted)';
+    const result = await toggleExpandLeague(leagueId, null);
+    expandedLeague = result.expandedLeague;
+    leagueTable = result.leagueTable;
+    tableLoading = result.tableLoading;
   }
 
   onMount(() => {
@@ -140,7 +110,7 @@
         {#each leagues as league (league.id)}
           {@const stats = leagueStats[league.id]}
           <div class="explore-league-card" class:expanded={expandedLeague === league.id}>
-            <div class="explore-league-card__header" on:click={() => toggleLeague(league.id)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLeague(league.id); } }} role="button" tabindex="0" aria-expanded={expandedLeague === league.id}>
+            <div class="explore-league-card__header" onclick={() => toggleLeague(league.id)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLeague(league.id); } }} role="button" tabindex="0" aria-expanded={expandedLeague === league.id}>
               <div class="explore-league-card__info">
                 <div class="explore-league-card__name">{league.name}</div>
                 <div class="explore-league-card__meta">

@@ -70,8 +70,8 @@
     </div>
     <input type="range" class="form-input"
       min="60" max="90" value={cfg.seuilFHG}
-      on:change={e => setConfig('seuilFHG', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, seuilFHG: parseInt(e.target.value)}))} />
+      onchange={e => setConfig('seuilFHG', parseInt(e.target.value))}
+      oninput={e => config.update(c => ({...c, seuilFHG: parseInt(e.target.value)}))} />
   </div>
 
   <div class="slider-row mb-16">
@@ -81,8 +81,8 @@
     </div>
     <input type="range" class="form-input"
       min="2" max="5" value={cfg.seuil5Matchs}
-      on:change={e => setConfig('seuil5Matchs', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, seuil5Matchs: parseInt(e.target.value)}))} />
+      onchange={e => setConfig('seuil5Matchs', parseInt(e.target.value))}
+      oninput={e => config.update(c => ({...c, seuil5Matchs: parseInt(e.target.value)}))} />
   </div>
 
   <div class="toggle-row">
@@ -92,7 +92,7 @@
     </div>
     <label class="toggle-switch">
       <input type="checkbox" checked={cfg.ignoreDebutSaison}
-        on:change={e => setToggle('ignoreDebutSaison', e.target.checked)} />
+        onchange={e => setToggle('ignoreDebutSaison', e.target.checked)} />
       <span class="toggle-slider"></span>
     </label>
   </div>
@@ -104,8 +104,8 @@
     </div>
     <input type="range" class="form-input"
       min="5" max="15" value={cfg.seuilMatchsMin}
-      on:change={e => setConfig('seuilMatchsMin', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, seuilMatchsMin: parseInt(e.target.value)}))} />
+      onchange={e => setConfig('seuilMatchsMin', parseInt(e.target.value))}
+      oninput={e => config.update(c => ({...c, seuilMatchsMin: parseInt(e.target.value)}))} />
   </div>
 
   <div class="toggle-row">
@@ -115,7 +115,7 @@
     </div>
     <label class="toggle-switch">
       <input type="checkbox" checked={cfg.ponderationN1}
-        on:change={e => setToggle('ponderationN1', e.target.checked)} />
+        onchange={e => setToggle('ponderationN1', e.target.checked)} />
       <span class="toggle-slider"></span>
     </label>
   </div>
@@ -131,7 +131,7 @@
     </div>
     <label class="toggle-switch">
       <input type="checkbox" checked={cfg.afficher1MT}
-        on:change={e => setToggle('afficher1MT', e.target.checked)} />
+        onchange={e => setToggle('afficher1MT', e.target.checked)} />
       <span class="toggle-slider"></span>
     </label>
   </div>
@@ -143,7 +143,7 @@
     </div>
     <label class="toggle-switch">
       <input type="checkbox" checked={cfg.alerter1MT}
-        on:change={e => setToggle('alerter1MT', e.target.checked)} />
+        onchange={e => setToggle('alerter1MT', e.target.checked)} />
       <span class="toggle-slider"></span>
     </label>
   </div>
@@ -155,8 +155,8 @@
     </div>
     <input type="range" class="form-input"
       min="50" max="70" value={cfg.seuil1MT}
-      on:change={e => setConfig('seuil1MT', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, seuil1MT: parseInt(e.target.value)}))} />
+      onchange={e => setConfig('seuil1MT', parseInt(e.target.value))}
+      oninput={e => config.update(c => ({...c, seuil1MT: parseInt(e.target.value)}))} />
   </div>
 </div>
 
@@ -176,7 +176,7 @@
     </div>
     <label class="toggle-switch">
       <input type="checkbox" checked={cfg.filtreH2HActif}
-        on:change={e => setToggle('filtreH2HActif', e.target.checked)} />
+        onchange={e => setToggle('filtreH2HActif', e.target.checked)} />
       <span class="toggle-slider"></span>
     </label>
   </div>
@@ -196,8 +196,8 @@
     </div>
     <input type="range" class="form-input"
       min="1" max="5" value={cfg.minH2H}
-      on:change={e => setConfig('minH2H', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, minH2H: parseInt(e.target.value)}))} />
+      onchange={e => setConfig('minH2H', parseInt(e.target.value))}
+      oninput={e => config.update(c => ({...c, minH2H: parseInt(e.target.value)}))} />
   </div>
 
   <div class="slider-row mb-0">
@@ -207,8 +207,8 @@
     </div>
     <input type="range" class="form-input"
       min="5" max="15" value={cfg.penaliteH2H}
-      on:change={e => setConfig('penaliteH2H', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, penaliteH2H: parseInt(e.target.value)}))} />
+      onchange={e => setConfig('penaliteH2H', parseInt(e.target.value))}
+      oninput={e => config.update(c => ({...c, penaliteH2H: parseInt(e.target.value)}))} />
   </div>
 </div>
 
@@ -222,7 +222,7 @@
     </div>
     <label class="toggle-switch">
       <input type="checkbox" checked={cfg.analyseDC}
-        on:change={e => setToggle('analyseDC', e.target.checked)} />
+        onchange={e => setToggle('analyseDC', e.target.checked)} />
       <span class="toggle-slider"></span>
     </label>
   </div>
@@ -234,8 +234,8 @@
     </div>
     <input type="range" class="form-input"
       min="45" max="75" value={cfg.seuilRetourDC}
-      on:change={e => setConfig('seuilRetourDC', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, seuilRetourDC: parseInt(e.target.value)}))} />
+      onchange={e => setConfig('seuilRetourDC', parseInt(e.target.value))}
+      oninput={e => config.update(c => ({...c, seuilRetourDC: parseInt(e.target.value)}))} />
   </div>
 
   <div class="info-box" style="font-size:12px;">
@@ -252,7 +252,7 @@
     <div class="profile-selector">
       {#each ['debutant', 'intermediaire', 'expert'] as p}
         <button class="profile-btn" class:active={cfg.profil === p}
-          on:click={() => setProfil(p)}>
+          onclick={() => setProfil(p)}>
           <span class="profile-btn__name">{profilLabels[p].name}</span>
           <span class="profile-btn__desc">{profilLabels[p].desc}</span>
         </button>
@@ -268,8 +268,8 @@
       </div>
       <input type="range" class="form-input"
         min="1" max="40" value={cfg.minuteMin}
-        on:change={e => setConfig('minuteMin', parseInt(e.target.value))}
-        on:input={e => config.update(c => ({...c, minuteMin: parseInt(e.target.value)}))} />
+        onchange={e => setConfig('minuteMin', parseInt(e.target.value))}
+        oninput={e => config.update(c => ({...c, minuteMin: parseInt(e.target.value)}))} />
     </div>
     <div class="slider-row">
       <div class="slider-header">
@@ -278,8 +278,8 @@
       </div>
       <input type="range" class="form-input"
         min="50" max="90" value={cfg.minuteMax}
-        on:change={e => setConfig('minuteMax', parseInt(e.target.value))}
-        on:input={e => config.update(c => ({...c, minuteMax: parseInt(e.target.value)}))} />
+        onchange={e => setConfig('minuteMax', parseInt(e.target.value))}
+        oninput={e => config.update(c => ({...c, minuteMax: parseInt(e.target.value)}))} />
     </div>
   </div>
 </div>
@@ -295,8 +295,8 @@
     </div>
     <input type="range" class="form-input"
       min="1" max="15" value={cfg.maxAlertes}
-      on:change={e => setConfig('maxAlertes', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, maxAlertes: parseInt(e.target.value)}))} />
+      onchange={e => setConfig('maxAlertes', parseInt(e.target.value))}
+      oninput={e => config.update(c => ({...c, maxAlertes: parseInt(e.target.value)}))} />
   </div>
 
   <div class="toggle-row">
@@ -306,7 +306,7 @@
     </div>
     <label class="toggle-switch">
       <input type="checkbox" checked={cfg.stopVictoires}
-        on:change={e => setToggle('stopVictoires', e.target.checked)} />
+        onchange={e => setToggle('stopVictoires', e.target.checked)} />
       <span class="toggle-slider"></span>
     </label>
   </div>
@@ -318,8 +318,8 @@
     </div>
     <input type="range" class="form-input"
       min="2" max="10" value={cfg.nbVictoires}
-      on:change={e => setConfig('nbVictoires', parseInt(e.target.value))}
-      on:input={e => config.update(c => ({...c, nbVictoires: parseInt(e.target.value)}))} />
+      onchange={e => setConfig('nbVictoires', parseInt(e.target.value))}
+      oninput={e => config.update(c => ({...c, nbVictoires: parseInt(e.target.value)}))} />
   </div>
 </div>
 
@@ -410,14 +410,14 @@
               <td>
                 <select class="form-input" style="padding:3px 6px;font-size:11px;width:100px;"
                   value={t.resultat || 'non_joue'}
-                  on:change={e => handleTradeResult(t.id, e.target.value)}>
+                  onchange={e => handleTradeResult(t.id, e.target.value)}>
                   <option value="non_joue">Non joue</option>
                   <option value="gagne">Gagne ✓</option>
                   <option value="perdu">Perdu ✗</option>
                 </select>
               </td>
               <td>
-                <button class="btn btn--ghost btn--sm" on:click={() => handleDeleteTrade(t.id)}>🗑</button>
+                <button class="btn btn--ghost btn--sm" onclick={() => handleDeleteTrade(t.id)}>🗑</button>
               </td>
             </tr>
           {/each}

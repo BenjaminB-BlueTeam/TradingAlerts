@@ -37,7 +37,10 @@ async function supabaseQuery(table, query = '') {
     },
     signal: AbortSignal.timeout(8000),
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.warn(`[supabaseQuery] ${table} error: HTTP ${res.status}`);
+    return [];
+  }
   return await res.json();
 }
 

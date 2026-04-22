@@ -56,12 +56,12 @@
 
 <!-- OVERLAY MOBILE -->
 {#if sidebarOpen}
-  <div class="sidebar-overlay active" on:click={() => sidebarOpen = false} on:keydown={(e) => { if (e.key === 'Escape') sidebarOpen = false; }} role="presentation"></div>
+  <div class="sidebar-overlay active" onclick={() => sidebarOpen = false} onkeydown={(e) => { if (e.key === 'Escape') sidebarOpen = false; }} role="presentation"></div>
 {/if}
 
 <!-- TOPBAR MOBILE -->
 <div class="topbar">
-  <button class="burger-btn" on:click={() => sidebarOpen = !sidebarOpen} aria-label="Menu">☰</button>
+  <button class="burger-btn" onclick={() => sidebarOpen = !sidebarOpen} aria-label="Menu">☰</button>
   <span class="topbar__title">FHG Tracker</span>
   <div class="topbar__right">
     <div class="api-dot {apiDotClass}"></div>
@@ -75,7 +75,7 @@
       <span class="sidebar__logo-icon">⚽</span>
       <span class="sidebar__logo-text">FHG Tracker</span>
     </div>
-    <button class="sidebar__close-btn" on:click={() => sidebarOpen = false} aria-label="Fermer">✕</button>
+    <button class="sidebar__close-btn" onclick={() => sidebarOpen = false} aria-label="Fermer">✕</button>
   </div>
 
   <div class="sidebar__nav">
@@ -86,7 +86,7 @@
       </div>
     {/if}
 
-    <button class="sidebar__refresh-btn" on:click={handleRefresh} disabled={refreshing} title="Vider le cache et recharger">
+    <button class="sidebar__refresh-btn" onclick={handleRefresh} disabled={refreshing} title="Vider le cache et recharger">
       {refreshing ? '⏳' : '🔄'} Refresh
     </button>
 
@@ -95,7 +95,7 @@
         href={item.href}
         class="sidebar__nav-item"
         class:active={isActive(item.href)}
-        on:click|preventDefault={() => navigate(item.href)}
+        onclick={(e) => { e.preventDefault(); navigate(item.href); }}
       >
         <span class="sidebar__nav-icon">{item.icon}</span>
         <span class="sidebar__nav-label">{item.label}</span>
@@ -109,8 +109,8 @@
     <div
       class="sidebar__section-toggle"
       class:open={adminOpen}
-      on:click={() => adminOpen = !adminOpen}
-      on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); adminOpen = !adminOpen; } }}
+      onclick={() => adminOpen = !adminOpen}
+      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); adminOpen = !adminOpen; } }}
       role="button"
       tabindex="0"
       aria-expanded={adminOpen}
@@ -127,7 +127,7 @@
             href={item.href}
             class="sidebar__nav-item sidebar__nav-item--sub"
             class:active={isActive(item.href)}
-            on:click|preventDefault={() => navigate(item.href)}
+            onclick={(e) => { e.preventDefault(); navigate(item.href); }}
           >
             <span class="sidebar__nav-icon">{item.icon}</span>
             <span class="sidebar__nav-label">{item.label}</span>
@@ -144,7 +144,7 @@
     </div>
     <button
       class="btn btn--secondary btn--pause btn--full"
-      on:click={togglePause}
+      onclick={togglePause}
       style={$pauseSession ? 'opacity:0.7' : ''}
     >
       {$pauseSession ? '▶ REPRENDRE SESSION' : '⏸ PAUSE SESSION'}

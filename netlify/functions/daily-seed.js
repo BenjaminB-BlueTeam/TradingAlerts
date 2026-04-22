@@ -7,6 +7,7 @@
    ================================================ */
 
 const { footyRequest } = require('./lib/api');
+const { parseMatchRow } = require('./lib/parseMatch');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -44,43 +45,6 @@ async function supabaseUpsert(table, rows) {
     inserted += batch.length;
   }
   return inserted;
-}
-
-function parseMatchRow(m) {
-  // Extraire les minutes des buts (meme logique que seed-data.js)
-  let goalMinutes = [];
-  const homeTimings = m.homeGoals_timings || m.homeGoals || [];
-  const awayTimings = m.awayGoals_timings || m.awayGoals || [];
-  if (Array.isArray(homeTimings)) {
-    homeTimings.forEach(t => {
-      const min = parseInt(t);
-      if (min > 0) goalMinutes.push({ min, raw: String(t).trim(), home: true });
-    });
-  }
-  if (Array.isArray(awayTimings)) {
-    awayTimings.forEach(t => {
-      const min = parseInt(t);
-      if (min > 0) goalMinutes.push({ min, raw: String(t).trim(), home: false });
-    });
-  }
-  goalMinutes.sort((a, b) => a.min - b.min);
-
-  return {
-    home_team_id: m.homeID,
-    away_team_id: m.awayID,
-    home_team_name: m.home_name || null,
-    away_team_name: m.away_name || null,
-    league_id: m.competition_id || m.league_id || null,
-    season_id: m.competition_id || null,
-    match_id: m.id,
-    match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : m.date || '1970-01-01',
-    home_goals: m.homeGoalCount ?? m.homeGoals ?? 0,
-    away_goals: m.awayGoalCount ?? m.awayGoals ?? 0,
-    home_goals_ht: m.team_a_ht_score ?? m.ht_goals_team_a ?? 0,
-    away_goals_ht: m.team_b_ht_score ?? m.ht_goals_team_b ?? 0,
-    goal_events: goalMinutes,
-    last_updated: new Date().toISOString(),
-  };
 }
 
 // --- Main ---

@@ -10,14 +10,14 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if open}
-  <div class="modal-overlay" on:click={handleOverlayClick} on:keydown={handleKeydown} role="dialog" aria-modal="true">
+  <div class="modal-overlay" onclick={handleOverlayClick} onkeydown={handleKeydown} role="dialog" aria-modal="true">
     <div class="modal">
       <div class="modal__header">
         <span class="modal__title">{title}</span>
-        <button class="modal__close" on:click={onClose} aria-label="Fermer">✕</button>
+        <button class="modal__close" onclick={onClose} aria-label="Fermer">✕</button>
       </div>
       <div class="modal__body">
         {@render children()}

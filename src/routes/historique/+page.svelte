@@ -147,7 +147,7 @@
 <!-- FILTRES -->
 <div class="hist-filters">
   {#each filters as f}
-    <button class="hist-filter-btn" class:active={activeFilter === f.key} aria-pressed={activeFilter === f.key} on:click={() => activeFilter = f.key}>
+    <button class="hist-filter-btn" class:active={activeFilter === f.key} aria-pressed={activeFilter === f.key} onclick={() => activeFilter = f.key}>
       {f.label} ({countFor(f.key)})
     </button>
   {/each}
@@ -280,7 +280,7 @@
 
   {#if hasMore}
     <div class="load-more-wrap">
-      <button class="btn btn--secondary" on:click={loadMore}>
+      <button class="btn btn--secondary" onclick={loadMore}>
         Charger plus (au-dela de {daysRange} jours)
       </button>
     </div>

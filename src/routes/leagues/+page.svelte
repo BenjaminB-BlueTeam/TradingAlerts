@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { leagues, saveLeagues, apiConnected } from '$lib/stores/appStore.js';
-  import { getAllLeagues, getLeagueTable, getLeagueSeason, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
+  import { statColor, fetchLeagues, loadAllStats, toggleExpandLeague } from '$lib/utils/leagueHelpers.js';
 
   let apiLeagues = $state([]);
   let loading = $state(true);
@@ -18,48 +18,23 @@
   async function loadLeagues() {
     if (loaded && apiLeagues.length > 10) return;
     loading = true;
-    try {
-      const res = await rawApiCall('league-list', { chosen_leagues_only: 'true' });
-      if (res.status === 200) {
-        apiLeagues = normalizeLeagues(res.data);
-        loaded = true;
-        // Charger les stats progressivement
-        loadAllStats();
-      } else {
-        apiLeagues = await getAllLeagues();
-      }
-    } catch (e) {
-      apiLeagues = await getAllLeagues();
+    const result = await fetchLeagues();
+    apiLeagues = result.leagues;
+    if (result.loaded) {
+      loaded = true;
+      loadAllStats(apiLeagues, leagueStats, (id, stats) => {
+        if (stats === undefined) {
+          statsLoading[id] = true;
+          statsLoading = statsLoading;
+        } else {
+          leagueStats[id] = stats;
+          leagueStats = leagueStats;
+          statsLoading[id] = false;
+          statsLoading = statsLoading;
+        }
+      });
     }
     loading = false;
-  }
-
-  async function loadAllStats() {
-    // Charger les stats 3 par 3 pour ne pas spammer l'API
-    for (let i = 0; i < apiLeagues.length; i += 3) {
-      const batch = apiLeagues.slice(i, i + 3);
-      await Promise.all(batch.map(l => loadLeagueStats(l.id)));
-      if (i + 3 < apiLeagues.length) {
-        await new Promise(r => setTimeout(r, 500));
-      }
-    }
-  }
-
-  async function loadLeagueStats(seasonId) {
-    if (leagueStats[seasonId]) return;
-    statsLoading[seasonId] = true;
-    statsLoading = statsLoading;
-    try {
-      const stats = await getLeagueSeason(seasonId);
-      if (stats) {
-        leagueStats[seasonId] = stats;
-        leagueStats = leagueStats;
-      }
-    } catch (e) {
-      console.warn(`Stats ligue ${seasonId} ERREUR:`, e.message);
-    }
-    statsLoading[seasonId] = false;
-    statsLoading = statsLoading;
   }
 
   $effect(() => { if ($apiConnected && !loaded) loadLeagues(); });
@@ -141,19 +116,10 @@
     expandedLeague = seasonId;
     leagueTable = null;
     tableLoading = true;
-    try {
-      leagueTable = await getLeagueTable(seasonId);
-    } catch (e) {
-      leagueTable = [];
-      if (window.showToast) window.showToast(`Erreur : ${e.message}`, 'error');
-    }
-    tableLoading = false;
-  }
-
-  function statColor(val, green, orange) {
-    if (val >= green) return 'var(--color-accent-green)';
-    if (val >= orange) return 'var(--color-signal-moyen)';
-    return 'var(--color-text-muted)';
+    const result = await toggleExpandLeague(seasonId, null);
+    expandedLeague = result.expandedLeague;
+    leagueTable = result.leagueTable;
+    tableLoading = result.tableLoading;
   }
 
   onMount(() => {
@@ -170,8 +136,8 @@
   <input type="text" class="form-input" bind:value={searchQuery}
     placeholder="Rechercher une ligue ou un pays..." />
   <div class="leagues-toolbar__actions">
-    <button class="btn btn--sm btn--primary" on:click={() => setAll(true)}>Tout sélectionner</button>
-    <button class="btn btn--sm btn--secondary" on:click={() => setAll(false)}>Tout désélectionner</button>
+    <button class="btn btn--sm btn--primary" onclick={() => setAll(true)}>Tout sélectionner</button>
+    <button class="btn btn--sm btn--secondary" onclick={() => setAll(false)}>Tout désélectionner</button>
   </div>
 </div>
 
@@ -192,11 +158,11 @@
       {@const stats = leagueStats[league.id]}
       <div class="league-item" class:league-item--active={active} class:league-item--expanded={expandedLeague === league.id}>
         <div class="league-item__header">
-          <label class="toggle-switch" on:click|stopPropagation>
-            <input type="checkbox" checked={active} on:change={() => toggleLeague(league)} />
+          <label class="toggle-switch" onclick={(e) => e.stopPropagation()}>
+            <input type="checkbox" checked={active} onchange={() => toggleLeague(league)} />
             <span class="toggle-slider"></span>
           </label>
-          <div class="league-item__info" on:click={() => toggleExpand(league.id)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(league.id); } }} role="button" tabindex="0" aria-expanded={expandedLeague === league.id}>
+          <div class="league-item__info" onclick={() => toggleExpand(league.id)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(league.id); } }} role="button" tabindex="0" aria-expanded={expandedLeague === league.id}>
             <div class="league-item__name">
               {league.name}
               {#if active}
@@ -233,7 +199,7 @@
             <div class="league-item__stats-loading">...</div>
           {/if}
 
-          <span class="league-item__arrow" on:click={() => toggleExpand(league.id)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(league.id); } }} role="button" tabindex="0" aria-expanded={expandedLeague === league.id}>
+          <span class="league-item__arrow" onclick={() => toggleExpand(league.id)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(league.id); } }} role="button" tabindex="0" aria-expanded={expandedLeague === league.id}>
             {expandedLeague === league.id ? '▼' : '▶'}
           </span>
         </div>

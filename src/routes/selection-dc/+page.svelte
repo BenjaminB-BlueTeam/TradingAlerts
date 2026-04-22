@@ -90,13 +90,13 @@
 </div>
 
 <div class="dc-filters">
-  <button class="dc-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} on:click={() => selectedDay = null}>
+  <button class="dc-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} onclick={() => selectedDay = null}>
     Tous ({alerts.length})
   </button>
   {#each days as day}
     {@const count = alerts.filter(a => a.match_date === getDateStr(day.offset)).length}
     <button class="dc-filter-btn" class:active={selectedDay === day.offset} aria-pressed={selectedDay === day.offset}
-      on:click={() => selectedDay = (selectedDay === day.offset ? null : day.offset)}>
+      onclick={() => selectedDay = (selectedDay === day.offset ? null : day.offset)}>
       {day.label} ({count})
     </button>
   {/each}
@@ -128,7 +128,7 @@
         class:dc-card--lost={a.status === 'lost'}
         class:dc-card--live={a.status === 'pending' && isInPlay(a)}
       >
-        <div class="dc-card__header" on:click={() => toggleExpand(a)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }} role="button" tabindex="0" aria-expanded={expandedId === a.id}>
+        <div class="dc-card__header" onclick={() => toggleExpand(a)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }} role="button" tabindex="0" aria-expanded={expandedId === a.id}>
           <div class="dc-card__time">
             <div class="dc-card__day">{a.match_date}</div>
             <div class="dc-card__hour">{formatTime(a.kickoff_unix)}</div>

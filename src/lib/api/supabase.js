@@ -6,8 +6,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Clé anon publique — conçue pour être exposée en frontend
-const SUPABASE_URL = 'https://ikpafgqjmjifpaulctmx.supabase.co'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrcGFmZ3FqbWppZnBhdWxjdG14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODMxMzAsImV4cCI6MjA5MDI1OTEzMH0._01tjkB0WvN4xeHH78HIDqZk9BIhDxb9qYJ7dYystso'
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ikpafgqjmjifpaulctmx.supabase.co'
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrcGFmZ3FqbWppZnBhdWxjdG14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODMxMzAsImV4cCI6MjA5MDI1OTEzMH0._01tjkB0WvN4xeHH78HIDqZk9BIhDxb9qYJ7dYystso'
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 

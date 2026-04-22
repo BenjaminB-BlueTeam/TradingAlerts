@@ -165,7 +165,7 @@
   <div class="matches-list">
     {#each filteredMatches as m (m.id)}
       <div class="match-card" class:match-card--expanded={expandedId === m.id}>
-        <div class="match-card__header" on:click={() => toggleExpand(m)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(m); } }} role="button" tabindex="0" aria-expanded={expandedId === m.id}>
+        <div class="match-card__header" onclick={() => toggleExpand(m)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(m); } }} role="button" tabindex="0" aria-expanded={expandedId === m.id}>
           <div class="match-card__time">
             <div class="match-card__day">{formatDateUnix(m.date_unix)}</div>
             <div class="match-card__hour">{formatTime(m.date_unix)}</div>
@@ -210,8 +210,8 @@
                       <span class="match-row__away">{hm.away_team_name}</span>
                       <div class="match-row__bar">
                         <div class="goal-bar"
-                          on:mousemove={(e) => onBarMove(e, barKey)}
-                          on:mouseleave={onBarLeave}
+                          onmousemove={(e) => onBarMove(e, barKey)}
+                          onmouseleave={onBarLeave}
                         >
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
@@ -258,8 +258,8 @@
                       <span class="match-row__away match-row__bold">{am.away_team_name}</span>
                       <div class="match-row__bar">
                         <div class="goal-bar"
-                          on:mousemove={(e) => onBarMove(e, barKey)}
-                          on:mouseleave={onBarLeave}
+                          onmousemove={(e) => onBarMove(e, barKey)}
+                          onmouseleave={onBarLeave}
                         >
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
