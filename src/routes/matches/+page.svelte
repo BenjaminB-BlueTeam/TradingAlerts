@@ -124,7 +124,6 @@
           <th>Heure</th>
           <th>Match</th>
           <th>Ligue</th>
-          <th>Score</th>
         </tr>
       </thead>
       <tbody>
@@ -134,13 +133,6 @@
             <td>{formatTime(m.date_unix)}</td>
             <td style="font-weight:600;">{m.home_name || '?'} vs {m.away_name || '?'}</td>
             <td style="font-size:12px;color:var(--color-text-muted);">{getLeagueName(m)}</td>
-            <td style="font-weight:700;">
-              {#if m.homeGoalCount != null && m.awayGoalCount != null}
-                {m.homeGoalCount} - {m.awayGoalCount}
-              {:else}
-                —
-              {/if}
-            </td>
           </tr>
         {/each}
       </tbody>
