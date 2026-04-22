@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/api/supabase.js';
-  import { getDateStr, formatDate, formatTime, isInPlay, defeatColor } from '$lib/utils/formatters.js';
+  import { getDateStr, formatDate, formatTime, isInPlay, defeatColor, fhgColor } from '$lib/utils/formatters.js';
 
   let alerts = $state([]);
   let loading = $state(true);
@@ -188,8 +188,8 @@
               <span class="dc-pill__value">{a.dc_best_side === 'home' ? a.home_team_name : a.away_team_name}</span>
             </div>
             <div class="dc-pill">
-              <span class="dc-pill__label">% défaite</span>
-              <span class="dc-pill__value" style:color={defeatColor(a.dc_defeat_pct)}>{a.dc_defeat_pct}%</span>
+              <span class="dc-pill__label">% victoire</span>
+              <span class="dc-pill__value" style:color={fhgColor(100 - a.dc_defeat_pct)}>{100 - a.dc_defeat_pct}%</span>
             </div>
             <div class="dc-pill">
               <span class="dc-pill__label">H2H</span>
@@ -215,7 +215,7 @@
           {@const favName = a.dc_best_side === 'home' ? a.home_team_name : a.away_team_name}
           <div class="dc-expand">
             <div class="dc-expand__title">
-              H2H — Historique : <strong>{favName}</strong> ne perd pas à {a.dc_defeat_pct}% ({a.h2h_count} matchs)
+              H2H — <strong>{favName}</strong> gagne ou fait nul dans {100 - a.dc_defeat_pct}% des cas ({a.h2h_count} matchs)
             </div>
             {#if h2h.length > 0}
               <table class="h2h-table">
