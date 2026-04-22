@@ -71,7 +71,7 @@ function parseMatchRow(m) {
     home_team_name: m.home_name || null,
     away_team_name: m.away_name || null,
     league_id: m.competition_id || m.league_id || null,
-    season_id: m.season || m.competition_id || null,
+    season_id: m.competition_id || null,
     match_id: m.id,
     match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : m.date || '1970-01-01',
     home_goals: m.homeGoalCount ?? m.homeGoals ?? 0,
