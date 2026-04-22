@@ -67,6 +67,12 @@
     return h2hCache[[homeId, awayId].sort().join('_')] || [];
   }
 
+  function formatDateFull(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  }
+
   function confidenceClass(c) {
     return c === 'fort' ? 'dc-badge--fort' : 'dc-badge--moyen';
   }
@@ -216,10 +222,10 @@
                 {#each h2h as m}
                   {@const res = h2hResult(m, a.dc_best_side, favId)}
                   <div class="match-row">
-                    <span class="match-row__date">{formatDate(m.match_date)}</span>
-                    <span class="match-row__home" class:match-row__bold={m.home_team_id === favId}>{m.home_team_name}</span>
+                    <span class="match-row__date">{formatDateFull(m.match_date)}</span>
+                    <span class="match-row__home" class:h2h-fav={m.home_team_id === favId}>{m.home_team_name}</span>
                     <span class="match-row__score match-row__score--{res}">{m.home_goals ?? '?'}-{m.away_goals ?? '?'}</span>
-                    <span class="match-row__away" class:match-row__bold={m.away_team_id === favId}>{m.away_team_name}</span>
+                    <span class="match-row__away" class:h2h-fav={m.away_team_id === favId}>{m.away_team_name}</span>
                     <span class="h2h-result h2h-result--{res}">{res}</span>
                   </div>
                 {/each}
@@ -277,6 +283,7 @@
   .dc-expand__title { font-size: 12px; color: var(--color-text-muted); margin-bottom: 10px; }
   .dc-expand__title strong { color: var(--color-text-primary); }
 
+  .h2h-fav { font-weight: 800; color: var(--color-text-primary); text-decoration: underline; text-underline-offset: 2px; }
   .h2h-result { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 3px; text-align: center; min-width: 20px; }
   .h2h-result--W { background: rgba(29,158,117,0.15); color: var(--color-accent-green); }
   .h2h-result--D { background: rgba(239,159,39,0.15); color: var(--color-signal-moyen); }
