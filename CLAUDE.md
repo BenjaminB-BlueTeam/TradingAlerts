@@ -22,11 +22,20 @@ App **SvelteKit** de **trading sportif football**. Identifie les matchs avec for
 | Build | Vite 6 |
 | Déploiement | Netlify (adapter-netlify) + Netlify Functions |
 | Données | API FootyStats (`football-data-api.com`) via proxy Netlify sécurisé |
-| Persistance | Supabase (PostgreSQL) — trades, team_seasons, h2h_matches, seed_jobs |
-| Charts | Chart.js 4.4 |
-| Clé API | `FOOTYSTATS_API_KEY` en variable d'env Netlify (jamais côté browser) |
-| Supabase (serveur) | `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` en env vars Netlify (RLS bypass) |
-| Tests | Vitest |
+| Persistance | Supabase (PostgreSQL) — alerts, trades, team_seasons, h2h_matches, seed_jobs |
+| Charts | Chart.js 4.4 (tree-shaké, imports sélectifs) |
+| Tests | Vitest (139 tests) |
+
+### Variables d'environnement
+
+| Variable | Contexte | Usage |
+|----------|----------|-------|
+| `VITE_SUPABASE_URL` | Frontend | URL Supabase (exposé au browser) |
+| `VITE_SUPABASE_ANON_KEY` | Frontend | Clé anon Supabase (exposé au browser) |
+| `SUPABASE_URL` | Serveur (Netlify Functions) | URL Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Serveur | Clé service_role (bypass RLS) |
+| `FOOTYSTATS_API_KEY` | Serveur | Clé API FootyStats (jamais côté browser) |
+| `SEED_AUTH_TOKEN` | Serveur | Token auth pour seed-data.js |
 
 ---
 
@@ -43,29 +52,30 @@ netlify/functions/
   daily-seed.js         ← cron quotidien 6h UTC — seed matchs d'hier dans h2h_matches
   lib/
     api.js              ← helpers partagés (footyRequest, supabaseQuery)
-    analysis.cjs        ← logique FHG/DC extraite et testable
-    analysis.test.js    ← tests unitaires analyse FHG/DC (31 tests)
+    analysis.cjs        ← logique FHG/DC extraite et testable (server-side)
+    analysis.test.js    ← tests unitaires analyse FHG/DC (19 tests)
     parseMatch.js       ← parseMatchRow partagé (daily-seed + seed-data)
 src/
-  app.css               ← styles globaux (variables CSS, composants, responsive)
+  app.css               ← styles globaux (variables CSS, badges, goal-bar, responsive)
   app.html              ← template HTML
   routes/
     +layout.svelte      ← layout global (Sidebar, Toast, init)
-    +layout.js           ← ssr: false, prerender: false
-    +page.svelte         ← Dashboard KPIs + alertes du jour (Supabase)
+    +layout.js          ← ssr: false, prerender: false
+    +page.svelte        ← Dashboard KPIs + alertes du jour (Supabase)
     alerts/+page.svelte       ← Sélection FHG — alertes FHG depuis Supabase
     selection-dc/+page.svelte ← Sélection DC — alertes DC depuis Supabase
     historique/+page.svelte   ← Historique alertes + stats performance (KPI, ligues, filtres)
-    matches/+page.svelte      ← Matchs à venir (table)
-    leagues/+page.svelte      ← Ligues actives (toggle, stats, classement)
+    matches/+page.svelte      ← Matchs à venir (cards avec expand)
+    leagues/+page.svelte      ← Ligues actives (toggle, stats)
     explore/+page.svelte      ← Explorer toutes les ligues (par pays, stats, classement)
-    config/+page.svelte  ← Configuration algo (profil, seuils, trades)
-    settings/+page.svelte← Paramètres, journal trades, bankroll
-    debug/+page.svelte   ← Debug (test API/Supabase, seed, testeur API brut)
+    config/+page.svelte       ← Configuration algo (section Admin)
+    settings/+page.svelte     ← Paramètres, journal trades, bankroll
+    debug/+page.svelte        ← Debug (test API/Supabase, seed, testeur API brut)
   lib/
     api/
       footystats.js     ← appels API via proxy, cache TTL, normalizeLeagues
       cache.js          ← cache localStorage TTL par endpoint
+      cache.test.js     ← tests unitaires cache (20 tests)
       supabase.js       ← client Supabase + CRUD trades + helpers debug
       seedClient.js     ← client seed (orchestre seed ligue par ligue)
     components/
@@ -74,7 +84,7 @@ src/
       GoalTimeline.svelte← barre timing buts H2H
       Toast.svelte      ← notifications toast
       Modal.svelte      ← modale globale
-      charts.js         ← graphiques Chart.js
+      charts.js         ← graphiques Chart.js (tree-shaké)
       settings/
         ApiTest.svelte    ← test connexion API
         TradeJournal.svelte← journal des trades
@@ -84,17 +94,19 @@ src/
     stores/
       appStore.js       ← stores Svelte (config, leagues, prefs, persistence localStorage)
       tradeStore.js     ← CRUD trades (Supabase + localStorage)
+      tradeStore.test.js← tests unitaires tradeStore (14 tests)
       tradeStats.js     ← calcul stats trades (fonction pure)
     core/
-      scoring.js        ← algorithme FHG (% bruts) + DC
+      scoring.js        ← algorithme FHG (% bruts) + DC (client-side)
       scoring.test.js   ← tests unitaires scoring (29 tests)
       h2h.js            ← analyse head-to-head
+      h2h.test.js       ← tests unitaires h2h (21 tests)
       filters.js        ← isWindowActive (fenêtre 31-45 min)
     utils/
       formatters.js     ← fonctions partagées (formatDate, formatTime, isInPlay, etc.)
-      formatters.test.js← tests unitaires formatters
+      formatters.test.js← tests unitaires formatters (22 tests)
       teamData.js       ← fonctions partagées (loadTeamMatches, computeTeamStats, goalBar)
-      teamData.test.js  ← tests unitaires teamData
+      teamData.test.js  ← tests unitaires teamData (14 tests)
       leagueHelpers.js  ← fonctions partagées leagues/explore (stats, expand, couleurs)
     data.js             ← initApp (test connexion API)
 ```
@@ -122,138 +134,106 @@ src/
 
 ## Tables Supabase
 
-| Table | Rôle | RLS | anon |
-|-------|------|-----|------|
-| `alerts` | Alertes FHG/DC (status: pending/validated/lost/expired) | ON | SELECT |
-| `trades` | Journal des trades | ON | ALL |
-| `team_seasons` | Stats équipes par saison (3 ans, buts/min) | ON | SELECT |
-| `h2h_matches` | Historique matchs H2H avec goal_events | ON | SELECT |
-| `seed_jobs` | Suivi progression seed | ON | SELECT |
+| Table | Rôle | RLS | Policies anon | Policies service_role |
+|-------|------|-----|---------------|----------------------|
+| `alerts` | Alertes FHG/DC (status: pending/validated/lost/expired) | ON | SELECT | ALL |
+| `trades` | Journal des trades | ON | ALL | ALL |
+| `h2h_matches` | Historique matchs H2H avec goal_events | ON | SELECT, INSERT, UPDATE | ALL |
+| `team_seasons` | Stats équipes par saison (3 ans, buts/min) | ON | SELECT | ALL |
+| `seed_jobs` | Suivi progression seed | ON | SELECT, INSERT, UPDATE | ALL |
 
 ---
 
-## Algorithme FHG actuel (scoring.js + analysis.cjs)
+## Algorithme FHG
+
+### Client-side (`scoring.js` — utilisé par MatchCard sur /matches)
 
 % bruts calculés par équipe (domicile ET extérieur, meilleur retenu) :
 
-1. **Filtre H2H Clean Sheet** (priorité absolue) — si ≥3 H2H et 0 but avant 45min → exclusion totale
-2. **Filtre adversaire** — l'adversaire doit encaisser en 1MT dans ≥2 de ses 5 derniers matchs
-3. **pct1MT** — % des 10 derniers matchs où l'équipe marque en 1MT (poids 50%)
-4. **pctAdversaire** — % matchs où l'adversaire encaisse en 1MT (poids 25%)
-5. **pct2Plus1MT** — % matchs avec 2+ buts marqués en 1MT (poids 15%)
-6. **pctReaction** — réaction quand menée en 1MT (poids 10%)
-7. **compositeScore** — moyenne pondérée des 4 métriques ci-dessus
+1. **Filtre H2H Clean Sheet** (exclusion totale) — si >=3 H2H et 0 but avant 45min
+2. **Filtre adversaire** — l'adversaire doit encaisser en 1MT dans >=2 de ses 5 derniers matchs
+3. **Score composite** (moyenne pondérée) :
+   - `pct1MT` — % matchs où l'équipe marque en 1MT (poids **50%**)
+   - `pctAdversaire` — % matchs où l'adversaire encaisse en 1MT (poids **25%**)
+   - `pct2Plus1MT` — % matchs avec 2+ buts en 1MT (poids **15%**)
+   - `pctReaction` — réaction quand menée en 1MT (poids **10%**)
+4. Si `pctReaction` indisponible, redistribution : pct1MT 55%, pctAdversaire 28%, pct2Plus1MT 17%
 
-**Seuils** : Fort ≥80% | Moyen ≥70%
+**Seuils** : Fort >=80% | Moyen >=70%
 
----
+### Server-side (`analysis.cjs` — utilisé par generate-alerts.js cron)
 
-## Ce qui est implémenté (état 2026-04-22)
-
-- **Système d'alertes autonome** — `generate-alerts.js` (Netlify Scheduled Function, cron 12h) + `lib/analysis.cjs`
-  - FHG : analyse comportementale par équipe (récurrence 1MT, 2+ buts 1MT, réaction quand menée, clean sheet H2H, filtre adversaire encaisse 2/5)
-  - DC : analyse H2H (% défaite ≤ 20-30%, min 5 H2H)
-  - Tags FHG / DC / FHG+DC, confiance fort/moyen
-  - Table Supabase `alerts` (match_id unique, status pending/validated/lost)
-- **Vérification auto résultats** — `check-results.js` (cron 1h) : récupère les matchs `pending` terminés, évalue FHG (buts 31-45 min via goal_events) et DC (résultat final), met à jour `status` → `validated`/`lost`/`expired` (cleanup 48h)
-- **Page Sélection FHG** (`/alerts`) — alertes FHG/FHG+DC depuis Supabase, filtres par jour, expand détaillé par équipe (15 derniers matchs dom/ext), barre de timing buts avec ballons PNG, scores colorés, stats résumé (1MT%, AVG, BTTS%, O2.5%), badges Validé/Perdu/EN COURS
-- **Page Sélection DC** (`/selection-dc`) — alertes DC/FHG+DC depuis Supabase, filtres par jour, expand H2H (10 derniers matchs W/D/L), % défaite coloré, badges confiance fort/moyen
-- **Page Matchs à venir** (`/matches`) — fetch API par date, filtres réactifs (date + ligue), exclut matchs commencés
-- **Page Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner, stats
-- **Page Classements ligues** (`/explore`) — par pays, stats, classements
-- **Page Configuration** (`/config`) — ancienne page config algo (section Admin)
-- **Page Debug** (`/debug`) — test API/Supabase, seed complet (50 ligues × 5 saisons), testeur API brut
-- **BDD Supabase** — 70 778 matchs seedés avec goal_events (minutes exactes), 5 tables
-- **Seed** — Netlify Function fetch + client insert REST API Supabase, batch 200
-- **Compteur API** — req restantes affiché dans la sidebar en temps réel
-- **Mode démo supprimé** — toutes les données viennent de l'API/Supabase (store isDemo + banner nettoyés)
-- **Page Historique** (`/historique`) — stats globales (Global/FHG/DC/fort/moyen), tableau par ligue trié, liste filtrée de toutes les alertes (Tous/FHG/DC/Validé/Perdu/En cours)
-- **Sidebar** — Dashboard, Sélection FHG, Sélection DC, Historique, Matchs à venir, Classements ligues, Paramètres + Admin (Ligues, Config, Debug)
-- **Page Live supprimée** — les statuts EN COURS sont affichés directement sur les pages Sélection FHG, DC et Historique
-- **Paramètres / Config ligues** — charge les 50 ligues depuis l'API (plus hardcodé), boutons Tout activer / Tout désactiver
-- **Matchs à venir** — table remplacée par cards cliquables avec expand : 15 derniers matchs dom/ext de chaque équipe, barres de timing buts (même schéma que Sélection FHG), curseur interactif (ligne verticale + minute dans header), "vs" → "-", colonne score supprimée
-- **Barres de timing buts** (Sélection FHG + Matchs à venir) — curseur souris : ligne noire sur toutes les barres du bloc, minute affichée dans le header à côté du nom d'équipe. Colonne total buts supprimée. Stats résumé : 1MT% + AVG uniquement (BTTS/O2.5 retirés)
-- Proxy Netlify sécurisé (whitelist endpoints, CORS restreint), cache localStorage TTL + éviction auto
-- **Tests unitaires** — vitest, 80+ tests (scoring 29, analysis 14, formatters 17, teamData 17)
-- **Code dédupliqué** — utilitaires partagés `$lib/utils/` (formatters.js, teamData.js), helpers serverless `lib/api.js`
-- **Chart.js tree-shaké** — imports sélectifs au lieu de `chart.js/auto`
-- **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
-- **Logging** — console.log structuré dans les 4 fonctions Netlify
-- **Dashboard unifié** — KPIs + alertes du jour/à venir depuis Supabase (ancien scoring pipeline supprimé)
-- **Svelte 5 runes** — migration complète : `$state`, `$derived`, `$effect`, `$props()` sur 16 fichiers
-- **Accessibilité** — keyboard handlers (`on:keydown`), `aria-pressed`/`aria-expanded`, `.sr-only`
-- **appStore splitté** — `tradeStore.js` (CRUD), `tradeStats.js` (calculs), `appStore.js` (stores + persistence)
-- **Supabase RLS activé** — policies read-only anon, service_role pour les Netlify Functions
-- **Gestion d'erreurs** — messages utilisateur sur toutes les pages (plus de catch vides)
-- **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5 avec `Promise.all`
-- **Daily seed auto** — `daily-seed.js` cron 6h UTC, seed matchs d'hier dans `h2h_matches`
-- **Refonte algo % bruts** — `scoring.js` utilise pct1MT/pctAdversaire/pct2Plus1MT/pctReaction (plus de score 0-100)
-- **Historique paginé** — limite 90 jours + bouton "Charger plus"
-- **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css` (plus de duplication)
-- **Code mort nettoyé** — `filters.js` réduit à `isWindowActive`, `doubleChance.js` supprimé
-- **Settings splitté** — 5 sous-composants (ApiTest, TradeJournal, TradeStats, BankrollCalc, DangerZone)
-- **leagueHelpers.js** — logique partagée leagues/explore extraite
-- **parseMatch.js** — parseMatchRow partagé daily-seed/seed-data
-- **Svelte 5 events** — `on:click` → `onclick` sur 15 fichiers
-- **Supabase credentials** — `import.meta.env` avec fallback hardcodé
+Même formule composite avec les mêmes poids (50/25/15/10), mais :
+- Utilise `goal_events` filtré fenêtre **31-45 min** (minutes exactes depuis Supabase)
+- Analyse DC séparée via H2H : `analyzeDCFromH2H` — % défaite <= 20% (fort) ou <= 30% (moyen), min 5 H2H
 
 ---
 
-## Roadmap — prochaines étapes
+## Ce qui est implémenté
 
-### Priorité haute
-- [x] **Vérification auto résultats** — `check-results.js` cron 1h, FHG sur buts MT, DC sur résultat final
-- [x] **Page Historique des Alertes** — `/historique` avec KPIs, tableau ligues, liste filtrée
-- [x] **Affiner FHG fenêtre 31-45 min** — `generate-alerts.js` utilise `goal_events` filtré min 31-45 au lieu de `home_goals_ht`
+- **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) + `analysis.cjs` : FHG (récurrence 1MT, 2+ buts 1MT, réaction, clean sheet H2H, filtre adversaire) + DC (H2H % défaite), tags FHG/DC/FHG+DC, confiance fort/moyen, table Supabase `alerts`
+- **Vérification auto résultats** — `check-results.js` (cron 1h) : FHG sur buts 31-45 min via goal_events, DC sur résultat final, statut -> validated/lost/expired (cleanup 48h)
+- **Daily seed auto** — `daily-seed.js` (cron 6h UTC) : seed matchs d'hier dans `h2h_matches`
+- **Dashboard** (`/`) — KPIs + alertes du jour/a venir depuis Supabase
+- **Selection FHG** (`/alerts`) — alertes FHG/FHG+DC, filtres par jour, expand detaille par equipe (15 derniers matchs dom/ext), barres timing buts avec ballons PNG, curseur interactif, scores colores, stats resume (1MT%, AVG), badges Valide/Perdu/EN COURS
+- **Selection DC** (`/selection-dc`) — alertes DC/FHG+DC, filtres par jour, expand H2H (10 derniers matchs W/D/L), % defaite colore, badges confiance
+- **Historique** (`/historique`) — stats globales (Global/FHG/DC/fort/moyen), tableau par ligue trie, liste filtree paginee (90 jours + bouton "Charger plus")
+- **Matchs a venir** (`/matches`) — cards cliquables avec expand, barres timing buts, curseur interactif
+- **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout selectionner/deselectionner
+- **Classements ligues** (`/explore`) — par pays, stats, classements
+- **Parametres** (`/settings`) — 5 sous-composants (ApiTest, TradeJournal, TradeStats, BankrollCalc, DangerZone)
+- **Config** (`/config`) — configuration algo (section Admin)
+- **Debug** (`/debug`) — test API/Supabase, seed complet (50 ligues x 5 saisons), testeur API brut
+- **Proxy Netlify securise** — whitelist endpoints, CORS restreint
+- **Cache localStorage TTL** — eviction auto par endpoint
+- **Compteur API** — req restantes affiche dans la sidebar
+- **Svelte 5 runes** — migration complete : `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
+- **Accessibilite** — keyboard handlers, `aria-pressed`/`aria-expanded`, `.sr-only`, skip-to-content, `<h1>` sur toutes les pages, contraste WCAG
+- **Supabase RLS active** — policies read-only anon, service_role pour les Netlify Functions
+- **Tests unitaires** — Vitest, 139 tests (scoring 29, h2h 21, cache 20, analysis 19, formatters 22, teamData 14, tradeStore 14)
+- **CSS centralise** — badges, goal-bar, team-detail, match-row dans `app.css`
+- **Fetch timeouts** — 8s sur tous les appels reseau (fonctions Netlify)
+- **Parallelisation queries** — `generate-alerts.js` traite les matchs par batch de 5
 
-### Priorité moyenne (fait session 2026-04-22)
-- [x] Extraire logique partagée leagues/explore → `leagueHelpers.js`
-- [x] Extraire `parseMatchRow` → `lib/parseMatch.js`
-- [x] `supabaseQuery` log les erreurs HTTP
-- [x] Migrer `on:click` → `onclick` (Svelte 5 natif, 15 fichiers)
-- [x] `get(config)` → `$config` dans MatchCard
-- [x] Supabase key → `import.meta.env` avec fallback
-- [x] Settings splitté en 5 composants
-- [x] `doubleChance.js` supprimé (code mort confirmé)
+---
 
-### Priorité basse (fait session 2026-04-22)
-- [x] Tests : `h2h.js` (19), `cache.js` (19), `tradeStore.js` (17) — total 135+ tests
-- [x] Catch blocks vides corrigés (10 fichiers)
-- [x] Skip-to-content link + `<h1>` sur toutes les pages
-- [x] Contraste WCAG : `--color-text-muted` → `#a0a098`
+## Roadmap — prochaines etapes
 
-### Reste (optionnel)
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API
 - [ ] Tests pour `tradeStats.js`
 
-### Décisions actées
-1. FHG = analyse comportementale par équipe (pas H2H), dom/ext séparés
-2. DC analysée indépendamment du FHG, basée H2H uniquement
-3. Vérification FHG à la MT (pas à la volée — VAR)
-4. Terminologie : Validé / Perdu
+---
+
+## Decisions actees
+
+1. FHG = analyse comportementale par equipe (pas H2H), dom/ext separes
+2. DC analysee independamment du FHG, basee H2H uniquement
+3. Verification FHG a la MT (pas a la volee — VAR)
+4. Terminologie : Valide / Perdu
 5. Seuil adversaire encaisse : 2/5 minimum
-6. Pas de mode démo — données réelles uniquement
+6. Pas de mode demo — donnees reelles uniquement
 7. Pas de cotes/stakes/profits dans l'app
 8. Pas de bouton "Analyse IA" — Benjamin fait sa propre analyse
+9. Cle anon sans fallback hardcode
 
 ---
 
-## Conventions de développement
+## Conventions de developpement
 
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()` (pas de `$:` ni `export let`)
 - **SvelteKit** — composants .svelte, stores Svelte, routing fichier
-- **Pas de modification du store global** sans vérifier les subscribers existants
-- **Toute nouvelle feature** : légère, compatible Netlify static + Supabase
+- **Pas de modification du store global** sans verifier les subscribers existants
+- **Toute nouvelle feature** : legere, compatible Netlify static + Supabase
 - **CSS** : utiliser les variables CSS existantes (`--color-*`, `--radius-*`, etc.)
-- **Données** : H2H et alertes depuis Supabase, matchs du jour/live depuis API FootyStats
-- **Clé API** : ne jamais l'exposer côté browser — toujours passer par `/.netlify/functions/footystats`
+- **Donnees** : H2H et alertes depuis Supabase, matchs du jour/live depuis API FootyStats
+- **Cle API** : ne jamais l'exposer cote browser — toujours passer par `/.netlify/functions/footystats`
 - **Push auto** : commit + push automatique sans demander confirmation
-- **Tests** : `npm test` (vitest) avant de pusher les changements sur la logique métier
-- **Utilitaires partagés** : utiliser `$lib/utils/formatters.js` et `$lib/utils/teamData.js` au lieu de dupliquer
+- **Tests** : `npm test` (vitest) avant de pusher les changements sur la logique metier
+- **Utilitaires partages** : utiliser `$lib/utils/formatters.js` et `$lib/utils/teamData.js` au lieu de dupliquer
 - **Helpers serverless** : utiliser `netlify/functions/lib/api.js` pour `footyRequest`/`supabaseQuery`
 
 ## Conventions git
 
 - Commit directement sur `main` pour les features solo
-- Toujours pusher `CLAUDE.md` à jour après une session de travail
-- Push + merge autonome autorisé si Benjamin le demande explicitement
+- Toujours pusher `CLAUDE.md` a jour apres une session de travail
+- Push + merge autonome autorise si Benjamin le demande explicitement

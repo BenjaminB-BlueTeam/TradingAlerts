@@ -118,7 +118,7 @@ Basee sur les confrontations directes (5 saisons, min 5 H2H).
 ```bash
 npm install
 npm run dev
-npm test          # vitest — 80+ tests unitaires
+npm test          # vitest — 139 tests unitaires
 npm run test:watch
 ```
 
