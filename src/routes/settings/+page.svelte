@@ -4,7 +4,7 @@
     isDemo, apiConnected, leagues, trades, saveLeagues,
     updateTrade, deleteTrade, clearAllData, calcStatsTradesGlobal
   } from '$lib/stores/appStore.js';
-  import { testApiConnection } from '$lib/api/footystats.js';
+  import { testApiConnection, getAllLeagues, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
   import { cacheClear } from '$lib/api/cache.js';
   import { createWinRateChart, createBankrollChart } from '$lib/components/charts.js';
 
@@ -23,24 +23,13 @@
   let projGains = [];
   let projLabels = [];
 
-  const allAvailLeagues = [
-    { id: 'bundesliga',     name: 'Bundesliga',      country: 'Allemagne',  flag: '🇩🇪' },
-    { id: 'premier-league', name: 'Premier League',   country: 'Angleterre', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-    { id: 'ligue-1',        name: 'Ligue 1',          country: 'France',     flag: '🇫🇷' },
-    { id: 'eredivisie',     name: 'Eredivisie',       country: 'Pays-Bas',   flag: '🇳🇱' },
-    { id: 'championship',   name: 'Championship',     country: 'Angleterre', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-    { id: 'super-lig',      name: 'Super Lig',        country: 'Turquie',    flag: '🇹🇷' },
-    { id: 'la-liga',         name: 'La Liga',          country: 'Espagne',    flag: '🇪🇸' },
-    { id: 'serie-a',        name: 'Serie A',           country: 'Italie',     flag: '🇮🇹' },
-    { id: 'liga-nos',        name: 'Liga Portugal',    country: 'Portugal',   flag: '🇵🇹' },
-    { id: 'eredivisie-b',   name: 'Eerste Divisie',   country: 'Pays-Bas',   flag: '🇳🇱' },
-  ];
+  let apiLeagues = [];
 
   $: stats = calcStatsTradesGlobal();
   $: activesCount = $leagues.filter(l => l.active).length;
   $: filteredLeagues = leagueSearch
-    ? allAvailLeagues.filter(l => l.name.toLowerCase().includes(leagueSearch.toLowerCase()))
-    : allAvailLeagues;
+    ? apiLeagues.filter(l => l.name.toLowerCase().includes(leagueSearch.toLowerCase()))
+    : apiLeagues;
   $: uniqueLigues = [...new Set($trades.map(t => t.ligue).filter(Boolean))];
   $: filteredTrades = $trades.filter(t => {
     if (journalFilterResult && t.resultat !== journalFilterResult) return false;
@@ -185,7 +174,21 @@
     }
   }
 
+  async function loadApiLeagues() {
+    try {
+      const res = await rawApiCall('league-list', { chosen_leagues_only: 'true' });
+      if (res.status === 200) {
+        apiLeagues = normalizeLeagues(res.data);
+      } else {
+        apiLeagues = await getAllLeagues();
+      }
+    } catch {
+      apiLeagues = await getAllLeagues();
+    }
+  }
+
   onMount(() => {
+    loadApiLeagues();
     bankrollInput = localStorage.getItem('fhg_bankroll') || '';
     misePctInput = localStorage.getItem('fhg_mise_pct') || '2.5';
     coteCibleInput = localStorage.getItem('fhg_cote_cible') || '2.3';
@@ -253,7 +256,7 @@
         style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;
                background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--color-border);">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span>{l.flag}</span>
+          <span>{l.flag || '🌐'}</span>
           <div>
             <div style="font-size:13px;font-weight:500;">{l.name}</div>
             <div style="font-size:11px;color:var(--color-text-muted);">{l.country}</div>
