@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase } from '$lib/api/supabase.js';
   import { isInPlay } from '$lib/utils/formatters.js';
+  import { trades } from '$lib/stores/appStore.js';
 
   let alerts = $state([]);
   let loading = $state(true);
@@ -96,6 +97,14 @@
       }))
       .sort((a, b) => b.pct - a.pct);
   })());
+
+  // Liaison trades ↔ alerts
+  let tradeMatchIds = $derived(new Set(($trades || []).filter(t => t.match_id).map(t => t.match_id)));
+  let tradedAlerts = $derived(terminated.filter(a => tradeMatchIds.has(a.match_id)));
+  let tradedPct = $derived(tradedAlerts.length
+    ? Math.round((tradedAlerts.filter(a => a.status === 'validated').length / tradedAlerts.length) * 100)
+    : null);
+  let tradedDiff = $derived(tradedPct !== null && globalPct !== null ? tradedPct - globalPct : null);
 
   // Liste filtrée
   let filteredAlerts = $derived(alerts.filter(a => {
@@ -213,6 +222,29 @@
       </div>
     </div>
 
+    {#if tradedAlerts.length > 0}
+      <div class="traded-row">
+        <div class="conf-card" style="border-color: var(--color-accent-blue);">
+          <div class="conf-label">Mes trades vs Global</div>
+          <div style="display:flex;gap:16px;align-items:baseline;margin-top:6px;">
+            <div>
+              <span style="font-size:11px;color:var(--color-text-muted);">Global :</span>
+              <span style="font-size:18px;font-weight:700;" style:color={pctColor(globalPct)}>{globalPct}%</span>
+            </div>
+            <div>
+              <span style="font-size:11px;color:var(--color-text-muted);">Mes trades :</span>
+              <span style="font-size:18px;font-weight:700;" style:color={pctColor(tradedPct)}>{tradedPct}%</span>
+            </div>
+            <div>
+              <span style="font-size:11px;color:var(--color-text-muted);">Ecart :</span>
+              <span style="font-size:18px;font-weight:700;" style:color={tradedDiff >= 0 ? 'var(--color-accent-green)' : 'var(--color-danger)'}>{tradedDiff >= 0 ? '+' : ''}{tradedDiff}%</span>
+            </div>
+          </div>
+          <div class="conf-sub">{tradedAlerts.filter(a => a.status === 'validated').length} / {tradedAlerts.length} alertes jouées</div>
+        </div>
+      </div>
+    {/if}
+
     {#if leagueRows.length > 0}
       <div class="league-table">
         <div class="league-table__header">Performance par ligue</div>
@@ -322,6 +354,8 @@
   .res--lost      { background: rgba(226,75,74,0.15);  color: var(--color-danger); }
   .res--live      { background: rgba(239,159,39,0.2);  color: var(--color-signal-moyen); animation: pulse 2s infinite; }
   .res--pending   { background: rgba(255,255,255,0.05); color: var(--color-text-muted); }
+
+  .traded-row { margin-bottom: 8px; }
 
   @media (max-width: 768px) {
     .conf-row { grid-template-columns: 1fr; }
