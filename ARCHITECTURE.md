@@ -42,8 +42,10 @@ Toutes les tables ont RLS active. `service_role` bypass RLS par defaut.
 - Formule composite FHG : pct1MT x 0.50 + pctAdversaire x 0.25 + pct2Plus1MT x 0.15 + pctReaction x 0.10
 - Note : pct2Plus1MT est un sous-ensemble de pct1MT (si 2+ buts en 1MT, forcement 1+ but en 1MT). C'est un bonus explosivite intentionnel, pas une dimension independante.
 - Filtre clean sheet H2H : si >=3 H2H et l'equipe n'a jamais marque (toutes minutes) → exclusion
-- Seuils : fort >= 80%, moyen >= 70%
-- FHG et DC creent des alertes separees (pas de tag combine FHG+DC)
+- Seuils FHG : fort >= 65%, moyen >= 50% (adaptes a la fenetre 31-45 min)
+- Seuils DC : fort >= 80% victoire (win+nul), moyen >= 70%
+- FHG et DC creent des alertes separees (pas de tag combine)
+- generate-alerts accepte ?type=FHG ou ?type=DC pour generation manuelle
 
 ### Client-side : `scoring.js` (exploration interactive)
 - Utilise par MatchCard.svelte sur la page /matches

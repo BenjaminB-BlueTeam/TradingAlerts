@@ -159,13 +159,18 @@ src/
    - `pctReaction` — réaction quand menée en 1MT (poids **10%**)
 4. Si `pctReaction` indisponible, redistribution : pct1MT 55%, pctAdversaire 28%, pct2Plus1MT 17%
 
-**Seuils** : Fort >=80% | Moyen >=70%
+**Seuils** : Fort >=65% | Moyen >=50% (adaptés à la fenêtre 31-45 min)
 
 ### Server-side (`analysis.cjs` — utilisé par generate-alerts.js cron)
 
 Même formule composite avec les mêmes poids (50/25/15/10), mais :
 - Utilise `goal_events` filtré fenêtre **31-45 min** (minutes exactes depuis Supabase)
-- Analyse DC séparée via H2H : `analyzeDCFromH2H` — % défaite <= 20% (fort) ou <= 30% (moyen), min 5 H2H
+- Seuils identiques : Fort >=65% | Moyen >=50%
+- Accepte `?type=FHG` ou `?type=DC` pour filtrer (boutons Actualiser dans les pages sélection)
+
+### DC (Double Chance)
+- Analyse H2H : `analyzeDCFromH2H` — % victoire (win+nul) >= 80% (fort) ou >= 70% (moyen), min 5 H2H
+- FHG et DC sont des alertes **séparées** (pas de tag combiné FHG+DC)
 
 ---
 
@@ -175,15 +180,15 @@ Même formule composite avec les mêmes poids (50/25/15/10), mais :
 - **Vérification auto résultats** — `check-results.js` (cron 1h) : FHG sur buts 31-45 min via goal_events, DC sur résultat final, statut -> validated/lost/expired (cleanup 48h)
 - **Daily seed auto** — `daily-seed.js` (cron 6h UTC) : seed matchs d'hier dans `h2h_matches`
 - **Dashboard** (`/`) — KPIs + alertes du jour/a venir depuis Supabase
-- **Selection FHG** (`/alerts`) — alertes FHG/FHG+DC, filtres par jour, expand detaille par equipe (15 derniers matchs dom/ext), barres timing buts avec ballons PNG, curseur interactif, scores colores, stats resume (1MT%, AVG), badges Valide/Perdu/EN COURS
-- **Selection DC** (`/selection-dc`) — alertes DC/FHG+DC, filtres par jour, expand H2H (10 derniers matchs W/D/L), % defaite colore, badges confiance
-- **Historique** (`/historique`) — stats globales (Global/FHG/DC/fort/moyen), tableau par ligue trie, liste filtree paginee (90 jours + bouton "Charger plus")
-- **Matchs a venir** (`/matches`) — cards cliquables avec expand, barres timing buts, curseur interactif, badge FHG 31-45% par équipe (saison, contexte dom/ext)
+- **Selection FHG** (`/alerts`) — alertes FHG, filtres par jour, bouton Actualiser, expand detaille par equipe, barres timing buts, curseur interactif, badges Valide/Perdu/EN COURS
+- **Selection DC** (`/selection-dc`) — alertes DC, filtres par jour, bouton Actualiser, expand H2H tableau centré (style Flashscore, badges W/D/L carrés, favori gras+souligné, date DD/MM/YY), % victoire (win+nul)
+- **Historique** (`/historique`) — stats globales (Global/FHG/DC/fort/moyen), bloc "Mes trades vs Global", tableau par ligue, liste paginee (90 jours + bouton "Charger plus")
+- **Matchs a venir** (`/matches`) — cards avec badge FHG 31-45% par equipe (chargé avant affichage), expand barres timing buts, déduplication matchs
 - **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout selectionner/deselectionner
 - **Classements ligues** (`/explore`) — par pays, stats, classements
 - **Parametres** (`/settings`) — 5 sous-composants (ApiTest, TradeJournal, TradeStats, BankrollCalc, DangerZone)
 - **Config** (`/config`) — configuration algo (section Admin)
-- **Debug** (`/debug`) — test API/Supabase, seed complet (50 ligues x 5 saisons), testeur API brut
+- **Debug** (`/debug`) — test API/Supabase, boutons génération alertes FHG/DC, seed complet, rattrapage matchs, token auth, testeur API brut
 - **Proxy Netlify securise** — whitelist endpoints, CORS restreint
 - **Cache localStorage TTL** — eviction auto par endpoint
 - **Compteur API** — req restantes affiche dans la sidebar

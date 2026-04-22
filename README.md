@@ -73,7 +73,7 @@ Analyse de **recurrence individuelle par equipe** dans son contexte (domicile ou
 
 **Filtres** : min 5 matchs, clean sheet H2H (chat noir), adversaire trop solide (< 2/5 encaisse)
 
-**Seuils** : Fort >= 80% | Moyen >= 70%
+**Seuils** : Fort >= 65% | Moyen >= 50% (adaptes a la fenetre 31-45 min)
 
 **Validation** : buts entre 31-45 min (via `goal_events`)
 
@@ -81,9 +81,11 @@ Analyse de **recurrence individuelle par equipe** dans son contexte (domicile ou
 
 Basee sur les confrontations directes (5 saisons, min 5 H2H).
 
-**Seuils** : Fort <= 20% defaite | Moyen <= 30%
+**Seuils** : Fort >= 80% victoire (win+nul) | Moyen >= 70%
 
 **Validation** : le cote recommande n'a pas perdu (victoire ou nul)
+
+FHG et DC creent des alertes **separees** (pas de tag combine).
 
 ---
 
@@ -119,7 +121,7 @@ Basee sur les confrontations directes (5 saisons, min 5 H2H).
 ```bash
 npm install
 npm run dev
-npm test          # vitest — 139 tests unitaires
+npm test          # vitest — 136 tests unitaires
 npm run test:watch
 ```
 
