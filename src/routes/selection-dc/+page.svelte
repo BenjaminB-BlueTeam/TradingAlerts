@@ -218,18 +218,20 @@
               H2H — Historique : <strong>{favName}</strong> ne perd pas à {a.dc_defeat_pct}% ({a.h2h_count} matchs)
             </div>
             {#if h2h.length > 0}
-              <div class="team-matches">
-                {#each h2h as m}
-                  {@const res = h2hResult(m, a.dc_best_side, favId)}
-                  <div class="match-row">
-                    <span class="match-row__date">{formatDateFull(m.match_date)}</span>
-                    <span class="match-row__home" class:h2h-fav={m.home_team_id === favId}>{m.home_team_name}</span>
-                    <span class="match-row__score match-row__score--{res}">{m.home_goals ?? '?'}-{m.away_goals ?? '?'}</span>
-                    <span class="match-row__away" class:h2h-fav={m.away_team_id === favId}>{m.away_team_name}</span>
-                    <span class="h2h-result h2h-result--{res}">{res}</span>
-                  </div>
-                {/each}
-              </div>
+              <table class="h2h-table">
+                <tbody>
+                  {#each h2h as m}
+                    {@const res = h2hResult(m, a.dc_best_side, favId)}
+                    <tr>
+                      <td class="h2h-date">{formatDateFull(m.match_date)}</td>
+                      <td class="h2h-team h2h-team--home" class:h2h-fav={m.home_team_id === favId}>{m.home_team_name}</td>
+                      <td class="h2h-score">{m.home_goals ?? '?'} - {m.away_goals ?? '?'}</td>
+                      <td class="h2h-team h2h-team--away" class:h2h-fav={m.away_team_id === favId}>{m.away_team_name}</td>
+                      <td class="h2h-badge-cell"><span class="h2h-badge h2h-badge--{res}">{res}</span></td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
             {:else}
               <div style="padding:12px;text-align:center;color:var(--color-text-muted);font-size:12px;">Aucun H2H trouvé</div>
             {/if}
@@ -283,11 +285,19 @@
   .dc-expand__title { font-size: 12px; color: var(--color-text-muted); margin-bottom: 10px; }
   .dc-expand__title strong { color: var(--color-text-primary); }
 
-  .h2h-fav { font-weight: 800; color: var(--color-text-primary); text-decoration: underline; text-underline-offset: 2px; }
-  .h2h-result { font-size: 9px; font-weight: 800; width: 16px; height: 16px; line-height: 16px; border-radius: 3px; text-align: center; display: inline-block; }
-  .h2h-result--W { background: var(--color-accent-green); color: #fff; }
-  .h2h-result--D { background: var(--color-signal-moyen); color: #fff; }
-  .h2h-result--L { background: var(--color-danger); color: #fff; }
+  .h2h-table { width: 100%; max-width: 600px; margin: 0 auto; border-collapse: collapse; }
+  .h2h-table td { padding: 5px 6px; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+  .h2h-date { color: var(--color-text-muted); font-size: 11px; white-space: nowrap; width: 65px; }
+  .h2h-team { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .h2h-team--home { text-align: right; padding-right: 8px; }
+  .h2h-team--away { text-align: left; padding-left: 8px; }
+  .h2h-fav { font-weight: 800; color: var(--color-text-primary); }
+  .h2h-score { text-align: center; font-weight: 700; white-space: nowrap; width: 40px; }
+  .h2h-badge-cell { width: 24px; text-align: center; }
+  .h2h-badge { display: inline-block; width: 18px; height: 18px; line-height: 18px; font-size: 10px; font-weight: 800; text-align: center; border-radius: 3px; }
+  .h2h-badge--W { background: var(--color-accent-green); color: #fff; }
+  .h2h-badge--D { background: var(--color-signal-moyen); color: #fff; }
+  .h2h-badge--L { background: var(--color-danger); color: #fff; }
 
   @media (max-width: 768px) {
     .dc-card__header { flex-wrap: wrap; }
