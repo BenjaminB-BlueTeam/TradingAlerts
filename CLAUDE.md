@@ -35,10 +35,14 @@ App **SvelteKit** de **trading sportif football**. Identifie les matchs avec for
 package.json / svelte.config.js / vite.config.js
 netlify.toml
 netlify/functions/
-  footystats.js         ← proxy sécurisé API FootyStats
+  footystats.js         ← proxy sécurisé API FootyStats (whitelist endpoints, CORS restreint)
   generate-alerts.js    ← cron 12h — génère alertes FHG/DC pour J, J+1, J+2
-  check-results.js      ← cron 1h — vérifie résultats matchs pending terminés
-  seed-data.js          ← seed Supabase (team_seasons, h2h_matches)
+  check-results.js      ← cron 1h — vérifie résultats matchs pending terminés (fenêtre 31-45 min)
+  seed-data.js          ← seed Supabase (team_seasons, h2h_matches) (auth token requis)
+  lib/
+    api.js              ← helpers partagés (footyRequest, supabaseQuery)
+    analysis.cjs        ← logique FHG/DC extraite et testable
+    analysis.test.js    ← tests unitaires analyse FHG/DC (31 tests)
 src/
   app.css               ← styles globaux (variables CSS, composants, responsive)
   app.html              ← template HTML
@@ -72,10 +76,15 @@ src/
       appStore.js       ← stores Svelte (config, leagues, trades, etc.)
     core/
       scoring.js        ← algorithme FHG + DC
+      scoring.test.js   ← tests unitaires scoring
       doubleChance.js   ← analyse DC basée H2H (% défaite, comeback, MT≠FT)
       h2h.js            ← analyse head-to-head
       filters.js        ← filtrage/tri des signaux
-      mockData.js       ← données démo (sans clé API)
+    utils/
+      formatters.js     ← fonctions partagées (formatDate, formatTime, isInPlay, etc.)
+      formatters.test.js← tests unitaires formatters
+      teamData.js       ← fonctions partagées (loadTeamMatches, computeTeamStats, goalBar)
+      teamData.test.js  ← tests unitaires teamData
     data.js             ← orchestration chargement données
 ```
 
@@ -130,12 +139,12 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 
 ## Ce qui est implémenté (état 2026-04-22)
 
-- **Système d'alertes autonome** — `generate-alerts.js` (Netlify Scheduled Function, cron 12h) + `alertEngine.js`
+- **Système d'alertes autonome** — `generate-alerts.js` (Netlify Scheduled Function, cron 12h) + `lib/analysis.cjs`
   - FHG : analyse comportementale par équipe (récurrence 1MT, 2+ buts 1MT, réaction quand menée, clean sheet H2H, filtre adversaire encaisse 2/5)
   - DC : analyse H2H (% défaite ≤ 20-30%, min 5 H2H)
   - Tags FHG / DC / FHG+DC, confiance fort/moyen
   - Table Supabase `alerts` (match_id unique, status pending/validated/lost)
-- **Vérification auto résultats** — `check-results.js` (cron 1h) : récupère les matchs `pending` terminés, évalue FHG (buts MT) et DC (résultat final), met à jour `status` → `validated`/`lost`
+- **Vérification auto résultats** — `check-results.js` (cron 1h) : récupère les matchs `pending` terminés, évalue FHG (buts 31-45 min via goal_events) et DC (résultat final), met à jour `status` → `validated`/`lost`/`expired` (cleanup 48h)
 - **Page Sélection FHG** (`/alerts`) — alertes FHG/FHG+DC depuis Supabase, filtres par jour, expand détaillé par équipe (15 derniers matchs dom/ext), barre de timing buts avec ballons PNG, scores colorés, stats résumé (1MT%, AVG, BTTS%, O2.5%), badges Validé/Perdu/EN COURS
 - **Page Sélection DC** (`/selection-dc`) — alertes DC/FHG+DC depuis Supabase, filtres par jour, expand H2H (10 derniers matchs W/D/L), % défaite coloré, badges confiance fort/moyen
 - **Page Matchs à venir** (`/matches`) — fetch API par date, filtres réactifs (date + ligue), exclut matchs commencés
@@ -146,14 +155,19 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - **BDD Supabase** — 70 778 matchs seedés avec goal_events (minutes exactes), 5 tables
 - **Seed** — Netlify Function fetch + client insert REST API Supabase, batch 200
 - **Compteur API** — req restantes affiché dans la sidebar en temps réel
-- **Mode démo supprimé** — toutes les données viennent de l'API/Supabase
+- **Mode démo supprimé** — toutes les données viennent de l'API/Supabase (store isDemo + banner nettoyés)
 - **Page Historique** (`/historique`) — stats globales (Global/FHG/DC/fort/moyen), tableau par ligue trié, liste filtrée de toutes les alertes (Tous/FHG/DC/Validé/Perdu/En cours)
 - **Sidebar** — Dashboard, Sélection FHG, Sélection DC, Historique, Matchs à venir, Classements ligues, Paramètres + Admin (Ligues, Config, Debug)
 - **Page Live supprimée** — les statuts EN COURS sont affichés directement sur les pages Sélection FHG, DC et Historique
 - **Paramètres / Config ligues** — charge les 50 ligues depuis l'API (plus hardcodé), boutons Tout activer / Tout désactiver
 - **Matchs à venir** — table remplacée par cards cliquables avec expand : 15 derniers matchs dom/ext de chaque équipe, barres de timing buts (même schéma que Sélection FHG), curseur interactif (ligne verticale + minute dans header), "vs" → "-", colonne score supprimée
 - **Barres de timing buts** (Sélection FHG + Matchs à venir) — curseur souris : ligne noire sur toutes les barres du bloc, minute affichée dans le header à côté du nom d'équipe. Colonne total buts supprimée. Stats résumé : 1MT% + AVG uniquement (BTTS/O2.5 retirés)
-- Proxy Netlify sécurisé, cache localStorage TTL
+- Proxy Netlify sécurisé (whitelist endpoints, CORS restreint), cache localStorage TTL + éviction auto
+- **Tests unitaires** — vitest, 80 tests (scoring, DC/FHG analysis, formatters, teamData)
+- **Code dédupliqué** — utilitaires partagés `$lib/utils/` (formatters.js, teamData.js), helpers serverless `lib/api.js`
+- **Chart.js tree-shaké** — imports sélectifs au lieu de `chart.js/auto`
+- **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
+- **Logging** — console.log structuré dans les 4 fonctions Netlify
 
 ---
 
@@ -193,6 +207,9 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 - **Données** : H2H et alertes depuis Supabase, matchs du jour/live depuis API FootyStats
 - **Clé API** : ne jamais l'exposer côté browser — toujours passer par `/.netlify/functions/footystats`
 - **Push auto** : commit + push automatique sans demander confirmation
+- **Tests** : `npm test` (vitest) avant de pusher les changements sur la logique métier
+- **Utilitaires partagés** : utiliser `$lib/utils/formatters.js` et `$lib/utils/teamData.js` au lieu de dupliquer
+- **Helpers serverless** : utiliser `netlify/functions/lib/api.js` pour `footyRequest`/`supabaseQuery`
 
 ## Conventions git
 
