@@ -1,5 +1,5 @@
 <script>
-  import { onMount, tick } from 'svelte';
+  import { tick } from 'svelte';
   import GoalTimeline from './GoalTimeline.svelte';
   import { createGoalDistChart } from '$lib/components/charts.js';
   import { formaterH2HTimeline } from '$lib/core/h2h.js';

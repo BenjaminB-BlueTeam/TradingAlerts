@@ -1,5 +1,5 @@
 <script>
-  import { onMount, untrack } from 'svelte';
+  import { onMount } from 'svelte';
   import { leagues } from '$lib/stores/appStore.js';
   import { getTodaysMatches, getAllLeagues } from '$lib/api/footystats.js';
   import { supabase } from '$lib/api/supabase.js';
@@ -37,8 +37,6 @@
     return new Date(unix * 1000).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
   }
 
-  // Alias: matches page used formatDateStr which is identical to formatDate
-  const formatDateStr = formatDate;
 
   async function loadMatches(plage) {
     loading = true;
@@ -206,7 +204,7 @@
                     {@const bar = goalBar(hm, 'home')}
                     {@const barKey = `${m.id}_home`}
                     <div class="match-row">
-                      <span class="match-row__date">{formatDateStr(hm.match_date)}</span>
+                      <span class="match-row__date">{formatDate(hm.match_date)}</span>
                       <span class="match-row__home match-row__bold">{hm.home_team_name}</span>
                       <span class="match-row__score match-row__score--{bar.result}">{hm.home_goals}-{hm.away_goals}</span>
                       <span class="match-row__away">{hm.away_team_name}</span>
@@ -254,7 +252,7 @@
                     {@const bar = goalBar(am, 'away')}
                     {@const barKey = `${m.id}_away`}
                     <div class="match-row">
-                      <span class="match-row__date">{formatDateStr(am.match_date)}</span>
+                      <span class="match-row__date">{formatDate(am.match_date)}</span>
                       <span class="match-row__home">{am.home_team_name}</span>
                       <span class="match-row__score match-row__score--{bar.result}">{am.home_goals}-{am.away_goals}</span>
                       <span class="match-row__away match-row__bold">{am.away_team_name}</span>

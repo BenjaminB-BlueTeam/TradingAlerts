@@ -147,13 +147,12 @@ export function calculerScoreFHG(equipe, h2h = [], config = {}) {
 export function calculerScoreDC(equipe, scoreFHG) {
   if (!scoreFHG || scoreFHG < 70) return null;
 
-  const mp = equipe.matches_played || 1;
   let score = 0;
 
   score += (equipe.pct_retour_si_encaisse || 0) * 0.40;
   score += (scoreFHG / 100) * 30;
   score += (equipe.pct_victoire_domicile || 0) * 0.20;
-  score += mp > 10 ? 10 : 0;
+  score += (equipe.matches_played || 0) > 10 ? 10 : 0;
 
   return Math.round(score);
 }

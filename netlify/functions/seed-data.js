@@ -127,7 +127,7 @@ exports.handler = async (event) => {
     return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
 
-  const { action, league_id, job_id, seasons } = event.queryStringParameters || {};
+  const { action, league_id, job_id } = event.queryStringParameters || {};
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     return respond(503, { error: 'SUPABASE_URL ou SUPABASE_ANON_KEY non configurée' });

@@ -3,7 +3,7 @@
   import { testApiConnection, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
   import { testSupabaseConnection, getTableCounts } from '$lib/api/supabase.js';
   import { cacheStats, cacheClear } from '$lib/api/cache.js';
-  import { startFullSeed, seedLeague, getSeedStatus } from '$lib/api/seedClient.js';
+  import { startFullSeed, seedLeague } from '$lib/api/seedClient.js';
 
   // --- API Test ---
   let apiResult = $state(null);
