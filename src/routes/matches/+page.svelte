@@ -53,7 +53,16 @@
         error = 'Impossible de charger les matchs.';
       }
     }
-    allMatches = results;
+    // Dédupliquer par match ID (l'API peut retourner le même match sur des dates qui se chevauchent)
+    const seen = new Set();
+    const unique = [];
+    for (const m of results) {
+      if (m.id && !seen.has(m.id)) {
+        seen.add(m.id);
+        unique.push(m);
+      }
+    }
+    allMatches = unique;
 
     // Charger toutes les stats FHG 31-45 AVANT d'afficher
     const uniqueTeams = new Set();
