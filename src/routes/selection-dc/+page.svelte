@@ -3,12 +3,12 @@
   import { supabase } from '$lib/api/supabase.js';
   import { getDateStr, formatDate, formatTime, isInPlay, defeatColor } from '$lib/utils/formatters.js';
 
-  let alerts = [];
-  let loading = true;
-  let error = '';
-  let selectedDay = null;
-  let expandedId = null;
-  let h2hCache = {};
+  let alerts = $state([]);
+  let loading = $state(true);
+  let error = $state('');
+  let selectedDay = $state(null);
+  let expandedId = $state(null);
+  let h2hCache = $state({});
 
   const days = [
     { label: 'Pass\u00e9s', offset: -3 },
@@ -38,10 +38,10 @@
     loading = false;
   }
 
-  $: filteredAlerts = alerts.filter(a => {
+  let filteredAlerts = $derived(alerts.filter(a => {
     if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
     return true;
-  });
+  }));
 
   async function loadH2H(homeId, awayId) {
     const key = [homeId, awayId].sort().join('_');
@@ -90,12 +90,12 @@
 </div>
 
 <div class="dc-filters">
-  <button class="dc-filter-btn" class:active={selectedDay === null} on:click={() => selectedDay = null}>
+  <button class="dc-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} on:click={() => selectedDay = null}>
     Tous ({alerts.length})
   </button>
   {#each days as day}
     {@const count = alerts.filter(a => a.match_date === getDateStr(day.offset)).length}
-    <button class="dc-filter-btn" class:active={selectedDay === day.offset}
+    <button class="dc-filter-btn" class:active={selectedDay === day.offset} aria-pressed={selectedDay === day.offset}
       on:click={() => selectedDay = (selectedDay === day.offset ? null : day.offset)}>
       {day.label} ({count})
     </button>
@@ -122,14 +122,13 @@
 {:else}
   <div class="dc-list">
     {#each filteredAlerts as a (a.id)}
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
       <div class="dc-card"
         class:dc-card--expanded={expandedId === a.id}
         class:dc-card--validated={a.status === 'validated'}
         class:dc-card--lost={a.status === 'lost'}
         class:dc-card--live={a.status === 'pending' && isInPlay(a)}
       >
-        <div class="dc-card__header" on:click={() => toggleExpand(a)} role="button" tabindex="0">
+        <div class="dc-card__header" on:click={() => toggleExpand(a)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }} role="button" tabindex="0" aria-expanded={expandedId === a.id}>
           <div class="dc-card__time">
             <div class="dc-card__day">{a.match_date}</div>
             <div class="dc-card__hour">{formatTime(a.kickoff_unix)}</div>
@@ -156,7 +155,7 @@
             {#if a.signal_type === 'FHG+DC'}
               <span class="dc-badge dc-badge--fhg">+FHG</span>
             {/if}
-            <span class="dc-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
+            <span class="dc-badge {confidenceClass(a.confidence)}">{a.confidence}<span class="sr-only"> — confiance {a.confidence === 'fort' ? 'forte' : 'moyenne'}</span></span>
             {#if a.status === 'validated'}
               <span class="dc-badge dc-badge--validated">✓ Validé</span>
             {:else if a.status === 'lost'}

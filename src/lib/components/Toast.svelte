@@ -1,11 +1,9 @@
 <script>
   import { onMount } from 'svelte';
 
-  export let message = '';
-  export let type = 'info'; // success | error | warning | info
-  export let duration = 3200;
+  let { message = '', type = 'info', duration = 3200 } = $props();
 
-  let visible = true;
+  let visible = $state(true);
 
   onMount(() => {
     const timer = setTimeout(() => {

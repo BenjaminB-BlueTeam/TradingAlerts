@@ -8,22 +8,21 @@
   import { get } from 'svelte/store';
   import { isWindowActive } from '$lib/core/filters.js';
 
-  export let match;         // résultat de analyserMatch()
-  export let onTrade = null; // callback optionnel pour ouvrir la fiche trade
+  let { match, onTrade = null } = $props();
 
-  $: m  = match;
-  $: sc = m.scoreChoisi || {};
+  let m  = $derived(match);
+  let sc = $derived(m.scoreChoisi || {});
 
-  let expanded = false;
-  let chartCanvas;
-  let chartInstance = null;
+  let expanded = $state(false);
+  let chartCanvas = $state(null);
+  let chartInstance = $state(null);
 
-  $: scoreClass = sc.signal === 'fort' ? 'green' : sc.signal === 'moyen' ? 'orange' : 'grey';
-  $: fhgColor   = (sc.tauxN || 0) >= 75 ? 'green' : (sc.tauxN || 0) >= 60 ? 'orange' : 'grey';
-  $: forme5Count = Math.round(((sc.forme5M || 0) / 20));
-  $: forme5Color = (sc.forme5M || 0) >= 60 ? 'green' : 'orange';
-  $: windowActive = isWindowActive(m.time);
-  $: h2hTimeline = formaterH2HTimeline(m.h2h || [], m.equipeSignal || '');
+  let scoreClass = $derived(sc.signal === 'fort' ? 'green' : sc.signal === 'moyen' ? 'orange' : 'grey');
+  let fhgColor   = $derived((sc.tauxN || 0) >= 75 ? 'green' : (sc.tauxN || 0) >= 60 ? 'orange' : 'grey');
+  let forme5Count = $derived(Math.round(((sc.forme5M || 0) / 20)));
+  let forme5Color = $derived((sc.forme5M || 0) >= 60 ? 'green' : 'orange');
+  let windowActive = $derived(isWindowActive(m.time));
+  let h2hTimeline = $derived(formaterH2HTimeline(m.h2h || [], m.equipeSignal || ''));
 
   async function toggleDetail() {
     expanded = !expanded;
@@ -54,9 +53,9 @@
     };
   }
 
-  $: cfg = get(config);
-  $: timer = getTimerConseille(cfg?.profil || 'intermediaire');
-  $: circleSVG = createCircleSVG(sc.pct1MT || 0);
+  let cfg = $derived(get(config));
+  let timer = $derived(getTimerConseille(cfg?.profil || 'intermediaire'));
+  let circleSVG = $derived(createCircleSVG(sc.pct1MT || 0));
 </script>
 
 {#if m.exclu}

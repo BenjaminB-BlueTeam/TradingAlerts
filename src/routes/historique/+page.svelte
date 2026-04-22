@@ -3,10 +3,10 @@
   import { supabase } from '$lib/api/supabase.js';
   import { isInPlay } from '$lib/utils/formatters.js';
 
-  let alerts = [];
-  let loading = true;
-  let error = '';
-  let activeFilter = 'tous';
+  let alerts = $state([]);
+  let loading = $state(true);
+  let error = $state('');
+  let activeFilter = $state('tous');
 
   const filters = [
     { key: 'tous',      label: 'Tous'      },
@@ -35,34 +35,34 @@
   }
 
   // Stats — uniquement sur alertes terminées
-  $: terminated = alerts.filter(a => a.status === 'validated' || a.status === 'lost');
+  let terminated = $derived(alerts.filter(a => a.status === 'validated' || a.status === 'lost'));
 
-  $: globalPct = terminated.length
+  let globalPct = $derived(terminated.length
     ? Math.round((terminated.filter(a => a.status === 'validated').length / terminated.length) * 100)
-    : null;
+    : null);
 
-  $: fhgTerminated = terminated.filter(a => a.signal_type === 'FHG' || a.signal_type === 'FHG+DC');
-  $: fhgPct = fhgTerminated.length
+  let fhgTerminated = $derived(terminated.filter(a => a.signal_type === 'FHG' || a.signal_type === 'FHG+DC'));
+  let fhgPct = $derived(fhgTerminated.length
     ? Math.round((fhgTerminated.filter(a => a.status === 'validated').length / fhgTerminated.length) * 100)
-    : null;
+    : null);
 
-  $: dcTerminated = terminated.filter(a => a.signal_type === 'DC' || a.signal_type === 'FHG+DC');
-  $: dcPct = dcTerminated.length
+  let dcTerminated = $derived(terminated.filter(a => a.signal_type === 'DC' || a.signal_type === 'FHG+DC'));
+  let dcPct = $derived(dcTerminated.length
     ? Math.round((dcTerminated.filter(a => a.status === 'validated').length / dcTerminated.length) * 100)
-    : null;
+    : null);
 
-  $: fortTerminated = terminated.filter(a => a.confidence === 'fort');
-  $: fortPct = fortTerminated.length
+  let fortTerminated = $derived(terminated.filter(a => a.confidence === 'fort'));
+  let fortPct = $derived(fortTerminated.length
     ? Math.round((fortTerminated.filter(a => a.status === 'validated').length / fortTerminated.length) * 100)
-    : null;
+    : null);
 
-  $: moyenTerminated = terminated.filter(a => a.confidence === 'moyen');
-  $: moyenPct = moyenTerminated.length
+  let moyenTerminated = $derived(terminated.filter(a => a.confidence === 'moyen'));
+  let moyenPct = $derived(moyenTerminated.length
     ? Math.round((moyenTerminated.filter(a => a.status === 'validated').length / moyenTerminated.length) * 100)
-    : null;
+    : null);
 
   // Tableau par ligue trié par taux décroissant
-  $: leagueRows = (() => {
+  let leagueRows = $derived((() => {
     const map = {};
     for (const a of terminated) {
       const key = a.league_name || '—';
@@ -78,17 +78,17 @@
         pct: Math.round((validated / (validated + lost)) * 100),
       }))
       .sort((a, b) => b.pct - a.pct);
-  })();
+  })());
 
   // Liste filtrée
-  $: filteredAlerts = alerts.filter(a => {
+  let filteredAlerts = $derived(alerts.filter(a => {
     if (activeFilter === 'fhg')       return a.signal_type === 'FHG' || a.signal_type === 'FHG+DC';
     if (activeFilter === 'dc')        return a.signal_type === 'DC'  || a.signal_type === 'FHG+DC';
     if (activeFilter === 'validated') return a.status === 'validated';
     if (activeFilter === 'lost')      return a.status === 'lost';
     if (activeFilter === 'encours')   return a.status === 'pending' && isInPlay(a);
     return true;
-  });
+  }));
 
   function countFor(key) {
     if (key === 'tous')      return alerts.length;
@@ -130,7 +130,7 @@
 <!-- FILTRES -->
 <div class="hist-filters">
   {#each filters as f}
-    <button class="hist-filter-btn" class:active={activeFilter === f.key} on:click={() => activeFilter = f.key}>
+    <button class="hist-filter-btn" class:active={activeFilter === f.key} aria-pressed={activeFilter === f.key} on:click={() => activeFilter = f.key}>
       {f.label} ({countFor(f.key)})
     </button>
   {/each}

@@ -3,17 +3,17 @@
   import { leagues, saveLeagues, apiConnected } from '$lib/stores/appStore.js';
   import { getAllLeagues, getLeagueTable, getLeagueSeason, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
 
-  let apiLeagues = [];
-  let loading = true;
-  let searchQuery = '';
-  let expandedLeague = null;
-  let leagueTable = null;
-  let tableLoading = false;
-  let loaded = false;
+  let apiLeagues = $state([]);
+  let loading = $state(true);
+  let searchQuery = $state('');
+  let expandedLeague = $state(null);
+  let leagueTable = $state(null);
+  let tableLoading = $state(false);
+  let loaded = $state(false);
 
   // Stats par ligue (season_id → stats)
-  let leagueStats = {};
-  let statsLoading = {};
+  let leagueStats = $state({});
+  let statsLoading = $state({});
 
   async function loadLeagues() {
     if (loaded && apiLeagues.length > 10) return;
@@ -62,7 +62,7 @@
     statsLoading = statsLoading;
   }
 
-  $: if ($apiConnected && !loaded) loadLeagues();
+  $effect(() => { if ($apiConnected && !loaded) loadLeagues(); });
 
   // Trouver l'entrée store correspondant à une ligue API
   function findStoreIndex(storeList, apiLeague) {
@@ -75,23 +75,23 @@
   }
 
   // Set réactif des season_id actifs (recalculé quand $leagues change)
-  $: activeSeasonIds = new Set(
+  let activeSeasonIds = $derived(new Set(
     apiLeagues
       .filter(l => {
         const idx = findStoreIndex($leagues, l);
         return idx > -1 && $leagues[idx].active;
       })
       .map(l => l.id)
-  );
+  ));
 
-  $: activeCount = activeSeasonIds.size;
+  let activeCount = $derived(activeSeasonIds.size);
 
-  $: filtered = searchQuery
+  let filtered = $derived(searchQuery
     ? apiLeagues.filter(l =>
         l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         l.country.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : apiLeagues;
+    : apiLeagues);
 
   function setAll(activate) {
     const current = [...$leagues];
@@ -196,8 +196,7 @@
             <input type="checkbox" checked={active} on:change={() => toggleLeague(league)} />
             <span class="toggle-slider"></span>
           </label>
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <div class="league-item__info" on:click={() => toggleExpand(league.id)} role="button" tabindex="0">
+          <div class="league-item__info" on:click={() => toggleExpand(league.id)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(league.id); } }} role="button" tabindex="0" aria-expanded={expandedLeague === league.id}>
             <div class="league-item__name">
               {league.name}
               {#if active}
@@ -234,8 +233,7 @@
             <div class="league-item__stats-loading">...</div>
           {/if}
 
-          <!-- svelte-ignore a11y-click-events-have-key-events -->
-          <span class="league-item__arrow" on:click={() => toggleExpand(league.id)} role="button" tabindex="0">
+          <span class="league-item__arrow" on:click={() => toggleExpand(league.id)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(league.id); } }} role="button" tabindex="0" aria-expanded={expandedLeague === league.id}>
             {expandedLeague === league.id ? '▼' : '▶'}
           </span>
         </div>

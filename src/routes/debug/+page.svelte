@@ -6,8 +6,8 @@
   import { startFullSeed, seedLeague, getSeedStatus } from '$lib/api/seedClient.js';
 
   // --- API Test ---
-  let apiResult = null;
-  let apiTesting = false;
+  let apiResult = $state(null);
+  let apiTesting = $state(false);
 
   async function handleTestApi() {
     apiTesting = true;
@@ -19,9 +19,9 @@
   }
 
   // --- Supabase Test ---
-  let supaResult = null;
-  let supaTesting = false;
-  let tableCounts = null;
+  let supaResult = $state(null);
+  let supaTesting = $state(false);
+  let tableCounts = $state(null);
 
   async function handleTestSupabase() {
     supaTesting = true;
@@ -35,7 +35,7 @@
   }
 
   // --- Cache ---
-  let cache = { total: 0, expired: 0, active: 0 };
+  let cache = $state({ total: 0, expired: 0, active: 0 });
 
   function refreshCache() {
     cache = cacheStats();
@@ -48,13 +48,13 @@
   }
 
   // --- Seed ---
-  let seedJobId = null;
-  let seedLeagues = [];
-  let seedProgress = {};
-  let seedRunning = false;
-  let seedCurrentLeague = '';
-  let seedDone = 0;
-  let seedTotal = 0;
+  let seedJobId = $state(null);
+  let seedLeagues = $state([]);
+  let seedProgress = $state({});
+  let seedRunning = $state(false);
+  let seedCurrentLeague = $state('');
+  let seedDone = $state(0);
+  let seedTotal = $state(0);
 
   async function handleStartSeed() {
     seedRunning = true;
@@ -133,7 +133,7 @@
   }
 
   // --- Testeur API brut ---
-  let copyLabel = '📋 Copier';
+  let copyLabel = $state('📋 Copier');
 
   async function copyRawResult() {
     if (!rawResult) return;
@@ -147,10 +147,10 @@
     }
   }
 
-  let rawEndpoint = 'league-list';
-  let rawParams = '';
-  let rawResult = null;
-  let rawLoading = false;
+  let rawEndpoint = $state('league-list');
+  let rawParams = $state('');
+  let rawResult = $state(null);
+  let rawLoading = $state(false);
 
   const endpoints = [
     'league-list',
@@ -184,8 +184,8 @@
   }
 
   // --- Seed leagues list (for single-seed buttons) ---
-  let availableLeagues = [];
-  let leagueSearch = '';
+  let availableLeagues = $state([]);
+  let leagueSearch = $state('');
 
   async function loadLeaguesList() {
     try {
@@ -196,12 +196,12 @@
     }
   }
 
-  $: filteredSeedLeagues = leagueSearch
+  let filteredSeedLeagues = $derived(leagueSearch
     ? availableLeagues.filter(l =>
         (l.name || '').toLowerCase().includes(leagueSearch.toLowerCase()) ||
         (l.country || '').toLowerCase().includes(leagueSearch.toLowerCase())
       )
-    : availableLeagues.slice(0, 30);
+    : availableLeagues.slice(0, 30));
 
   onMount(() => {
     refreshCache();

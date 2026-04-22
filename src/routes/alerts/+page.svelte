@@ -4,12 +4,12 @@
   import { getDateStr, formatDate, formatTime, isInPlay, fhgColor, defeatColor } from '$lib/utils/formatters.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
 
-  let alerts = [];
-  let loading = true;
-  let error = '';
-  let selectedDay = null; // null = tous
-  let expandedId = null;
-  let teamMatchesCache = {};
+  let alerts = $state([]);
+  let loading = $state(true);
+  let error = $state('');
+  let selectedDay = $state(null); // null = tous
+  let expandedId = $state(null);
+  let teamMatchesCache = $state({});
 
   const days = [
     { label: 'Pass\u00e9s', offset: -3 },
@@ -39,10 +39,10 @@
     loading = false;
   }
 
-  $: filteredAlerts = alerts.filter(a => {
+  let filteredAlerts = $derived(alerts.filter(a => {
     if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
     return true;
-  });
+  }));
 
   // Charger les derniers matchs d'une \u00e9quipe dans son contexte
   async function loadTeamMatches(teamId, context) {
@@ -76,7 +76,7 @@
     return c === 'fort' ? 'alert-badge--fort' : 'alert-badge--moyen';
   }
 
-  let hoverBar = null; // { key, pct, min }
+  let hoverBar = $state(null); // { key, pct, min }
 
   function onBarMove(e, key) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -98,12 +98,12 @@
 </div>
 
 <div class="alerts-filters">
-  <button class="alerts-filter-btn" class:active={selectedDay === null} on:click={() => selectedDay = null}>
+  <button class="alerts-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} on:click={() => selectedDay = null}>
     Tous ({alerts.length})
   </button>
   {#each days as day}
     {@const count = alerts.filter(a => a.match_date === getDateStr(day.offset)).length}
-    <button class="alerts-filter-btn" class:active={selectedDay === day.offset} on:click={() => selectedDay = (selectedDay === day.offset ? null : day.offset)}>
+    <button class="alerts-filter-btn" class:active={selectedDay === day.offset} aria-pressed={selectedDay === day.offset} on:click={() => selectedDay = (selectedDay === day.offset ? null : day.offset)}>
       {day.label} ({count})
     </button>
   {/each}
@@ -129,14 +129,13 @@
 {:else}
   <div class="alerts-list">
     {#each filteredAlerts as a (a.id)}
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
       <div class="alert-card"
         class:alert-card--expanded={expandedId === a.id}
         class:alert-card--validated={a.status === 'validated'}
         class:alert-card--lost={a.status === 'lost'}
         class:alert-card--live={a.status === 'pending' && isInPlay(a)}
       >
-        <div class="alert-card__header" on:click={() => toggleExpand(a)} role="button" tabindex="0">
+        <div class="alert-card__header" on:click={() => toggleExpand(a)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }} role="button" tabindex="0" aria-expanded={expandedId === a.id}>
           <div class="alert-card__time">
             <div class="alert-card__day">{a.match_date}</div>
             <div class="alert-card__hour">{formatTime(a.kickoff_unix)}</div>
@@ -167,7 +166,7 @@
             {#if a.signal_type === 'FHG+DC'}
               <span class="alert-badge alert-badge--dc">+DC</span>
             {/if}
-            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
+            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}<span class="sr-only"> — confiance {a.confidence === 'fort' ? 'forte' : 'moyenne'}</span></span>
             {#if a.status === 'validated'}
               <span class="alert-badge alert-badge--validated">✓ Validé</span>
             {:else if a.status === 'lost'}

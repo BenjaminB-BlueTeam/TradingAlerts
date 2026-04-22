@@ -4,8 +4,8 @@
   import { apiConnected, alertesActives, pauseSession, savePrefs, apiRequestsRemaining } from '$lib/stores/appStore.js';
   import { cacheClear } from '$lib/api/cache.js';
 
-  let sidebarOpen = false;
-  let refreshing = false;
+  let sidebarOpen = $state(false);
+  let refreshing = $state(false);
 
   async function handleRefresh() {
     refreshing = true;
@@ -29,7 +29,7 @@
     { href: '/debug',    icon: '🐛', label: 'Debug'          },
   ];
 
-  let adminOpen = false;
+  let adminOpen = $state(false);
 
   function navigate(href) {
     goto(href);
@@ -46,18 +46,17 @@
     return $page.url.pathname.startsWith(href);
   }
 
-  $: apiDotClass = $apiConnected ? 'connected' : 'error';
-  $: apiLabel = $apiConnected ? 'API connectée' : 'API déconnectée';
-  $: alertsBadgeCount = $alertesActives?.length || 0;
-  $: adminHasActive = adminItems.some(i => isActive(i.href));
+  let apiDotClass = $derived($apiConnected ? 'connected' : 'error');
+  let apiLabel = $derived($apiConnected ? 'API connectée' : 'API déconnectée');
+  let alertsBadgeCount = $derived($alertesActives?.length || 0);
+  let adminHasActive = $derived(adminItems.some(i => isActive(i.href)));
   // Auto-ouvrir la section admin si on est sur une page admin
-  $: if (adminHasActive) adminOpen = true;
+  $effect(() => { if (adminHasActive) adminOpen = true; });
 </script>
 
 <!-- OVERLAY MOBILE -->
 {#if sidebarOpen}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <div class="sidebar-overlay active" on:click={() => sidebarOpen = false} role="presentation"></div>
+  <div class="sidebar-overlay active" on:click={() => sidebarOpen = false} on:keydown={(e) => { if (e.key === 'Escape') sidebarOpen = false; }} role="presentation"></div>
 {/if}
 
 <!-- TOPBAR MOBILE -->
@@ -107,13 +106,14 @@
     {/each}
 
     <!-- Section Admin -->
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
       class="sidebar__section-toggle"
       class:open={adminOpen}
       on:click={() => adminOpen = !adminOpen}
+      on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); adminOpen = !adminOpen; } }}
       role="button"
       tabindex="0"
+      aria-expanded={adminOpen}
     >
       <span class="sidebar__section-icon">🛠</span>
       <span class="sidebar__section-label">Admin</span>

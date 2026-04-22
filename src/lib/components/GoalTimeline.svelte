@@ -3,8 +3,7 @@
    * GoalTimeline — Barre de timing des buts H2H (style FootyStats)
    * ⚽ coloré = marqué, ⚽ grisé = encaissé
    */
-  export let h2hTimeline = [];  // Résultat de formaterH2HTimeline()
-  export let equipeNom = '';
+  let { h2hTimeline = [], equipeNom = '' } = $props();
 </script>
 
 <div class="h2h-timeline">

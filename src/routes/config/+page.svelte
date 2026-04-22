@@ -1,5 +1,7 @@
 <script>
-  import { config, saveConfig, trades, updateTrade, deleteTrade, calcStatsTradesGlobal } from '$lib/stores/appStore.js';
+  import { config, saveConfig, trades } from '$lib/stores/appStore.js';
+  import { updateTrade, deleteTrade } from '$lib/stores/tradeStore.js';
+  import { calcStatsTradesGlobal } from '$lib/stores/tradeStats.js';
 
   const profilLabels = {
     debutant:      { name: 'Debutant',       desc: '5-10e, cote ~1.50' },
@@ -48,10 +50,10 @@
     }
   }
 
-  $: cfg = $config;
-  $: tradesJoues = $trades.filter(t => t.resultat !== 'non_joue');
-  $: stats = calcStatsTradesGlobal();
-  $: recentTrades = $trades.slice().reverse().slice(0, 20);
+  let cfg = $derived($config);
+  let tradesJoues = $derived($trades.filter(t => t.resultat !== 'non_joue'));
+  let stats = $derived(calcStatsTradesGlobal());
+  let recentTrades = $derived($trades.slice().reverse().slice(0, 20));
 </script>
 
 <div class="page-title">Alertes & Configuration</div>

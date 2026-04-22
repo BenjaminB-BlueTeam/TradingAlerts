@@ -3,7 +3,7 @@
    FHG Tracker
    ================================================ */
 
-import { writable, get } from 'svelte/store';
+import { writable } from 'svelte/store';
 
 const STORAGE_KEYS = {
   CONFIG:        'fhg_config',
@@ -109,57 +109,6 @@ export function savePrefs(newPrefs) {
   });
 }
 
-export async function addTrade(trade) {
-  const tempId = Date.now();
-  const optimistic = { ...trade, id: tempId };
-
-  trades.update(list => {
-    const updated = [...list, optimistic];
-    localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(updated));
-    return updated;
-  });
-
-  try {
-    const { insertTrade } = await import('$lib/api/supabase.js');
-    const saved = await insertTrade(trade);
-    if (saved?.id) {
-      trades.update(list => {
-        const updated = list.map(t => t.id === tempId ? { ...t, id: saved.id } : t);
-        localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(updated));
-        return updated;
-      });
-    }
-  } catch (e) {
-    console.warn('addTrade: Supabase indisponible, trade conservé en local', e);
-  }
-
-  return optimistic;
-}
-
-export function updateTrade(id, updates) {
-  trades.update(list => {
-    const updated = list.map(t => t.id === id ? { ...t, ...updates } : t);
-    localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(updated));
-    return updated;
-  });
-
-  import('$lib/api/supabase.js').then(({ updateTradeInDB }) => {
-    updateTradeInDB(id, updates);
-  });
-}
-
-export function deleteTrade(id) {
-  trades.update(list => {
-    const updated = list.filter(t => t.id !== id);
-    localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(updated));
-    return updated;
-  });
-
-  import('$lib/api/supabase.js').then(({ deleteTradeFromDB }) => {
-    deleteTradeFromDB(id);
-  });
-}
-
 // ---- Watchlist (matchs alertes pour le Live) ----
 
 export function saveWatchlist(items) {
@@ -187,72 +136,6 @@ export function removeFromWatchlist(matchId) {
 export function clearAllData() {
   Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
   location.reload();
-}
-
-export async function loadTradesFromSupabase() {
-  try {
-    const { fetchTrades, migrateLocalTrades } = await import('$lib/api/supabase.js');
-    await migrateLocalTrades(get(trades));
-    const fetched = await fetchTrades();
-    if (fetched) {
-      localStorage.setItem(STORAGE_KEYS.TRADES, JSON.stringify(fetched));
-      trades.set(fetched);
-    }
-  } catch (e) {
-    console.warn('loadTradesFromSupabase: fallback localStorage', e);
-  }
-}
-
-export function calcStatsTradesGlobal() {
-  const list = get(trades).filter(t => t.resultat !== 'non_joue');
-  if (list.length === 0) return null;
-
-  const gagnes = list.filter(t => t.resultat === 'gagne').length;
-  const total  = list.length;
-  const tauxGlobal = Math.round((gagnes / total) * 100);
-
-  const avec1MT = list.filter(t => t.badge1MT);
-  const sans1MT = list.filter(t => !t.badge1MT);
-  const taux1MT = avec1MT.length > 0
-    ? Math.round((avec1MT.filter(t => t.resultat === 'gagne').length / avec1MT.length) * 100)
-    : null;
-  const tauxSans1MT = sans1MT.length > 0
-    ? Math.round((sans1MT.filter(t => t.resultat === 'gagne').length / sans1MT.length) * 100)
-    : null;
-
-  const h2hVert   = list.filter(t => t.h2h === 'favorable');
-  const h2hOrange = list.filter(t => t.h2h === 'defavorable');
-  const h2hGris   = list.filter(t => t.h2h === 'insuffisant');
-  const tauxH2HVert   = h2hVert.length   > 0 ? Math.round((h2hVert.filter(t => t.resultat === 'gagne').length   / h2hVert.length)   * 100) : null;
-  const tauxH2HOrange = h2hOrange.length > 0 ? Math.round((h2hOrange.filter(t => t.resultat === 'gagne').length / h2hOrange.length) * 100) : null;
-  const tauxH2HGris   = h2hGris.length   > 0 ? Math.round((h2hGris.filter(t => t.resultat === 'gagne').length   / h2hGris.length)   * 100) : null;
-
-  const coteMoy = list.filter(t => t.cote).length > 0
-    ? (list.reduce((s, t) => s + (parseFloat(t.cote) || 0), 0) / list.filter(t => t.cote).length).toFixed(2)
-    : null;
-  const roi = coteMoy
-    ? Math.round((tauxGlobal / 100 * parseFloat(coteMoy) - 1) * 100)
-    : null;
-
-  let maxWin = 0, maxLoss = 0, curWin = 0, curLoss = 0;
-  list.forEach(t => {
-    if (t.resultat === 'gagne') {
-      curWin++; curLoss = 0;
-      if (curWin > maxWin) maxWin = curWin;
-    } else {
-      curLoss++; curWin = 0;
-      if (curLoss > maxLoss) maxLoss = curLoss;
-    }
-  });
-
-  return {
-    total, gagnes, tauxGlobal,
-    taux1MT, tauxSans1MT,
-    tauxH2HVert, tauxH2HOrange, tauxH2HGris,
-    coteMoy, roi,
-    maxWin, maxLoss,
-    sufficientData: total >= 20,
-  };
 }
 
 // ---- Ligues par défaut ----

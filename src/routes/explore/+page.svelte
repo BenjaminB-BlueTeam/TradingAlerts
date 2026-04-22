@@ -3,17 +3,17 @@
   import { apiConnected } from '$lib/stores/appStore.js';
   import { getAllLeagues, getLeagueTable, getLeagueSeason, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
 
-  let allLeagues = [];
-  let loading = true;
-  let searchQuery = '';
-  let expandedLeague = null;
-  let leagueTable = null;
-  let tableLoading = false;
-  let loaded = false;
+  let allLeagues = $state([]);
+  let loading = $state(true);
+  let searchQuery = $state('');
+  let expandedLeague = $state(null);
+  let leagueTable = $state(null);
+  let tableLoading = $state(false);
+  let loaded = $state(false);
 
   // Stats par ligue
-  let leagueStats = {};
-  let statsLoading = {};
+  let leagueStats = $state({});
+  let statsLoading = $state({});
 
   async function loadLeagues() {
     if (loaded && allLeagues.length > 10) return;
@@ -58,16 +58,16 @@
     statsLoading = statsLoading;
   }
 
-  $: if ($apiConnected && !loaded) loadLeagues();
+  $effect(() => { if ($apiConnected && !loaded) loadLeagues(); });
 
-  // Groupement par pays
-  $: grouped = groupByCountry(filtered);
-  $: filtered = searchQuery
+  // Filtrage et groupement par pays
+  let filtered = $derived(searchQuery
     ? allLeagues.filter(l =>
         (l.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (l.country || '').toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : allLeagues;
+    : allLeagues);
+  let grouped = $derived(groupByCountry(filtered));
 
   function groupByCountry(leagues) {
     const map = {};
@@ -140,8 +140,7 @@
         {#each leagues as league (league.id)}
           {@const stats = leagueStats[league.id]}
           <div class="explore-league-card" class:expanded={expandedLeague === league.id}>
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <div class="explore-league-card__header" on:click={() => toggleLeague(league.id)} role="button" tabindex="0">
+            <div class="explore-league-card__header" on:click={() => toggleLeague(league.id)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLeague(league.id); } }} role="button" tabindex="0" aria-expanded={expandedLeague === league.id}>
               <div class="explore-league-card__info">
                 <div class="explore-league-card__name">{league.name}</div>
                 <div class="explore-league-card__meta">

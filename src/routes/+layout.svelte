@@ -3,14 +3,15 @@
   import '../app.css';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import Toast from '$lib/components/Toast.svelte';
-  import {
-    loadFromStorage, loadTradesFromSupabase
-  } from '$lib/stores/appStore.js';
-  import { initApp, loadData } from '$lib/data.js';
+  import { loadFromStorage } from '$lib/stores/appStore.js';
+  import { loadTradesFromSupabase } from '$lib/stores/tradeStore.js';
+  import { initApp } from '$lib/data.js';
   import { cacheEvict } from '$lib/api/cache.js';
 
-  let toasts = [];
-  let initialized = false;
+  let { children } = $props();
+
+  let toasts = $state([]);
+  let initialized = $state(false);
 
   // Expose showToast globalement pour les composants non-Svelte
   if (typeof window !== 'undefined') {
@@ -35,18 +36,7 @@
       loadTradesFromSupabase(),
     ]);
 
-    await loadData();
     initialized = true;
-
-    // Auto-refresh toutes les 10 minutes
-    const interval = setInterval(() => {
-      import('$lib/stores/appStore.js').then(({ pauseSession, get }) => {
-        // On recharge seulement si pas en pause
-        loadData();
-      });
-    }, 10 * 60 * 1000);
-
-    return () => clearInterval(interval);
   });
 
 </script>
@@ -56,7 +46,7 @@
 
   <main class="main-content">
     <div class="page-container">
-      <slot />
+      {@render children()}
     </div>
   </main>
 </div>

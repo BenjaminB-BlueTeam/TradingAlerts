@@ -1,41 +1,42 @@
 <script>
   import { onMount, tick } from 'svelte';
   import {
-    apiConnected, leagues, trades, saveLeagues,
-    updateTrade, deleteTrade, clearAllData, calcStatsTradesGlobal
+    apiConnected, leagues, trades, saveLeagues, clearAllData
   } from '$lib/stores/appStore.js';
+  import { updateTrade, deleteTrade } from '$lib/stores/tradeStore.js';
+  import { calcStatsTradesGlobal } from '$lib/stores/tradeStats.js';
   import { testApiConnection, getAllLeagues, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
   import { cacheClear } from '$lib/api/cache.js';
   import { createWinRateChart, createBankrollChart } from '$lib/components/charts.js';
 
-  let apiTestResult = null;
-  let apiTesting = false;
-  let leagueSearch = '';
-  let journalFilterResult = '';
-  let journalFilterLigue = '';
-  let winrateCanvas;
-  let bankrollCanvas;
-  let bankrollInput = '';
-  let misePctInput = '2.5';
-  let coteCibleInput = '2.3';
-  let showProjection = false;
-  let projections = [];
-  let projGains = [];
-  let projLabels = [];
+  let apiTestResult = $state(null);
+  let apiTesting = $state(false);
+  let leagueSearch = $state('');
+  let journalFilterResult = $state('');
+  let journalFilterLigue = $state('');
+  let winrateCanvas = $state(null);
+  let bankrollCanvas = $state(null);
+  let bankrollInput = $state('');
+  let misePctInput = $state('2.5');
+  let coteCibleInput = $state('2.3');
+  let showProjection = $state(false);
+  let projections = $state([]);
+  let projGains = $state([]);
+  let projLabels = $state([]);
 
-  let apiLeagues = [];
+  let apiLeagues = $state([]);
 
-  $: stats = calcStatsTradesGlobal();
-  $: activesCount = $leagues.filter(l => l.active).length;
-  $: filteredLeagues = leagueSearch
+  let stats = $derived(calcStatsTradesGlobal());
+  let activesCount = $derived($leagues.filter(l => l.active).length);
+  let filteredLeagues = $derived(leagueSearch
     ? apiLeagues.filter(l => l.name.toLowerCase().includes(leagueSearch.toLowerCase()))
-    : apiLeagues;
-  $: uniqueLigues = [...new Set($trades.map(t => t.ligue).filter(Boolean))];
-  $: filteredTrades = $trades.filter(t => {
+    : apiLeagues);
+  let uniqueLigues = $derived([...new Set($trades.map(t => t.ligue).filter(Boolean))]);
+  let filteredTrades = $derived($trades.filter(t => {
     if (journalFilterResult && t.resultat !== journalFilterResult) return false;
     if (journalFilterLigue && t.ligue !== journalFilterLigue) return false;
     return true;
-  }).slice().reverse();
+  }).slice().reverse());
 
   function isLeagueActive(leagueId) {
     return $leagues.some(l => l.id === leagueId && l.active);

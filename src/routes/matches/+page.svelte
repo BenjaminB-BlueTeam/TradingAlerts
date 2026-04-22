@@ -1,21 +1,21 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { leagues } from '$lib/stores/appStore.js';
   import { getTodaysMatches, getAllLeagues } from '$lib/api/footystats.js';
   import { supabase } from '$lib/api/supabase.js';
   import { getDateStr, formatDate, formatTime, fhgColor } from '$lib/utils/formatters.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
 
-  let filtrePlage = 0;
-  let filtreLigue = 'toutes';
-  let allMatches = [];
-  let loading = false;
-  let error = '';
-  let leagueNames = {}; // competition_id -> nom de la ligue
-  let expandedId = null;
-  let teamMatchesCache = {};
+  let filtrePlage = $state(0);
+  let filtreLigue = $state('toutes');
+  let allMatches = $state([]);
+  let loading = $state(false);
+  let error = $state('');
+  let leagueNames = $state({}); // competition_id -> nom de la ligue
+  let expandedId = $state(null);
+  let teamMatchesCache = $state({});
 
-  $: activeLeagues = $leagues.filter(l => l.active);
+  let activeLeagues = $derived($leagues.filter(l => l.active));
 
   function getLeagueName(m) {
     const compId = m.competition_id || m.league_id;
@@ -23,14 +23,14 @@
   }
 
   // Filtrage r\u00e9actif : exclure termin\u00e9s et en cours + filtre ligue
-  $: filteredMatches = allMatches.filter(m => {
+  let filteredMatches = $derived(allMatches.filter(m => {
     const status = (m.status || '').toLowerCase();
     if (status === 'complete' || status === 'finished') return false;
     if (m.date_unix && m.date_unix * 1000 < Date.now()) return false;
     if (filtreLigue === 'toutes') return true;
     const matchLeague = getLeagueName(m);
     return matchLeague.includes(filtreLigue) || filtreLigue.includes(matchLeague);
-  }).sort((a, b) => (a.date_unix || 0) - (b.date_unix || 0));
+  }).sort((a, b) => (a.date_unix || 0) - (b.date_unix || 0)));
 
   function formatDateUnix(unix) {
     if (!unix) return '';
@@ -60,7 +60,7 @@
   }
 
   // Recharger quand la plage change
-  $: loadMatches(filtrePlage);
+  $effect(() => { loadMatches(filtrePlage); });
 
   async function loadLeagueNames() {
     try {
@@ -107,7 +107,7 @@
     return teamMatchesCache[`${teamId}_${context}`] || [];
   }
 
-  let hoverBar = null; // { key, pct, min }
+  let hoverBar = $state(null); // { key, pct, min }
 
   function onBarMove(e, key) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -165,9 +165,8 @@
 {:else if filteredMatches.length > 0}
   <div class="matches-list">
     {#each filteredMatches as m (m.id)}
-      <!-- svelte-ignore a11y-click-events-have-key-events -->
       <div class="match-card" class:match-card--expanded={expandedId === m.id}>
-        <div class="match-card__header" on:click={() => toggleExpand(m)} role="button" tabindex="0">
+        <div class="match-card__header" on:click={() => toggleExpand(m)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(m); } }} role="button" tabindex="0" aria-expanded={expandedId === m.id}>
           <div class="match-card__time">
             <div class="match-card__day">{formatDateUnix(m.date_unix)}</div>
             <div class="match-card__hour">{formatTime(m.date_unix)}</div>
