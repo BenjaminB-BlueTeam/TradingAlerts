@@ -176,8 +176,13 @@ function analyzeDCFromH2H(h2h, homeId) {
     const hg = m.home_goals ?? 0;
     const ag = m.away_goals ?? 0;
     const isHome = m.home_team_id === homeId;
-    if (hg > ag) { if (!isHome) awayLosses++; else {} if (isHome) {} else homeLosses++; }
-    else if (ag > hg) { if (isHome) homeLosses++; else awayLosses++; }
+    if (hg > ag) {          // H2H home side won
+      if (!isHome) homeLosses++;   // homeId was away in this H2H, so homeId lost
+      else awayLosses++;           // awayId was away in this H2H, so awayId lost
+    } else if (ag > hg) {   // H2H away side won
+      if (isHome) homeLosses++;    // homeId was home in this H2H, still lost
+      else awayLosses++;           // awayId was home in this H2H, still lost
+    }
   }
 
   const total = h2h.length;
@@ -207,12 +212,17 @@ exports.handler = async (event) => {
 
   try {
     // Charger les matchs des 3 prochains jours
+    const dates = [getDateStr(0), getDateStr(1), getDateStr(2)];
+    console.log(`[generate-alerts] START — processing dates: ${dates.join(', ')}`);
     const allMatches = [];
     for (let i = 0; i <= 2; i++) {
       try {
-        const data = await footyRequest('todays-matches', { date: getDateStr(i) });
+        const data = await footyRequest('todays-matches', { date: dates[i] });
+        const count = data?.data?.length || 0;
         if (data?.data) allMatches.push(...data.data);
+        console.log(`[generate-alerts] Day ${dates[i]}: ${count} matches fetched`);
       } catch (e) {
+        console.error(`[generate-alerts] Error fetching day ${dates[i]}: ${e.message}`);
         results.errors.push(`day ${i}: ${e.message}`);
       }
     }
@@ -282,19 +292,22 @@ exports.handler = async (event) => {
     }
 
     // Insérer les nouvelles alertes
+    console.log(`[generate-alerts] Analysis done — ${results.analyzed} matches analyzed, ${newAlerts.length} new alerts to insert`);
     if (newAlerts.length > 0) {
       const ok = await supabaseInsert('alerts', newAlerts);
       if (ok) results.alerts_created = newAlerts.length;
       else results.errors.push('Insert alerts failed');
     }
 
+    console.log(`[generate-alerts] END — ${results.alerts_created} alerts created, ${results.errors.length} errors`);
   } catch (e) {
+    console.error(`[generate-alerts] FATAL: ${e.message}`);
     results.errors.push(e.message);
   }
 
   return {
     statusCode: 200,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(results),
   };
 };

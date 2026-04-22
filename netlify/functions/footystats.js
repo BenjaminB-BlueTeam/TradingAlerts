@@ -7,6 +7,11 @@
 
 const BASE_URL = 'https://api.football-data-api.com';
 
+const ALLOWED_ENDPOINTS = new Set([
+  'league-list', 'league-teams', 'league-matches', 'league-tables',
+  'league-season', 'todays-matches', 'match', 'team', 'lastx', 'country-list'
+]);
+
 exports.handler = async (event) => {
   const { endpoint, ...params } = event.queryStringParameters || {};
 
@@ -15,6 +20,14 @@ exports.handler = async (event) => {
       statusCode: 400,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'Paramètre endpoint manquant' }),
+    };
+  }
+
+  if (!ALLOWED_ENDPOINTS.has(endpoint)) {
+    return {
+      statusCode: 400,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: `Endpoint non autorisé : ${endpoint}` }),
     };
   }
 
@@ -28,6 +41,9 @@ exports.handler = async (event) => {
   }
 
   try {
+    const paramKeys = Object.keys(params);
+    console.log(`[footystats-proxy] ${endpoint} (${paramKeys.length} params: ${paramKeys.join(', ')})`);
+
     const url = new URL(`${BASE_URL}/${endpoint}`);
     url.searchParams.set('key', apiKey);
     Object.entries(params).forEach(([k, v]) => {
@@ -35,17 +51,21 @@ exports.handler = async (event) => {
     });
 
     const response = await fetch(url.toString());
+    if (!response.ok) {
+      console.error(`[footystats-proxy] Upstream error: ${endpoint} -> HTTP ${response.status}`);
+    }
     const data = await response.json();
 
     return {
       statusCode: response.status,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': 'https://tradingfootalerts.netlify.app',
       },
       body: JSON.stringify(data),
     };
   } catch (e) {
+    console.error(`[footystats-proxy] Exception for ${endpoint}: ${e.message}`);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },

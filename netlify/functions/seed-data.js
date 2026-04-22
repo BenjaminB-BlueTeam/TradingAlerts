@@ -66,7 +66,7 @@ function respond(statusCode, body) {
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': 'https://tradingfootalerts.netlify.app',
     },
     body: JSON.stringify(body),
   };
@@ -75,6 +75,7 @@ function respond(statusCode, body) {
 // --- Actions ---
 
 async function startFull(maxSeasons = 5) {
+  console.log(`[seed-data] action=start_full, maxSeasons=${maxSeasons}`);
   // Créer un seed_job
   await supabaseRequest('seed_jobs', 'POST',
     { status: 'in_progress', progress: {} },
@@ -102,10 +103,12 @@ async function startFull(maxSeasons = 5) {
     };
   }).filter(l => l.id);
 
+  console.log(`[seed-data] start_full complete — job_id=${jobId}, ${leagues.length} leagues found`);
   return respond(200, { job_id: jobId, leagues, total: leagues.length });
 }
 
 async function seedLeague(seasonId) {
+  console.log(`[seed-data] action=seed_league, season_id=${seasonId}`);
   // Récupère les matchs depuis FootyStats et retourne les rows formatées
   // L'insert Supabase est fait côté client pour éviter le timeout
   try {
@@ -148,8 +151,10 @@ async function seedLeague(seasonId) {
       };
     });
 
+    console.log(`[seed-data] seed_league season_id=${seasonId} — ${rows.length} match rows prepared`);
     return respond(200, { matches: rows.length, rows });
   } catch (e) {
+    console.error(`[seed-data] seed_league season_id=${seasonId} ERROR: ${e.message}`);
     return respond(200, { matches: 0, rows: [], errors: [e.message] });
   }
 }
@@ -163,6 +168,12 @@ async function getStatus(jobId) {
 // --- Handler ---
 
 exports.handler = async (event) => {
+  const authHeader = event.headers?.authorization || event.headers?.Authorization;
+  const expectedToken = process.env.SEED_AUTH_TOKEN;
+  if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
+    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
+  }
+
   const { action, league_id, job_id, seasons } = event.queryStringParameters || {};
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -183,6 +194,7 @@ exports.handler = async (event) => {
         return respond(400, { error: `Action inconnue : ${action}` });
     }
   } catch (e) {
+    console.error(`[seed-data] FATAL: ${e.message}`);
     return respond(500, { error: e.message });
   }
 };
