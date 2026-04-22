@@ -20,7 +20,8 @@ export async function fetchLeagues() {
     if (res.status === 200) {
       return { leagues: normalizeLeagues(res.data), loaded: true };
     }
-  } catch {
+  } catch (e) {
+    console.warn('loadLeaguesFromAPI: erreur chargement league-list', e);
     // fallback below
   }
   const leagues = await getAllLeagues();

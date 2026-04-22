@@ -56,8 +56,8 @@
   let recentTrades = $derived($trades.slice().reverse().slice(0, 20));
 </script>
 
-<div class="page-title">Alertes & Configuration</div>
-<div class="page-subtitle">Parametrez les seuils de la strategie FHG</div>
+<h1 class="page-title">Alertes & Configuration</h1>
+<p class="page-subtitle">Parametrez les seuils de la strategie FHG</p>
 
 <!-- BLOC FHG -->
 <div class="settings-block">

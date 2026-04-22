@@ -74,7 +74,9 @@
         }
       }
       leagueNames = leagueNames;
-    } catch {}
+    } catch (e) {
+      console.warn('Matches: erreur chargement noms de ligues', e);
+    }
   }
 
   // Charger les derniers matchs d'une \u00e9quipe dans son contexte
@@ -125,10 +127,10 @@
   });
 </script>
 
-<div class="page-title">⚽ Matchs à venir</div>
-<div class="page-subtitle">
+<h1 class="page-title">⚽ Matchs à venir</h1>
+<p class="page-subtitle">
   {filteredMatches.length} match{filteredMatches.length > 1 ? 's' : ''} trouvés
-</div>
+</p>
 
 <!-- FILTERS BAR -->
 <div class="filters-bar">

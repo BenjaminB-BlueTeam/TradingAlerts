@@ -177,7 +177,8 @@ export async function getTableCounts() {
         .from(table)
         .select('*', { count: 'exact', head: true })
       counts[table] = error ? `erreur: ${error.message}` : count
-    } catch {
+    } catch (e) {
+      console.warn(`Supabase: erreur accès table ${table}`, e);
       counts[table] = 'table absente'
     }
   }

@@ -84,10 +84,10 @@
   onMount(() => { loadAlerts(); });
 </script>
 
-<div class="page-title">🎯 Sélection DC</div>
-<div class="page-subtitle">
+<h1 class="page-title">🎯 Sélection DC</h1>
+<p class="page-subtitle">
   {alerts.length} signal{alerts.length > 1 ? 's' : ''} Double Chance — 3 derniers jours + à venir
-</div>
+</p>
 
 <div class="dc-filters">
   <button class="dc-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} onclick={() => selectedDay = null}>

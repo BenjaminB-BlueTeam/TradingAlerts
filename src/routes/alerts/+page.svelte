@@ -92,10 +92,10 @@
   onMount(() => { loadAlerts(); });
 </script>
 
-<div class="page-title">⚡ Sélection FHG</div>
-<div class="page-subtitle">
+<h1 class="page-title">⚡ Sélection FHG</h1>
+<p class="page-subtitle">
   {alerts.length} signal{alerts.length > 1 ? 's' : ''} FHG — 3 derniers jours + à venir
-</div>
+</p>
 
 <div class="alerts-filters">
   <button class="alerts-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} onclick={() => selectedDay = null}>

@@ -56,7 +56,7 @@
 <!-- DASHBOARD HEADER -->
 <div class="dashboard-header">
   <div class="dashboard-header__left">
-    <div class="page-title" style="margin-bottom:0;">Dashboard</div>
+    <h1 class="page-title" style="margin-bottom:0;">Dashboard</h1>
     <div class="dashboard-header__date">{dateLabel}</div>
   </div>
 </div>

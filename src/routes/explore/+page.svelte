@@ -79,11 +79,11 @@
   });
 </script>
 
-<div class="page-title">🌍 Explorer les ligues</div>
-<div class="page-subtitle">
+<h1 class="page-title">🌍 Explorer les ligues</h1>
+<p class="page-subtitle">
   {allLeagues.length} ligues disponibles
   {#if searchQuery} — {filtered.length} resultats{/if}
-</div>
+</p>
 
 <div class="explore-search">
   <input type="text" class="form-input" bind:value={searchQuery}

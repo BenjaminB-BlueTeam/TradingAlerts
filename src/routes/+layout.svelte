@@ -41,10 +41,12 @@
 
 </script>
 
+<a href="#main-content" class="skip-link">Aller au contenu</a>
+
 <div class="app-layout">
   <Sidebar />
 
-  <main class="main-content">
+  <main class="main-content" id="main-content">
     <div class="page-container">
       {@render children()}
     </div>

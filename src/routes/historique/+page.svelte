@@ -139,10 +139,10 @@
   onMount(() => { loadAlerts(); });
 </script>
 
-<div class="page-title">📈 Historique des Alertes</div>
-<div class="page-subtitle">
+<h1 class="page-title">📈 Historique des Alertes</h1>
+<p class="page-subtitle">
   {alerts.length} alerte{alerts.length > 1 ? 's' : ''} au total — {terminated.length} terminée{terminated.length > 1 ? 's' : ''}
-</div>
+</p>
 
 <!-- FILTRES -->
 <div class="hist-filters">

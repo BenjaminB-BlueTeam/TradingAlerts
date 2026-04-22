@@ -193,7 +193,8 @@
       await navigator.clipboard.writeText(JSON.stringify(rawResult.data, null, 2));
       copyLabel = '✓ Copie !';
       setTimeout(() => copyLabel = '📋 Copier', 2000);
-    } catch {
+    } catch (e) {
+      console.warn('Debug: erreur copie presse-papier', e);
       copyLabel = '✗ Erreur';
       setTimeout(() => copyLabel = '📋 Copier', 2000);
     }
@@ -243,7 +244,8 @@
     try {
       const res = await rawApiCall('league-list', { chosen_leagues_only: 'true' });
       availableLeagues = normalizeLeagues(res.data);
-    } catch {
+    } catch (e) {
+      console.warn('Debug: erreur chargement liste ligues', e);
       availableLeagues = [];
     }
   }
@@ -261,8 +263,8 @@
   });
 </script>
 
-<div class="page-title">🐛 Debug</div>
-<div class="page-subtitle">Outils de diagnostic, seed et test API</div>
+<h1 class="page-title">🐛 Debug</h1>
+<p class="page-subtitle">Outils de diagnostic, seed et test API</p>
 
 <!-- TEST API FOOTYSTATS -->
 <div class="settings-block">

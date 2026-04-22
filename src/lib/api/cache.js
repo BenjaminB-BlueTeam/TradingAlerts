@@ -16,7 +16,8 @@ export function cacheGet(key) {
       return null;
     }
     return entry.data;
-  } catch {
+  } catch (e) {
+    console.warn('Cache: erreur lecture', key, e);
     return null;
   }
 }
@@ -53,7 +54,9 @@ export function cacheStats() {
       const entry = JSON.parse(localStorage.getItem(k));
       total++;
       if (Date.now() > entry.expires) expired++;
-    } catch {}
+    } catch (e) {
+      console.warn('Cache: entrée corrompue', k, e);
+    }
   });
   return { total, expired, active: total - expired };
 }
@@ -70,7 +73,8 @@ export function cacheEvict() {
         localStorage.removeItem(k);
         evicted++;
       }
-    } catch {
+    } catch (e) {
+      console.warn('Cache: entrée corrompue supprimée', k, e);
       localStorage.removeItem(k);
       evicted++;
     }
@@ -86,7 +90,9 @@ export function cacheEvict() {
     try {
       const entry = JSON.parse(raw);
       entries.push({ key: k, cachedAt: entry.cachedAt || 0, size: raw.length * 2 });
-    } catch {}
+    } catch (e) {
+      console.warn('Cache: entrée non parseable ignorée', k, e);
+    }
   });
   const MAX_SIZE = 3 * 1024 * 1024; // 3 MB
   if (totalSize > MAX_SIZE) {

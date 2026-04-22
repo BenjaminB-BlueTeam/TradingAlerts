@@ -89,7 +89,8 @@ function formatDate(dateStr) {
   try {
     const d = new Date(dateStr);
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
-  } catch {
+  } catch (e) {
+    console.warn('h2h: formatDate invalide', dateStr, e);
     return dateStr;
   }
 }

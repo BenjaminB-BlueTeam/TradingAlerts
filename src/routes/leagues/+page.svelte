@@ -127,10 +127,10 @@
   });
 </script>
 
-<div class="page-title">🏆 Ligues actives</div>
-<div class="page-subtitle">
+<h1 class="page-title">🏆 Ligues actives</h1>
+<p class="page-subtitle">
   {activeCount} ligue{activeCount > 1 ? 's' : ''} active{activeCount > 1 ? 's' : ''} sur {apiLeagues.length} disponibles
-</div>
+</p>
 
 <div class="leagues-toolbar">
   <input type="text" class="form-input" bind:value={searchQuery}
