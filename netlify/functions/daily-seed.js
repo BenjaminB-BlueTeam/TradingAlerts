@@ -85,61 +85,71 @@ function parseMatchRow(m) {
 
 // --- Main ---
 
+// Generer une liste de dates YYYY-MM-DD entre from et to (inclus)
+function getDateRange(from, to) {
+  const dates = [];
+  const d = new Date(from + 'T00:00:00Z');
+  const end = new Date(to + 'T00:00:00Z');
+  while (d <= end) {
+    dates.push(d.toISOString().split('T')[0]);
+    d.setDate(d.getDate() + 1);
+  }
+  return dates;
+}
+
+// Seed les matchs d'une date donnee, retourne { fetched, completed, upserted }
+async function seedDate(date) {
+  const data = await footyRequest('todays-matches', { date });
+  const allMatches = data?.data || [];
+  const completedMatches = allMatches.filter(m =>
+    m.id && m.homeID && m.awayID && m.status === 'complete'
+  );
+  if (completedMatches.length === 0) return { fetched: allMatches.length, completed: 0, upserted: 0 };
+  const rows = completedMatches.map(parseMatchRow);
+  const upserted = await supabaseUpsert('h2h_matches', rows);
+  return { fetched: allMatches.length, completed: completedMatches.length, upserted };
+}
+
 exports.handler = async (event) => {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error('[daily-seed] SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY non configure');
     return { statusCode: 503, body: JSON.stringify({ error: 'Supabase non configure' }) };
   }
 
-  const yesterday = getYesterdayStr();
-  console.log(`[daily-seed] START — fetching matches for ${yesterday}`);
+  // Supporter une plage de dates via query params : ?from=2026-03-29&to=2026-04-22
+  const params = event.queryStringParameters || {};
+  const from = params.from;
+  const to = params.to;
 
-  const results = { date: yesterday, fetched: 0, completed: 0, upserted: 0, errors: [] };
-
-  try {
-    // Recuperer les matchs d'hier
-    const data = await footyRequest('todays-matches', { date: yesterday });
-    const allMatches = data?.data || [];
-    results.fetched = allMatches.length;
-    console.log(`[daily-seed] ${allMatches.length} matches fetched for ${yesterday}`);
-
-    if (allMatches.length === 0) {
-      console.log('[daily-seed] END — no matches yesterday');
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(results),
-      };
-    }
-
-    // Filtrer les matchs termines (status = "complete" dans FootyStats)
-    const completedMatches = allMatches.filter(m =>
-      m.id && m.homeID && m.awayID && m.status === 'complete'
-    );
-    results.completed = completedMatches.length;
-    console.log(`[daily-seed] ${completedMatches.length} completed matches to upsert`);
-
-    if (completedMatches.length === 0) {
-      console.log('[daily-seed] END — no completed matches');
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(results),
-      };
-    }
-
-    // Transformer en rows h2h_matches
-    const rows = completedMatches.map(parseMatchRow);
-
-    // Upsert dans Supabase
-    results.upserted = await supabaseUpsert('h2h_matches', rows);
-    console.log(`[daily-seed] ${results.upserted} rows upserted into h2h_matches`);
-  } catch (e) {
-    console.error(`[daily-seed] ERROR: ${e.message}`);
-    results.errors.push(e.message);
+  let dates;
+  if (from && to) {
+    dates = getDateRange(from, to);
+    console.log(`[daily-seed] START — backfill mode: ${dates.length} days (${from} → ${to})`);
+  } else if (from) {
+    dates = getDateRange(from, getYesterdayStr());
+    console.log(`[daily-seed] START — backfill mode: ${dates.length} days (${from} → ${getYesterdayStr()})`);
+  } else {
+    dates = [getYesterdayStr()];
+    console.log(`[daily-seed] START — daily mode: ${dates[0]}`);
   }
 
-  console.log(`[daily-seed] END — fetched=${results.fetched}, completed=${results.completed}, upserted=${results.upserted}, errors=${results.errors.length}`);
+  const results = { mode: dates.length > 1 ? 'backfill' : 'daily', dates: dates.length, fetched: 0, completed: 0, upserted: 0, errors: [], details: [] };
+
+  for (const date of dates) {
+    try {
+      const r = await seedDate(date);
+      results.fetched += r.fetched;
+      results.completed += r.completed;
+      results.upserted += r.upserted;
+      results.details.push({ date, ...r });
+      console.log(`[daily-seed] ${date}: fetched=${r.fetched}, completed=${r.completed}, upserted=${r.upserted}`);
+    } catch (e) {
+      console.error(`[daily-seed] ${date} ERROR: ${e.message}`);
+      results.errors.push(`${date}: ${e.message}`);
+    }
+  }
+
+  console.log(`[daily-seed] END — ${results.dates} days, fetched=${results.fetched}, completed=${results.completed}, upserted=${results.upserted}, errors=${results.errors.length}`);
   return {
     statusCode: 200,
     headers: { 'Content-Type': 'application/json' },

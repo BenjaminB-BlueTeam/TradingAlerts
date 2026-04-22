@@ -132,6 +132,29 @@
     seedProgress = seedProgress;
   }
 
+  // --- Backfill (rattrapage matchs manquants) ---
+  let backfillFrom = $state('');
+  let backfillTo = $state('');
+  let backfillRunning = $state(false);
+  let backfillResult = $state(null);
+
+  async function handleBackfill() {
+    if (!backfillFrom) return;
+    backfillRunning = true;
+    backfillResult = null;
+    try {
+      const to = backfillTo || new Date().toISOString().split('T')[0];
+      const url = `/.netlify/functions/daily-seed?from=${backfillFrom}&to=${to}`;
+      const res = await fetch(url);
+      backfillResult = await res.json();
+      if (window.showToast) window.showToast(`Rattrapage : ${backfillResult.upserted} matchs mis à jour`, 'success');
+    } catch (e) {
+      backfillResult = { error: e.message };
+      if (window.showToast) window.showToast(e.message, 'error');
+    }
+    backfillRunning = false;
+  }
+
   // --- Testeur API brut ---
   let copyLabel = $state('📋 Copier');
 
@@ -318,6 +341,40 @@
       {/if}
     </div>
   </div>
+</div>
+
+<!-- RATTRAPAGE MATCHS MANQUANTS -->
+<div class="settings-block">
+  <div class="settings-block__title">🔄 Rattrapage matchs manquants</div>
+  <p style="font-size:13px;color:var(--color-text-muted);margin-bottom:12px;">
+    Met à jour les scores et goal_events des matchs joués entre deux dates.
+    Le daily-seed auto ne couvre que la veille — utilisez ceci pour combler un trou.
+  </p>
+  <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Du</label>
+      <input type="date" class="form-input" bind:value={backfillFrom} style="width:160px;" />
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Au</label>
+      <input type="date" class="form-input" bind:value={backfillTo} placeholder="aujourd'hui" style="width:160px;" />
+    </div>
+    <button class="btn btn--primary" on:click={handleBackfill} disabled={backfillRunning || !backfillFrom}>
+      {backfillRunning ? '⏳ Rattrapage en cours...' : '🚀 Lancer le rattrapage'}
+    </button>
+  </div>
+  {#if backfillResult}
+    <div class="debug-result" class:success={!backfillResult.error} class:error={backfillResult.error}>
+      {#if backfillResult.error}
+        ✗ {backfillResult.error}
+      {:else}
+        ✓ {backfillResult.dates} jours traités — {backfillResult.completed} matchs terminés — {backfillResult.upserted} upserts
+        {#if backfillResult.errors?.length > 0}
+          <br/><span style="color:var(--color-danger);">{backfillResult.errors.length} erreurs</span>
+        {/if}
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <!-- TESTEUR API BRUT -->
