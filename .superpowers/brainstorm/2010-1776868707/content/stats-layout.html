@@ -1,0 +1,116 @@
+<h2>Section Stats — quel layout ?</h2>
+<p class="subtitle">Les deux options affichent : taux réussite global, par type (FHG/DC), par confiance (fort/moyen)</p>
+
+<div class="split">
+  <div class="mockup" data-choice="a" onclick="toggleSelect(this)" style="cursor:pointer;border:2px solid transparent;border-radius:10px;transition:border-color 0.2s;">
+    <div class="mockup-header">A — KPI Cards horizontales</div>
+    <div class="mockup-body" style="padding:12px;background:#0f1117;border-radius:8px;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:10px;color:#8892a4;text-transform:uppercase;letter-spacing:1px;">Global</div>
+          <div style="font-size:28px;font-weight:700;color:#1d9e75;margin:4px 0;">68%</div>
+          <div style="font-size:11px;color:#8892a4;">34 / 50 alertes</div>
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:10px;color:#8892a4;text-transform:uppercase;letter-spacing:1px;">FHG</div>
+          <div style="font-size:28px;font-weight:700;color:#378add;margin:4px 0;">71%</div>
+          <div style="font-size:11px;color:#8892a4;">22 / 31</div>
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:10px;color:#8892a4;text-transform:uppercase;letter-spacing:1px;">DC</div>
+          <div style="font-size:28px;font-weight:700;color:#ef9f27;margin:4px 0;">63%</div>
+          <div style="font-size:11px;color:#8892a4;">12 / 19</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:#8892a4;margin-bottom:6px;text-transform:uppercase;">Confiance fort</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;background:#0f1117;border-radius:4px;height:8px;overflow:hidden;">
+              <div style="width:78%;height:100%;background:#1d9e75;border-radius:4px;"></div>
+            </div>
+            <span style="font-size:13px;font-weight:700;color:#1d9e75;">78%</span>
+          </div>
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:10px;">
+          <div style="font-size:10px;color:#8892a4;margin-bottom:6px;text-transform:uppercase;">Confiance moyen</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;background:#0f1117;border-radius:4px;height:8px;overflow:hidden;">
+              <div style="width:54%;height:100%;background:#ef9f27;border-radius:4px;"></div>
+            </div>
+            <span style="font-size:13px;font-weight:700;color:#ef9f27;">54%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" data-choice="b" onclick="toggleSelect(this)" style="cursor:pointer;border:2px solid transparent;border-radius:10px;transition:border-color 0.2s;">
+    <div class="mockup-header">B — Tableau par ligue + résumé compact</div>
+    <div class="mockup-body" style="padding:12px;background:#0f1117;border-radius:8px;">
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <div style="background:#1a1d2e;border:1px solid #1d9e75;border-radius:8px;padding:10px 16px;flex:1;text-align:center;">
+          <span style="font-size:10px;color:#8892a4;display:block;">Global</span>
+          <span style="font-size:22px;font-weight:700;color:#1d9e75;">68%</span>
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:10px 16px;flex:1;text-align:center;">
+          <span style="font-size:10px;color:#8892a4;display:block;">FHG</span>
+          <span style="font-size:22px;font-weight:700;color:#378add;">71%</span>
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:10px 16px;flex:1;text-align:center;">
+          <span style="font-size:10px;color:#8892a4;display:block;">DC</span>
+          <span style="font-size:22px;font-weight:700;color:#ef9f27;">63%</span>
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:10px 16px;flex:1;text-align:center;">
+          <span style="font-size:10px;color:#8892a4;display:block;">Fort</span>
+          <span style="font-size:22px;font-weight:700;color:#1d9e75;">78%</span>
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:10px 16px;flex:1;text-align:center;">
+          <span style="font-size:10px;color:#8892a4;display:block;">Moyen</span>
+          <span style="font-size:22px;font-weight:700;color:#ef9f27;">54%</span>
+        </div>
+      </div>
+      <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="background:#13162a;">
+              <th style="padding:8px 10px;text-align:left;color:#8892a4;font-weight:600;">Ligue</th>
+              <th style="padding:8px 10px;text-align:center;color:#8892a4;font-weight:600;">W</th>
+              <th style="padding:8px 10px;text-align:center;color:#8892a4;font-weight:600;">L</th>
+              <th style="padding:8px 10px;text-align:right;color:#8892a4;font-weight:600;">Taux</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-top:1px solid #2a2d3e;">
+              <td style="padding:7px 10px;color:#e2e8f0;">France Ligue 1</td>
+              <td style="padding:7px 10px;text-align:center;color:#1d9e75;">5</td>
+              <td style="padding:7px 10px;text-align:center;color:#e24b4a;">2</td>
+              <td style="padding:7px 10px;text-align:right;font-weight:700;color:#1d9e75;">71%</td>
+            </tr>
+            <tr style="border-top:1px solid #2a2d3e;">
+              <td style="padding:7px 10px;color:#e2e8f0;">Spain La Liga</td>
+              <td style="padding:7px 10px;text-align:center;color:#1d9e75;">4</td>
+              <td style="padding:7px 10px;text-align:center;color:#e24b4a;">3</td>
+              <td style="padding:7px 10px;text-align:right;font-weight:700;color:#ef9f27;">57%</td>
+            </tr>
+            <tr style="border-top:1px solid #2a2d3e;">
+              <td style="padding:7px 10px;color:#e2e8f0;">England Premier League</td>
+              <td style="padding:7px 10px;text-align:center;color:#1d9e75;">6</td>
+              <td style="padding:7px 10px;text-align:center;color:#e24b4a;">1</td>
+              <td style="padding:7px 10px;text-align:right;font-weight:700;color:#1d9e75;">86%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.mockup[data-choice]').forEach(el => {
+  el.addEventListener('click', function() {
+    document.querySelectorAll('.mockup[data-choice]').forEach(m => m.style.borderColor = 'transparent');
+    this.style.borderColor = '#378add';
+  });
+});
+</script>

@@ -1,0 +1,91 @@
+<h2>Layout combiné — validation</h2>
+<p class="subtitle">KPI cards (option A) + tableau par ligue (option B)</p>
+
+<div class="mockup">
+  <div class="mockup-header">📊 Historique des Alertes</div>
+  <div class="mockup-body" style="padding:16px;background:#0f1117;border-radius:8px;display:flex;flex-direction:column;gap:12px;">
+
+    <!-- KPI Cards row 1 : Global + FHG + DC -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <div style="background:#1a1d2e;border:1px solid #1d9e75;border-radius:8px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:#8892a4;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Global</div>
+        <div style="font-size:30px;font-weight:700;color:#1d9e75;">68%</div>
+        <div style="font-size:11px;color:#8892a4;margin-top:2px;">34 validés / 50 terminés</div>
+      </div>
+      <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:#8892a4;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">FHG</div>
+        <div style="font-size:30px;font-weight:700;color:#378add;">71%</div>
+        <div style="font-size:11px;color:#8892a4;margin-top:2px;">22 / 31</div>
+      </div>
+      <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:14px;text-align:center;">
+        <div style="font-size:10px;color:#8892a4;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">DC</div>
+        <div style="font-size:30px;font-weight:700;color:#ef9f27;">63%</div>
+        <div style="font-size:11px;color:#8892a4;margin-top:2px;">12 / 19</div>
+      </div>
+    </div>
+
+    <!-- KPI Cards row 2 : Fort + Moyen -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:10px 14px;">
+        <div style="font-size:10px;color:#8892a4;text-transform:uppercase;margin-bottom:6px;">Confiance fort</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="flex:1;background:#0f1117;border-radius:4px;height:8px;overflow:hidden;">
+            <div style="width:78%;height:100%;background:#1d9e75;border-radius:4px;"></div>
+          </div>
+          <span style="font-size:14px;font-weight:700;color:#1d9e75;min-width:32px;">78%</span>
+        </div>
+      </div>
+      <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:10px 14px;">
+        <div style="font-size:10px;color:#8892a4;text-transform:uppercase;margin-bottom:6px;">Confiance moyen</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="flex:1;background:#0f1117;border-radius:4px;height:8px;overflow:hidden;">
+            <div style="width:54%;height:100%;background:#ef9f27;border-radius:4px;"></div>
+          </div>
+          <span style="font-size:14px;font-weight:700;color:#ef9f27;min-width:32px;">54%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tableau par ligue -->
+    <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;overflow:hidden;">
+      <div style="padding:10px 14px;background:#13162a;font-size:11px;font-weight:600;color:#8892a4;text-transform:uppercase;letter-spacing:0.5px;">Performance par ligue</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:#0f1117;">
+            <th style="padding:8px 12px;text-align:left;color:#8892a4;font-weight:500;">Ligue</th>
+            <th style="padding:8px 8px;text-align:center;color:#1d9e75;font-weight:500;">✓</th>
+            <th style="padding:8px 8px;text-align:center;color:#e24b4a;font-weight:500;">✗</th>
+            <th style="padding:8px 12px;text-align:right;color:#8892a4;font-weight:500;">Taux</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-top:1px solid #2a2d3e;">
+            <td style="padding:8px 12px;color:#e2e8f0;">England Premier League</td>
+            <td style="padding:8px 8px;text-align:center;color:#1d9e75;font-weight:700;">6</td>
+            <td style="padding:8px 8px;text-align:center;color:#e24b4a;">1</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:700;color:#1d9e75;">86%</td>
+          </tr>
+          <tr style="border-top:1px solid #2a2d3e;">
+            <td style="padding:8px 12px;color:#e2e8f0;">France Ligue 1</td>
+            <td style="padding:8px 8px;text-align:center;color:#1d9e75;font-weight:700;">5</td>
+            <td style="padding:8px 8px;text-align:center;color:#e24b4a;">2</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:700;color:#1d9e75;">71%</td>
+          </tr>
+          <tr style="border-top:1px solid #2a2d3e;">
+            <td style="padding:8px 12px;color:#e2e8f0;">Spain La Liga</td>
+            <td style="padding:8px 8px;text-align:center;color:#1d9e75;font-weight:700;">4</td>
+            <td style="padding:8px 8px;text-align:center;color:#e24b4a;">3</td>
+            <td style="padding:8px 12px;text-align:right;font-weight:700;color:#ef9f27;">57%</td>
+          </tr>
+          <tr style="border-top:1px solid #2a2d3e;opacity:0.5;">
+            <td style="padding:8px 12px;color:#e2e8f0;">...</td>
+            <td colspan="3"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Séparateur -->
+    <div style="font-size:11px;color:#8892a4;text-transform:uppercase;letter-spacing:0.5px;padding-top:4px;">↓ Liste des alertes (scroll)</div>
+  </div>
+</div>
