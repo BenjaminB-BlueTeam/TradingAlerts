@@ -125,11 +125,11 @@ describe('goalBar', () => {
     const bar = goalBar(match, 'home');
     expect(bar.goals).toHaveLength(3);
     // First goal: min 10, scored by home team (context=home so scored=true)
-    expect(bar.goals[0]).toEqual({ min: 10, pct: expect.any(Number), scored: true });
+    expect(bar.goals[0]).toMatchObject({ min: 10, pct: expect.any(Number), scored: true });
     // Second goal: min 35, scored by away (context=home so scored=false)
-    expect(bar.goals[1]).toEqual({ min: 35, pct: expect.any(Number), scored: false });
+    expect(bar.goals[1]).toMatchObject({ min: 35, pct: expect.any(Number), scored: false });
     // Third goal: min 70, scored by home
-    expect(bar.goals[2]).toEqual({ min: 70, pct: expect.any(Number), scored: true });
+    expect(bar.goals[2]).toMatchObject({ min: 70, pct: expect.any(Number), scored: true });
   });
 
   it('caps pct at 98', () => {

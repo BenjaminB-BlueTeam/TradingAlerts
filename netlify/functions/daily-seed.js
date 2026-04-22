@@ -85,6 +85,18 @@ exports.handler = async (event) => {
   const from = params.from;
   const to = params.to;
 
+  // Mode backfill (query params) : exiger SEED_AUTH_TOKEN
+  if (from || to) {
+    const expectedToken = process.env.SEED_AUTH_TOKEN;
+    if (!expectedToken) {
+      return { statusCode: 503, body: JSON.stringify({ error: 'Backfill désactivé : SEED_AUTH_TOKEN manquant' }) };
+    }
+    const authHeader = event.headers?.authorization || event.headers?.Authorization;
+    if (authHeader !== `Bearer ${expectedToken}`) {
+      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized — SEED_AUTH_TOKEN requis pour le backfill' }) };
+    }
+  }
+
   let dates;
   if (from && to) {
     dates = getDateRange(from, to);

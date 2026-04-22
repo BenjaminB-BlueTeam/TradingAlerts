@@ -5,15 +5,20 @@
    ================================================ */
 
 const SEED_URL = '/.netlify/functions/seed-data';
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ikpafgqjmjifpaulctmx.supabase.co';
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrcGFmZ3FqbWppZnBhdWxjdG14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODMxMzAsImV4cCI6MjA5MDI1OTEzMH0._01tjkB0WvN4xeHH78HIDqZk9BIhDxb9qYJ7dYystso';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY doivent être définies');
+}
 
 async function seedRequest(params) {
   const url = new URL(SEED_URL, window.location.origin);
   Object.entries(params).forEach(([k, v]) => {
     if (v != null) url.searchParams.set(k, String(v));
   });
-  const res = await fetch(url.toString());
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('fhg_seed_token') : null;
+  const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+  const res = await fetch(url.toString(), { headers });
   return await res.json();
 }
 

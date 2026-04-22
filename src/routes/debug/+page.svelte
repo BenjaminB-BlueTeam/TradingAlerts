@@ -132,6 +132,10 @@
     seedProgress = seedProgress;
   }
 
+  // --- Auth token (pour seed + backfill protégés) ---
+  let seedToken = $state(localStorage.getItem('fhg_seed_token') || '');
+  function saveSeedToken() { localStorage.setItem('fhg_seed_token', seedToken); }
+
   // --- Backfill (rattrapage matchs manquants) ---
   let backfillFrom = $state('');
   let backfillTo = $state('');
@@ -163,7 +167,8 @@
       const date = dates[i];
       backfillProgress = `${i + 1}/${dates.length} — ${date}`;
       try {
-        const res = await fetch(`/.netlify/functions/daily-seed?from=${date}&to=${date}`);
+        const headers = seedToken ? { 'Authorization': `Bearer ${seedToken}` } : {};
+        const res = await fetch(`/.netlify/functions/daily-seed?from=${date}&to=${date}`, { headers });
         const data = await res.json();
         results.fetched += data.fetched || 0;
         results.completed += data.completed || 0;
@@ -371,6 +376,19 @@
         </div>
       {/if}
     </div>
+  </div>
+</div>
+
+<!-- SEED AUTH TOKEN -->
+<div class="settings-block">
+  <div class="settings-block__title">🔑 Token d'authentification Seed</div>
+  <p style="font-size:13px;color:var(--color-text-muted);margin-bottom:8px;">
+    Requis pour le seed complet et le rattrapage. Copie la valeur de SEED_AUTH_TOKEN depuis Netlify.
+  </p>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <input type="password" class="form-input" bind:value={seedToken} oninput={saveSeedToken}
+      placeholder="Coller le SEED_AUTH_TOKEN ici" style="flex:1;" />
+    <span style="font-size:12px;color:var(--color-text-muted);">{seedToken ? '✓ défini' : '✗ vide'}</span>
   </div>
 </div>
 

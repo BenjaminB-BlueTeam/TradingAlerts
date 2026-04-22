@@ -121,9 +121,13 @@ async function getStatus(jobId) {
 // --- Handler ---
 
 exports.handler = async (event) => {
-  const authHeader = event.headers?.authorization || event.headers?.Authorization;
   const expectedToken = process.env.SEED_AUTH_TOKEN;
-  if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
+  if (!expectedToken) {
+    console.error('[seed-data] SEED_AUTH_TOKEN non configuré — fonction désactivée');
+    return { statusCode: 503, body: JSON.stringify({ error: 'Seed désactivé : SEED_AUTH_TOKEN manquant' }) };
+  }
+  const authHeader = event.headers?.authorization || event.headers?.Authorization;
+  if (authHeader !== `Bearer ${expectedToken}`) {
     return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
 
