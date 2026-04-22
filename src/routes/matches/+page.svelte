@@ -268,9 +268,9 @@
               </div>
               {#if homeMatches.length > 0}
                 <div class="team-matches">
-                  {#each homeMatches as hm, hi}
+                  {#each homeMatches as hm}
                     {@const bar = goalBar(hm, 'home')}
-                    {@const barKey = `${m.id}_home_${hi}`}
+                    {@const barKey = `${m.id}_home`}
                     <div class="match-row">
                       <span class="match-row__date">{formatDateStr(hm.match_date)}</span>
                       <span class="match-row__home match-row__bold">{hm.home_team_name}</span>
@@ -293,7 +293,6 @@
                           {/each}
                         </div>
                       </div>
-                      <span class="match-row__total">{bar.total}</span>
                     </div>
                   {/each}
                 </div>
@@ -318,9 +317,9 @@
               </div>
               {#if awayMatches.length > 0}
                 <div class="team-matches">
-                  {#each awayMatches as am, ai}
+                  {#each awayMatches as am}
                     {@const bar = goalBar(am, 'away')}
-                    {@const barKey = `${m.id}_away_${ai}`}
+                    {@const barKey = `${m.id}_away`}
                     <div class="match-row">
                       <span class="match-row__date">{formatDateStr(am.match_date)}</span>
                       <span class="match-row__home">{am.home_team_name}</span>
@@ -343,7 +342,6 @@
                           {/each}
                         </div>
                       </div>
-                      <span class="match-row__total">{bar.total}</span>
                     </div>
                   {/each}
                 </div>
@@ -404,7 +402,6 @@
   .match-row__score--W { color: var(--color-accent-green); }
   .match-row__score--D { color: var(--color-signal-moyen); }
   .match-row__score--L { color: var(--color-danger); }
-  .match-row__total { width: 20px; text-align: right; font-weight: 700; color: var(--color-text-primary); }
 
   .match-row__bar { width: auto; }
   .goal-bar { position: relative; height: 20px; min-width: 160px; background: linear-gradient(90deg, #2a7a52 0%, #2a7a52 50%, #1e6340 50%, #1e6340 100%); border-radius: 3px; }
