@@ -14,12 +14,13 @@
   }
 
   const navItems = [
-    { href: '/',              icon: '📊', label: 'Dashboard'        },
-    { href: '/alerts',        icon: '⚡', label: 'Sélection FHG'    },
-    { href: '/selection-dc',  icon: '🎯', label: 'Sélection DC'     },
-    { href: '/matches',       icon: '⚽', label: 'Matchs à venir'   },
+    { href: '/',              icon: '📊', label: 'Dashboard'          },
+    { href: '/alerts',        icon: '⚡', label: 'Sélection FHG'      },
+    { href: '/selection-dc',  icon: '🎯', label: 'Sélection DC'       },
+    { href: '/historique',    icon: '📈', label: 'Historique'         },
+    { href: '/matches',       icon: '⚽', label: 'Matchs à venir'     },
     { href: '/explore',       icon: '🌍', label: 'Classements ligues' },
-    { href: '/settings',      icon: '⚙️', label: 'Paramètres'      },
+    { href: '/settings',      icon: '⚙️', label: 'Paramètres'        },
   ];
 
   const adminItems = [
