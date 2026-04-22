@@ -178,6 +178,19 @@
     return 'var(--color-text-muted)';
   }
 
+  let hoverBar = null; // { key, pct, min }
+
+  function onBarMove(e, key) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, (e.clientX - rect.left) / rect.width * 100));
+    const min = Math.round(pct / 100 * 95);
+    hoverBar = { key, pct, min };
+  }
+
+  function onBarLeave() {
+    hoverBar = null;
+  }
+
   onMount(() => {
     loadLeagueNames();
     loadMatches(filtrePlage);
@@ -255,17 +268,26 @@
               </div>
               {#if homeMatches.length > 0}
                 <div class="team-matches">
-                  {#each homeMatches as hm}
+                  {#each homeMatches as hm, hi}
                     {@const bar = goalBar(hm, 'home')}
+                    {@const barKey = `${m.id}_home_${hi}`}
                     <div class="match-row">
                       <span class="match-row__date">{formatDateStr(hm.match_date)}</span>
                       <span class="match-row__home match-row__bold">{hm.home_team_name}</span>
                       <span class="match-row__score match-row__score--{bar.result}">{hm.home_goals}-{hm.away_goals}</span>
                       <span class="match-row__away">{hm.away_team_name}</span>
                       <div class="match-row__bar">
-                        <div class="goal-bar">
+                        <div class="goal-bar"
+                          on:mousemove={(e) => onBarMove(e, barKey)}
+                          on:mouseleave={onBarLeave}
+                        >
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
+                          {#if hoverBar?.key === barKey}
+                            <div class="goal-cursor" style="left:{hoverBar.pct}%">
+                              <span class="goal-cursor__label">{hoverBar.min}'</span>
+                            </div>
+                          {/if}
                           {#each bar.goals as g}
                             <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'"></span>
                           {/each}
@@ -296,17 +318,26 @@
               </div>
               {#if awayMatches.length > 0}
                 <div class="team-matches">
-                  {#each awayMatches as am}
+                  {#each awayMatches as am, ai}
                     {@const bar = goalBar(am, 'away')}
+                    {@const barKey = `${m.id}_away_${ai}`}
                     <div class="match-row">
                       <span class="match-row__date">{formatDateStr(am.match_date)}</span>
                       <span class="match-row__home">{am.home_team_name}</span>
                       <span class="match-row__score match-row__score--{bar.result}">{am.home_goals}-{am.away_goals}</span>
                       <span class="match-row__away match-row__bold">{am.away_team_name}</span>
                       <div class="match-row__bar">
-                        <div class="goal-bar">
+                        <div class="goal-bar"
+                          on:mousemove={(e) => onBarMove(e, barKey)}
+                          on:mouseleave={onBarLeave}
+                        >
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
+                          {#if hoverBar?.key === barKey}
+                            <div class="goal-cursor" style="left:{hoverBar.pct}%">
+                              <span class="goal-cursor__label">{hoverBar.min}'</span>
+                            </div>
+                          {/if}
                           {#each bar.goals as g}
                             <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.min}'"></span>
                           {/each}
@@ -385,6 +416,9 @@
     filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
   }
   .goal-dot--conceded { opacity: 0.5; }
+
+  .goal-cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(0,0,0,0.75); transform: translateX(-50%); pointer-events: none; z-index: 3; }
+  .goal-cursor__label { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #fff; font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px; white-space: nowrap; margin-bottom: 2px; }
 
   @media (max-width: 1200px) {
     .match-expand { grid-template-columns: 1fr; }
