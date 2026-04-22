@@ -10,3 +10,6 @@
 
 [functions."check-results"]
   schedule = "0 * * * *"
+
+[functions."daily-seed"]
+  schedule = "0 6 * * *"

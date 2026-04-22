@@ -1,7 +1,7 @@
 <script>
   import { onMount, tick } from 'svelte';
   import GoalTimeline from './GoalTimeline.svelte';
-  import { createGoalDistChart, createCircleSVG } from '$lib/components/charts.js';
+  import { createGoalDistChart } from '$lib/components/charts.js';
   import { formaterH2HTimeline } from '$lib/core/h2h.js';
   import { getTimerConseille } from '$lib/core/scoring.js';
   import { config } from '$lib/stores/appStore.js';
@@ -17,10 +17,9 @@
   let chartCanvas = $state(null);
   let chartInstance = $state(null);
 
-  let scoreClass = $derived(sc.signal === 'fort' ? 'green' : sc.signal === 'moyen' ? 'orange' : 'grey');
-  let fhgColor   = $derived((sc.tauxN || 0) >= 75 ? 'green' : (sc.tauxN || 0) >= 60 ? 'orange' : 'grey');
-  let forme5Count = $derived(Math.round(((sc.forme5M || 0) / 20)));
-  let forme5Color = $derived((sc.forme5M || 0) >= 60 ? 'green' : 'orange');
+  let scoreClass = $derived((sc.compositeScore || 0) >= 80 ? 'green' : (sc.compositeScore || 0) >= 70 ? 'orange' : 'grey');
+  let fhgColor   = $derived((sc.pct1MT || 0) >= 80 ? 'green' : (sc.pct1MT || 0) >= 70 ? 'orange' : 'grey');
+  let advColor   = $derived((sc.pctAdversaire || 0) >= 50 ? 'green' : (sc.pctAdversaire || 0) >= 30 ? 'orange' : 'grey');
   let windowActive = $derived(isWindowActive(m.time));
   let h2hTimeline = $derived(formaterH2HTimeline(m.h2h || [], m.equipeSignal || ''));
 
@@ -55,7 +54,6 @@
 
   let cfg = $derived(get(config));
   let timer = $derived(getTimerConseille(cfg?.profil || 'intermediaire'));
-  let circleSVG = $derived(createCircleSVG(sc.pct1MT || 0));
 </script>
 
 {#if m.exclu}
@@ -93,8 +91,8 @@
         <div class="match-card__league">{m.leagueFlag || ''} {m.leagueName || ''}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-        <span class="badge badge--{sc.signal || 'faible'}">
-          {sc.signal === 'fort' ? '🔥 FORT' : sc.signal === 'moyen' ? '⚡ MOYEN' : '— FAIBLE'}
+        <span class="badge badge--{sc.confidence === 'fort' ? 'fort' : sc.confidence === 'moyen' ? 'moyen' : 'faible'}">
+          {sc.confidence === 'fort' ? '🔥 FORT' : sc.confidence === 'moyen' ? '⚡ MOYEN' : '— FAIBLE'}
         </span>
         <span class="match-card__context">{m.context || 'DOM'}</span>
       </div>
@@ -102,8 +100,8 @@
 
     <!-- BADGES -->
     <div class="match-card__badges">
-      {#if sc.badge1MT50}
-        <span class="badge badge--1mt">★ 1MT 50%+</span>
+      {#if sc.isAlert}
+        <span class="badge badge--1mt">ALERTE FHG</span>
       {/if}
       {#if sc.warningH2H === 'vert'}
         <span class="badge badge--h2h-vert">✓ H2H ✓ ({sc.butsH2H1MT}/{sc.nbH2H})</span>
@@ -112,50 +110,65 @@
       {:else if sc.warningH2H === 'insuffisant'}
         <span class="badge badge--h2h-gris">? H2H ? ({sc.nbH2H || 0})</span>
       {/if}
-      {#if sc.debutSaison}
-        <span class="badge badge--debut-saison">⚠ Début saison</span>
+      {#if sc.excluded}
+        <span class="badge badge--exclu">{sc.exclusionReason}</span>
       {/if}
       {#if windowActive}
         <span class="badge badge--window-open">🕐 FENÊTRE ACTIVE</span>
       {/if}
     </div>
 
-    <!-- WARNING TROP BEAU -->
-    {#if sc.tropBeau}
-      <div class="warning-box" style="margin:0 16px 10px;">
-        ⚠ FHG très élevé ({sc.tauxN}%) — Vérifier que l'adversaire encaisse aussi en 1MT
-      </div>
-    {/if}
-
     <!-- STATS BARS -->
     <div class="match-card__stats">
       <div class="stat-row">
-        <span class="stat-row__label">FHG 31-45min (saison)</span>
+        <span class="stat-row__label">But en 1MT</span>
         <div class="stat-row__bar">
           <div class="progress-bar">
             <div class="progress-bar__fill progress-bar__fill--{fhgColor}"
-              style="width:{Math.min(sc.tauxN || 0, 100)}%"></div>
+              style="width:{Math.min(sc.pct1MT || 0, 100)}%"></div>
           </div>
         </div>
-        <span class="stat-row__value {fhgColor}">{sc.tauxN || 0}%</span>
+        <span class="stat-row__value {fhgColor}">{sc.pct1MT || 0}%</span>
       </div>
       <div class="stat-row">
-        <span class="stat-row__label">FHG 5 derniers matchs</span>
+        <span class="stat-row__label">2+ buts en 1MT</span>
         <div class="stat-row__bar">
           <div class="progress-bar">
-            <div class="progress-bar__fill progress-bar__fill--{forme5Color}"
-              style="width:{Math.min(sc.forme5M || 0, 100)}%"></div>
+            <div class="progress-bar__fill progress-bar__fill--{(sc.pct2Plus1MT || 0) >= 30 ? 'green' : 'orange'}"
+              style="width:{Math.min(sc.pct2Plus1MT || 0, 100)}%"></div>
           </div>
         </div>
-        <span class="stat-row__value {forme5Color}">{forme5Count}/5</span>
+        <span class="stat-row__value">{sc.pct2Plus1MT || 0}%</span>
       </div>
+      <div class="stat-row">
+        <span class="stat-row__label">Adversaire encaisse 1MT</span>
+        <div class="stat-row__bar">
+          <div class="progress-bar">
+            <div class="progress-bar__fill progress-bar__fill--{advColor}"
+              style="width:{Math.min(sc.pctAdversaire || 0, 100)}%"></div>
+          </div>
+        </div>
+        <span class="stat-row__value {advColor}">{sc.pctAdversaire || 0}%</span>
+      </div>
+      {#if sc.pctReaction !== null && sc.pctReaction !== undefined}
+        <div class="stat-row">
+          <span class="stat-row__label">Réaction si menée</span>
+          <div class="stat-row__bar">
+            <div class="progress-bar">
+              <div class="progress-bar__fill progress-bar__fill--{(sc.pctReaction || 0) >= 30 ? 'green' : 'orange'}"
+                style="width:{Math.min(sc.pctReaction || 0, 100)}%"></div>
+            </div>
+          </div>
+          <span class="stat-row__value">{sc.pctReaction}%</span>
+        </div>
+      {/if}
     </div>
 
     <!-- FOOTER -->
     <div class="match-card__footer">
       <div class="match-card__score-global">
-        <span class="score-number {scoreClass}">{sc.score || 0}</span>
-        <span class="score-label">pts</span>
+        <span class="score-number {scoreClass}">{sc.compositeScore || 0}</span>
+        <span class="score-label">%</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         {#if m.scoreDC}
@@ -185,18 +198,28 @@
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-          <!-- Cercle 1MT -->
+          <!-- Pourcentages détaillés -->
           <div class="detail-section">
-            <div class="detail-section__title">🎯 Matchs avec but en 1MT</div>
-            <div class="circle-progress">
-              {@html circleSVG}
-              <div class="circle-progress__label">
-                {#if sc.badge1MT50}
-                  <span class="badge badge--1mt">★ 1MT 50%+</span>
-                {:else}
-                  <span style="color:var(--color-text-muted);font-size:11px;">{sc.pct1MT || 0}% des matchs</span>
-                {/if}
+            <div class="detail-section__title">🎯 Détail des % bruts</div>
+            <div class="dc-indicator">
+              <div>
+                <div class="dc-indicator__label">But en 1MT</div>
+                <div class="dc-indicator__value">{sc.pct1MT || 0}%</div>
               </div>
+              <div>
+                <div class="dc-indicator__label">2+ buts 1MT</div>
+                <div class="dc-indicator__value">{sc.pct2Plus1MT || 0}%</div>
+              </div>
+              <div>
+                <div class="dc-indicator__label">Adv. encaisse</div>
+                <div class="dc-indicator__value">{sc.pctAdversaire || 0}%</div>
+              </div>
+              {#if sc.pctReaction !== null && sc.pctReaction !== undefined}
+                <div>
+                  <div class="dc-indicator__label">Réaction</div>
+                  <div class="dc-indicator__value">{sc.pctReaction}%</div>
+                </div>
+              {/if}
             </div>
           </div>
 
@@ -217,7 +240,7 @@
                 </div>
               </div>
             {:else}
-              <p style="font-size:12px;color:var(--color-text-muted);">DC non disponible (FHG &lt; 60pts)</p>
+              <p style="font-size:12px;color:var(--color-text-muted);">DC non disponible (FHG &lt; 70%)</p>
             {/if}
           </div>
         </div>

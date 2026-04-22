@@ -190,7 +190,6 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 
 ### Priorité moyenne
 - [ ] Refonte algo — % bruts sans scoring 0-100 (scoring.js encore utilisé par MatchCard)
-- [ ] Bouton "Analyse IA" (Claude API, résultat mis en cache Supabase)
 
 ### Priorité basse
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API
@@ -204,6 +203,7 @@ Score 0-100 calculé par équipe (domicile ET extérieur, meilleur retenu) :
 5. Seuil adversaire encaisse : 2/5 minimum
 6. Pas de mode démo — données réelles uniquement
 7. Pas de cotes/stakes/profits dans l'app
+8. Pas de bouton "Analyse IA" — Benjamin fait sa propre analyse
 
 ---
 

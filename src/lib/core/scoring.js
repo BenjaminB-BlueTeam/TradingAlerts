@@ -1,37 +1,55 @@
 /* ================================================
-   scoring.js — Logique FHG + DC
+   scoring.js — Logique FHG (% bruts) + DC
    FHG Tracker
    ================================================ */
 
+const MIN_MATCHES = 5;
+const FHG_SEUIL_FORT = 80;
+const FHG_SEUIL_MOYEN = 70;
+
 /**
  * Calcule le score FHG pour une équipe ciblée face à un adversaire.
+ * Retourne des pourcentages bruts au lieu d'un score 0-100 pondéré.
+ *
+ * @param {Object} equipe - Stats de l'équipe (matches_played, goals_scored_min_31_to_45, etc.)
+ * @param {Array}  h2h    - Historique H2H [{equipe_ciblee_but_avant_45min: bool}]
+ * @param {Object} config - Options (filtreH2HActif, adversaire)
+ * @returns {Object} Résultat avec % bruts et composite
  */
 export function calculerScoreFHG(equipe, h2h = [], config = {}) {
   const {
-    ponderationN1  = true,
-    ignoreDebutSaison = true,
-    seuilMatchsMin = 8,
-    penaliteH2H    = 8,
     filtreH2HActif = true,
+    adversaire = null,
   } = config;
 
+  const nbH2H = h2h.length;
   let warningH2H = 'insuffisant';
   let butsH2H1MT = 0;
-  const nbH2H = h2h.length;
 
+  // --- Filtre H2H Clean Sheet (exclusion totale) ---
   if (filtreH2HActif && nbH2H >= 3) {
     butsH2H1MT = h2h.filter(m => m.equipe_ciblee_but_avant_45min === true).length;
 
     if (butsH2H1MT === 0) {
       return {
-        score: 0,
+        compositeScore: 0,
         exclu: true,
+        excluded: true,
         raisonExclusion: `Clean Sheet H2H : 0 but en 1MT sur ${nbH2H} confrontation${nbH2H > 1 ? 's' : ''} contre cet adversaire.`,
+        exclusionReason: `Clean Sheet H2H : 0 but en 1MT sur ${nbH2H} confrontation${nbH2H > 1 ? 's' : ''}`,
         warningH2H: 'rouge',
         butsH2H1MT: 0,
         nbH2H,
-        badge1MT50: false,
-        tauxN: 0, tauxN1: 0, forme5M: 0, pct1MT: 0,
+        pct1MT: 0,
+        pct2Plus1MT: 0,
+        pctAdversaire: 0,
+        pctReaction: null,
+        confidence: null,
+        isAlert: false,
+        context: null,
+        // Legacy compatibility
+        score: 0,
+        signal: 'faible',
       };
     } else if (butsH2H1MT === 1) {
       warningH2H = 'orange';
@@ -42,59 +60,84 @@ export function calculerScoreFHG(equipe, h2h = [], config = {}) {
     warningH2H = 'insuffisant';
   }
 
-  const mp  = equipe.matches_played   || 1;
-  const mp1 = equipe.matches_played_n1 || 1;
+  const mp = equipe.matches_played || 1;
 
-  const tauxN = ((equipe.goals_scored_min_31_to_45 || 0) / mp) * 100;
-  const tauxN1 = ponderationN1
-    ? ((equipe.goals_scored_min_31_to_45_n1 || 0) / mp1) * 100
-    : tauxN;
+  // --- Pourcentages bruts ---
 
-  const forme5M = ((equipe.buts_31_45_sur_5_derniers || 0) / 5) * 100;
+  // % matchs où l'équipe a marqué en 1MT (31-45 min ou first half)
+  const pct1MT = Math.round(((equipe.matches_scored_first_half || 0) / mp) * 100);
 
-  let score = (tauxN * 0.60) + (tauxN1 * 0.25) + (forme5M * 0.15);
+  // % matchs avec 2+ buts en 1MT
+  const pct2Plus1MT = Math.round(((equipe.matches_2plus_goals_first_half || 0) / mp) * 100);
 
-  if (warningH2H === 'orange') {
-    score -= penaliteH2H;
+  // % adversaire encaisse en 1MT
+  let pctAdversaire = 0;
+  if (adversaire) {
+    const advMp = adversaire.matches_played || 1;
+    pctAdversaire = Math.round(((adversaire.goals_conceded_first_half || 0) / advMp) * 100);
   }
 
-  const pct1MT = ((equipe.matches_scored_first_half || 0) / mp) * 100;
-  const badge1MT50 = pct1MT >= 50;
-
-  if (pct1MT >= 65)      score += 8;
-  else if (pct1MT >= 50) score += 4;
-
-  if (ponderationN1) {
-    const ecart = Math.abs(tauxN - tauxN1);
-    if (ecart <= 8)  score += 3;
-    if (ecart > 15)  score -= 5;
+  // % réaction quand menée
+  let pctReaction = null;
+  if (equipe.matches_behind_and_scored !== undefined && equipe.matches_behind !== undefined && equipe.matches_behind >= 2) {
+    pctReaction = Math.round(((equipe.matches_behind_and_scored || 0) / equipe.matches_behind) * 100);
   }
 
-  const debutSaison = ignoreDebutSaison && mp < seuilMatchsMin;
-  if (debutSaison) score -= 10;
+  // --- Score composite ---
+  let compositeScore;
+  if (pctReaction !== null) {
+    compositeScore = pct1MT * 0.50 + pctAdversaire * 0.25 + pct2Plus1MT * 0.15 + pctReaction * 0.10;
+  } else {
+    compositeScore = pct1MT * 0.55 + pctAdversaire * 0.28 + pct2Plus1MT * 0.17;
+  }
+  compositeScore = Math.round(compositeScore);
 
-  score = Math.max(0, score);
+  // --- Filtre adversaire : encaisse-t-il assez ? ---
+  let adversaireExclu = false;
+  if (adversaire && adversaire.matches_played_context >= 5) {
+    const conceded = adversaire.matches_conceded_first_half || 0;
+    const total = adversaire.matches_played_context || 5;
+    if (conceded < 2) {
+      adversaireExclu = true;
+    }
+  }
 
-  let signal = 'faible';
-  if (score >= 75) signal = 'fort';
-  else if (score >= 60) signal = 'moyen';
+  // --- Confiance et alerte ---
+  const confidence = compositeScore >= FHG_SEUIL_FORT ? 'fort' : compositeScore >= FHG_SEUIL_MOYEN ? 'moyen' : null;
+  const isAlert = confidence !== null && !adversaireExclu;
 
-  const tropBeau = tauxN > 88;
+  // Legacy signal mapping for MatchCard compatibility
+  const signal = confidence === 'fort' ? 'fort' : confidence === 'moyen' ? 'moyen' : 'faible';
 
   return {
-    score:     Math.round(score),
-    exclu:     false,
-    signal,
-    tauxN:     Math.round(tauxN),
-    tauxN1:    Math.round(tauxN1),
-    forme5M:   Math.round(forme5M),
-    pct1MT:    Math.round(pct1MT),
-    badge1MT50,
+    // New % bruts
+    pct1MT,
+    pct2Plus1MT,
+    pctAdversaire,
+    pctReaction,
+    compositeScore,
+    confidence,
+    isAlert,
+    excluded: adversaireExclu,
+    exclusionReason: adversaireExclu ? 'Adversaire trop solide en 1MT' : null,
+
+    // Status
+    exclu: false,
+    raisonExclusion: null,
+
+    // H2H info
     warningH2H,
     butsH2H1MT,
     nbH2H,
-    debutSaison,
-    tropBeau,
+
+    // Legacy compatibility (MatchCard.svelte)
+    score: compositeScore,
+    signal,
+    tauxN: pct1MT,
+    forme5M: 0,
+    badge1MT50: pct1MT >= 50,
+    debutSaison: false,
+    tropBeau: false,
   };
 }
 
@@ -102,7 +145,7 @@ export function calculerScoreFHG(equipe, h2h = [], config = {}) {
  * Calcule le score DC pour une équipe, uniquement si FHG validé.
  */
 export function calculerScoreDC(equipe, scoreFHG) {
-  if (!scoreFHG || scoreFHG < 60) return null;
+  if (!scoreFHG || scoreFHG < 70) return null;
 
   const mp = equipe.matches_played || 1;
   let score = 0;
@@ -136,7 +179,7 @@ export function analyserMatch(match, homeTeam, awayTeam, h2hHome, h2hAway, confi
   const awayValide = scoreAway && !scoreAway.exclu;
 
   if (homeValide && awayValide) {
-    if (scoreHome.score >= scoreAway.score) {
+    if (scoreHome.compositeScore >= scoreAway.compositeScore) {
       equipeChoisie = match.homeName;
       scoreChoisi   = scoreHome;
       teamData      = homeTeam;
@@ -166,7 +209,7 @@ export function analyserMatch(match, homeTeam, awayTeam, h2hHome, h2hAway, confi
   }
 
   const scoreDC = config.analyseDC
-    ? calculerScoreDC(teamData, scoreChoisi.score)
+    ? calculerScoreDC(teamData, scoreChoisi.compositeScore)
     : null;
 
   return {
