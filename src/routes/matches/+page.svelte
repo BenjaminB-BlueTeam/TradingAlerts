@@ -55,10 +55,6 @@
     }
     allMatches = results;
     loading = false;
-    // Pré-charger les stats FHG 31-45 pour les matchs visibles (en arrière-plan)
-    for (const m of results.slice(0, 30)) {
-      if (m.homeID && m.awayID) loadFhgStats(m.homeID, m.awayID);
-    }
   }
 
   // Recharger quand la plage change
@@ -143,6 +139,13 @@
   function getFhgStat(teamId, context) {
     return fhgStatsCache[`${teamId}_${context}`];
   }
+
+  // Charger les stats FHG pour tous les matchs filtrés quand la liste change
+  $effect(() => {
+    for (const m of filteredMatches) {
+      if (m.homeID && m.awayID) loadFhgStats(m.homeID, m.awayID);
+    }
+  });
 
   let hoverBar = $state(null); // { key, pct, min }
 
