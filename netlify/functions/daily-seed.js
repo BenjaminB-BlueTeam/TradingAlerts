@@ -54,13 +54,13 @@ function parseMatchRow(m) {
   if (Array.isArray(homeTimings)) {
     homeTimings.forEach(t => {
       const min = parseInt(t);
-      if (min > 0) goalMinutes.push({ min, home: true });
+      if (min > 0) goalMinutes.push({ min, raw: String(t).trim(), home: true });
     });
   }
   if (Array.isArray(awayTimings)) {
     awayTimings.forEach(t => {
       const min = parseInt(t);
-      if (min > 0) goalMinutes.push({ min, home: false });
+      if (min > 0) goalMinutes.push({ min, raw: String(t).trim(), home: false });
     });
   }
   goalMinutes.sort((a, b) => a.min - b.min);

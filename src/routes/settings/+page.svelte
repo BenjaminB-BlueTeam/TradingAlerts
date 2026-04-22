@@ -1,17 +1,16 @@
 <script>
   import { onMount, tick } from 'svelte';
   import {
-    apiConnected, leagues, trades, saveLeagues, clearAllData
+    apiConnected, trades, clearAllData
   } from '$lib/stores/appStore.js';
   import { updateTrade, deleteTrade } from '$lib/stores/tradeStore.js';
   import { calcStatsTradesGlobal } from '$lib/stores/tradeStats.js';
-  import { testApiConnection, getAllLeagues, rawApiCall, normalizeLeagues } from '$lib/api/footystats.js';
+  import { testApiConnection } from '$lib/api/footystats.js';
   import { cacheClear } from '$lib/api/cache.js';
   import { createWinRateChart, createBankrollChart } from '$lib/components/charts.js';
 
   let apiTestResult = $state(null);
   let apiTesting = $state(false);
-  let leagueSearch = $state('');
   let journalFilterResult = $state('');
   let journalFilterLigue = $state('');
   let winrateCanvas = $state(null);
@@ -24,13 +23,7 @@
   let projGains = $state([]);
   let projLabels = $state([]);
 
-  let apiLeagues = $state([]);
-
   let stats = $derived(calcStatsTradesGlobal());
-  let activesCount = $derived($leagues.filter(l => l.active).length);
-  let filteredLeagues = $derived(leagueSearch
-    ? apiLeagues.filter(l => l.name.toLowerCase().includes(leagueSearch.toLowerCase()))
-    : apiLeagues);
   let uniqueLigues = $derived([...new Set($trades.map(t => t.ligue).filter(Boolean))]);
   let filteredTrades = $derived($trades.filter(t => {
     if (journalFilterResult && t.resultat !== journalFilterResult) return false;
@@ -38,54 +31,12 @@
     return true;
   }).slice().reverse());
 
-  function isLeagueActive(leagueId) {
-    return $leagues.some(l => l.id === leagueId && l.active);
-  }
-
   async function handleTestApi() {
     apiTesting = true;
     apiTestResult = null;
     const result = await testApiConnection();
     apiTestResult = result;
     apiTesting = false;
-  }
-
-  function activateAll() {
-    const merged = apiLeagues.map(l => {
-      const existing = $leagues.find(s => s.id === l.id);
-      return existing ? { ...existing, active: true } : { id: l.id, name: l.name, country: l.country, flag: l.flag, active: true };
-    });
-    saveLeagues(merged);
-    if (typeof window !== 'undefined' && window.showToast) window.showToast('Toutes les ligues activées', 'success');
-  }
-
-  function deactivateAll() {
-    saveLeagues($leagues.map(l => ({ ...l, active: false })));
-    if (typeof window !== 'undefined' && window.showToast) window.showToast('Toutes les ligues désactivées', 'info');
-  }
-
-  function toggleLeague(id, checked, name, country, flag) {
-    const current = [...$leagues];
-    const actives = current.filter(l => l.active).length;
-
-    if (checked && actives >= 50) {
-      if (typeof window !== 'undefined' && window.showToast) {
-        window.showToast('Limite de 50 ligues atteinte', 'warning');
-      }
-      return;
-    }
-
-    const idx = current.findIndex(l => l.id === id);
-    if (idx > -1) {
-      current[idx] = { ...current[idx], active: checked };
-    } else if (checked) {
-      current.push({ id, name, country, flag, active: true });
-    }
-
-    saveLeagues(current);
-    if (typeof window !== 'undefined' && window.showToast) {
-      window.showToast(checked ? 'Ligue activee' : 'Ligue desactivee', 'info');
-    }
   }
 
   function handleTradeResult(id, value) {
@@ -189,21 +140,7 @@
     }
   }
 
-  async function loadApiLeagues() {
-    try {
-      const res = await rawApiCall('league-list', { chosen_leagues_only: 'true' });
-      if (res.status === 200) {
-        apiLeagues = normalizeLeagues(res.data);
-      } else {
-        apiLeagues = await getAllLeagues();
-      }
-    } catch {
-      apiLeagues = await getAllLeagues();
-    }
-  }
-
   onMount(() => {
-    loadApiLeagues();
     bankrollInput = localStorage.getItem('fhg_bankroll') || '';
     misePctInput = localStorage.getItem('fhg_mise_pct') || '2.5';
     coteCibleInput = localStorage.getItem('fhg_cote_cible') || '2.3';
@@ -251,47 +188,6 @@
       {apiTestResult.success ? '✓ ' + apiTestResult.message : '✗ ' + apiTestResult.error}
     </div>
   {/if}
-</div>
-
-<!-- CONFIGURATION LIGUES -->
-<div class="settings-block">
-  <div class="settings-block__title">🏆 Configuration des ligues</div>
-  <div class="form-group">
-    <label class="form-label">Rechercher une ligue</label>
-    <input type="text" class="form-input"
-      placeholder="Bundesliga, Premier League..."
-      bind:value={leagueSearch} />
-  </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-    <span style="font-size:12px;color:var(--color-text-muted);">{activesCount}/{apiLeagues.length || 50} ligues actives</span>
-    <div style="display:flex;gap:6px;">
-      <button class="btn btn--secondary btn--sm" on:click={activateAll}>✓ Tout activer</button>
-      <button class="btn btn--secondary btn--sm" on:click={deactivateAll}>✗ Tout désactiver</button>
-    </div>
-  </div>
-  <div style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;">
-    {#each filteredLeagues as l (l.id)}
-      <div class="league-list-item"
-        style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;
-               background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--color-border);">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span>{l.flag || '🌐'}</span>
-          <div>
-            <div style="font-size:13px;font-weight:500;">{l.name}</div>
-            <div style="font-size:11px;color:var(--color-text-muted);">{l.country}</div>
-          </div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" checked={isLeagueActive(l.id)}
-            on:change={e => toggleLeague(l.id, e.target.checked, l.name, l.country, l.flag)} />
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-    {/each}
-  </div>
-  <div class="info-box mt-16" style="font-size:12px;">
-    ⭐ Pre-selection recommandee : Bundesliga, Premier League, Ligue 1, Eredivisie, Championship, Super Lig
-  </div>
 </div>
 
 <!-- JOURNAL DES TRADES -->
