@@ -357,7 +357,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 .goal-timeline__bar { position: relative; flex: 1; height: 18px; background: #0e3728; border-radius: 3px; overflow: visible; }
 .goal-timeline__ball { position: absolute; top: 50%; transform: translateY(-50%) translateX(-50%); font-size: 13px; line-height: 1; z-index: 2; cursor: default; }
 .goal-timeline__ball--conceded { opacity: 0.35; filter: grayscale(1); }
-.goal-timeline__marker { position: absolute; left: 47.4%; top: 50%; transform: translateY(-50%) translateX(-50%); font-size: 8px; font-weight: 700; letter-spacing: 0.2px; padding: 1px 3px; border-radius: 2px; background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); z-index: 1; pointer-events: none; }
+.goal-timeline__marker { position: absolute; left: 50%; top: 50%; transform: translateY(-50%) translateX(-50%); font-size: 8px; font-weight: 700; letter-spacing: 0.2px; padding: 1px 3px; border-radius: 2px; background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); z-index: 1; pointer-events: none; }
 .goal-timeline__ft { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.4); pointer-events: none; }
 .goal-timeline__total { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); min-width: 14px; text-align: right; flex-shrink: 0; }
 

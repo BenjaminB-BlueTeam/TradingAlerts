@@ -82,6 +82,19 @@ export function goalBar(match, context) {
 
   const events = match.goal_events || [];
 
+  // Convertir une minute en position % sur la barre (0-90 min, HT à 50%)
+  // Les buts en stoppage time sont plafonnés : 45+X → 45', 90+X → 90'
+  function minToPct(min, raw) {
+    let capped = min;
+    if (raw && raw.includes('+')) {
+      const base = parseInt(raw);
+      capped = base <= 45 ? 45 : 90;
+    } else {
+      capped = Math.min(min, 90);
+    }
+    return Math.min((capped / 90) * 100, 98);
+  }
+
   // If we have goal_events with minutes, use them
   if (events.length > 0 && events[0]?.min) {
     const goals = events.map(g => {
@@ -91,7 +104,7 @@ export function goalBar(match, context) {
       return {
         min: g.min,
         raw: displayMin,
-        pct: Math.min((g.min / 95) * 100, 98),
+        pct: minToPct(g.min, g.raw),
         scored,
         label,
       };
@@ -106,10 +119,10 @@ export function goalBar(match, context) {
   const conceded2MT = oppGoals - concededHT;
 
   const goals = [];
-  for (let i = 0; i < scoredHT; i++) { const m = 10 + i * 12; goals.push({ min: m, raw: String(m), pct: m / 95 * 100, scored: true, label: `${m}'` }); }
-  for (let i = 0; i < concededHT; i++) { const m = 15 + i * 12; goals.push({ min: m, raw: String(m), pct: m / 95 * 100, scored: false, label: `${m}' \u2014 Encaiss\u00e9` }); }
-  for (let i = 0; i < scored2MT; i++) { const m = 55 + i * 12; goals.push({ min: m, raw: String(m), pct: m / 95 * 100, scored: true, label: `${m}'` }); }
-  for (let i = 0; i < conceded2MT; i++) { const m = 60 + i * 12; goals.push({ min: m, raw: String(m), pct: m / 95 * 100, scored: false, label: `${m}' \u2014 Encaiss\u00e9` }); }
+  for (let i = 0; i < scoredHT; i++) { const m = 10 + i * 12; goals.push({ min: m, raw: String(m), pct: (m / 90) * 100, scored: true, label: `${m}'` }); }
+  for (let i = 0; i < concededHT; i++) { const m = 15 + i * 12; goals.push({ min: m, raw: String(m), pct: (m / 90) * 100, scored: false, label: `${m}' \u2014 Encaiss\u00e9` }); }
+  for (let i = 0; i < scored2MT; i++) { const m = 55 + i * 12; goals.push({ min: m, raw: String(m), pct: (m / 90) * 100, scored: true, label: `${m}'` }); }
+  for (let i = 0; i < conceded2MT; i++) { const m = 60 + i * 12; goals.push({ min: m, raw: String(m), pct: (m / 90) * 100, scored: false, label: `${m}' \u2014 Encaiss\u00e9` }); }
   goals.sort((a, b) => a.min - b.min);
 
   return { goals, total: totalGoals, result };
