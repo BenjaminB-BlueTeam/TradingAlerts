@@ -153,7 +153,7 @@ exports.handler = async (event) => {
           alerts.push({
             ...baseFields,
             match_id: m.id,
-            signal_type: bestFHG.signalType,        // FHG_A | FHG_B | FHG_A+B
+            signal_type: bestFHG.team === 'home' ? 'FHG_DOM' : 'FHG_EXT',
             fhg_pct: null,                           // obsolete avec streak v2
             fhg_confidence: bestFHG.confidence,      // moyen | fort | fort_double
             fhg_factors: bestFHG.factors,            // jsonb avec streak, rates, samples

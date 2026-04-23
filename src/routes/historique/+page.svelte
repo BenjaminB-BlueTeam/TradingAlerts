@@ -110,7 +110,7 @@
     ? Math.round((terminated.filter(a => a.status === 'validated').length / terminated.length) * 100)
     : null);
 
-  let fhgTerminated = $derived(terminated.filter(a => ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B'].includes(a.signal_type)));
+  let fhgTerminated = $derived(terminated.filter(a => ['FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)));
   let fhgPct = $derived(fhgTerminated.length
     ? Math.round((fhgTerminated.filter(a => a.status === 'validated').length / fhgTerminated.length) * 100)
     : null);
@@ -184,7 +184,7 @@
     : alerts.filter(a => !a.user_excluded));
 
   let filteredAlerts = $derived(listBase.filter(a => {
-    if (activeFilter === 'fhg')       return ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B'].includes(a.signal_type);
+    if (activeFilter === 'fhg')       return ['FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type);
     if (activeFilter === 'dc')        return a.signal_type === 'DC';
     if (activeFilter === 'validated') return a.status === 'validated';
     if (activeFilter === 'lost')      return a.status === 'lost';
@@ -197,7 +197,7 @@
       ? alerts.filter(a => a.user_excluded)
       : alerts.filter(a => !a.user_excluded);
     if (key === 'tous')      return base.length;
-    if (key === 'fhg')       return base.filter(a => ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B'].includes(a.signal_type)).length;
+    if (key === 'fhg')       return base.filter(a => ['FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)).length;
     if (key === 'dc')        return base.filter(a => a.signal_type === 'DC').length;
     if (key === 'validated') return base.filter(a => a.status === 'validated').length;
     if (key === 'lost')      return base.filter(a => a.status === 'lost').length;
@@ -226,10 +226,15 @@
 
   function typeBadgeCls(signalType) {
     if (signalType === 'DC')      return 'type-badge--dc';
-    if (signalType === 'FHG_A+B') return 'type-badge--fhgab';
-    if (signalType === 'FHG_A')   return 'type-badge--fhga';
-    if (signalType === 'FHG_B')   return 'type-badge--fhgb';
+    if (signalType === 'FHG_DOM') return 'type-badge--dom';
+    if (signalType === 'FHG_EXT') return 'type-badge--ext';
     return 'type-badge--fhg';
+  }
+
+  function signalLabel(type) {
+    if (type === 'FHG_DOM') return 'FHG Dom.';
+    if (type === 'FHG_EXT') return 'FHG Ext.';
+    return type;
   }
 
   onMount(() => { loadAlerts(); });
@@ -457,7 +462,7 @@
               <td style="font-size:12px;color:var(--color-text-muted);">{a.league_name || '—'}</td>
               <td style="font-weight:600;">{a.home_team_name} - {a.away_team_name}</td>
               <td>
-                <span class="type-badge {typeBadgeCls(a.signal_type)}">{a.signal_type}</span>
+                <span class="type-badge {typeBadgeCls(a.signal_type)}">{signalLabel(a.signal_type)}</span>
               </td>
               <td><span class="res-label {res.cls}">{res.label}</span></td>
               <td>
@@ -540,11 +545,10 @@
   .whatif-tag-count { font-size: 10px; color: var(--color-text-muted); min-width: 30px; text-align: right; }
 
   .type-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; }
-  .type-badge--fhg   { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
-  .type-badge--fhga  { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
-  .type-badge--fhgb  { background: rgba(100,160,230,0.15); color: #7cb9f7; }
-  .type-badge--fhgab { background: rgba(55,138,221,0.2); color: var(--color-accent-blue); border: 1px solid var(--color-accent-blue); }
-  .type-badge--dc    { background: rgba(239,159,39,0.15); color: var(--color-signal-moyen); }
+  .type-badge--fhg  { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
+  .type-badge--dom  { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
+  .type-badge--ext  { background: rgba(100,160,230,0.15); color: #7cb9f7; }
+  .type-badge--dc   { background: rgba(239,159,39,0.15); color: var(--color-signal-moyen); }
 
   .res-label { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
   .res--validated { background: rgba(29,158,117,0.15); color: var(--color-accent-green); }

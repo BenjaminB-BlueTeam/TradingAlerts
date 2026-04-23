@@ -131,13 +131,13 @@ async function main() {
   // ── 1. Par signal_type ──────────────────────────────────────
   header(`Par signal_type  (v2, n=${v2.length})`);
 
-  const sigTypes = ['FHG_A', 'FHG_B', 'FHG_A+B', 'DC'];
+  const sigTypes = ['FHG_DOM', 'FHG_EXT', 'DC'];
   const sigStats = {};
   for (const sig of sigTypes) {
     sigStats[sig] = stats(v2.filter(a => a.signal_type === sig));
     printRow(sig, sigStats[sig]);
   }
-  const fhgAll = v2.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B'].includes(a.signal_type));
+  const fhgAll = v2.filter(a => ['FHG_DOM', 'FHG_EXT'].includes(a.signal_type));
   printRow('FHG (tous)', stats(fhgAll));
   printRow('Global v2', stats(v2));
 
@@ -158,7 +158,7 @@ async function main() {
   console.log(`  ${''.padEnd(12)} ${'fort_double'.padStart(13)} ${'fort'.padStart(13)} ${'moyen'.padStart(13)}`);
   console.log(`  ${'-'.repeat(54)}`);
 
-  for (const sig of ['FHG_A', 'FHG_B', 'FHG_A+B']) {
+  for (const sig of ['FHG_DOM', 'FHG_EXT']) {
     const row = v2.filter(a => a.signal_type === sig);
     const cells = confLevels.map(conf => {
       const s = stats(row.filter(a => a.confidence === conf));
@@ -179,28 +179,28 @@ async function main() {
 
   console.log();
 
-  // Comparaison FHG_A vs FHG_B
-  const sA = sigStats['FHG_A'];
-  const sB = sigStats['FHG_B'];
-  if (sA && sA.n >= 5 && sB && sB.n >= 5) {
-    const diff = sA.pct - sB.pct;
+  // Comparaison FHG_DOM vs FHG_EXT
+  const sDom = sigStats['FHG_DOM'];
+  const sExt = sigStats['FHG_EXT'];
+  if (sDom && sDom.n >= 5 && sExt && sExt.n >= 5) {
+    const diff = sDom.pct - sExt.pct;
     if (Math.abs(diff) >= 10) {
-      const better = diff > 0 ? 'FHG_A' : 'FHG_B';
-      const worse  = diff > 0 ? 'FHG_B' : 'FHG_A';
-      console.log(`  ⚡ ${better} surperforme ${worse} de ${Math.abs(diff)}% — envisager de retirer ${worse} ou relever son seuil.`);
+      const better = diff > 0 ? 'FHG_DOM' : 'FHG_EXT';
+      const worse  = diff > 0 ? 'FHG_EXT' : 'FHG_DOM';
+      console.log(`  ⚡ ${better} surperforme ${worse} de ${Math.abs(diff)}% — envisager de relever le seuil pour ${worse}.`);
     } else {
-      console.log(`  ~ FHG_A et FHG_B ont des performances similaires (écart ${Math.abs(diff)}%).`);
+      console.log(`  ~ FHG_DOM et FHG_EXT ont des performances similaires (écart ${Math.abs(diff)}%).`);
     }
   }
 
-  // Combo vs standalone
-  const sCombo   = sigStats['FHG_A+B'];
-  const sStandalone = stats(fhgAll.filter(a => a.signal_type !== 'FHG_A+B'));
-  if (sCombo && sCombo.n >= 5 && sStandalone && sStandalone.n >= 5) {
-    const diff = sCombo.pct - sStandalone.pct;
-    console.log(`  ${diff >= 5 ? '✓' : '~'} FHG_A+B combo : ${sCombo.pct}% vs standalone : ${sStandalone.pct}% (écart ${diff > 0 ? '+' : ''}${diff}%)`);
+  // fort_double vs standalone
+  const sDouble     = stats(fhgAll.filter(a => a.confidence === 'fort_double'));
+  const sStandalone = stats(fhgAll.filter(a => a.confidence !== 'fort_double'));
+  if (sDouble && sDouble.n >= 5 && sStandalone && sStandalone.n >= 5) {
+    const diff = sDouble.pct - sStandalone.pct;
+    console.log(`  ${diff >= 5 ? '✓' : '~'} fort_double : ${sDouble.pct}% vs autres : ${sStandalone.pct}% (écart ${diff > 0 ? '+' : ''}${diff}%)`);
     if (diff < 0) {
-      console.log(`    → Le combo est moins performant. Vérifier les critères de sélection A+B.`);
+      console.log(`    → fort_double est moins performant. Vérifier les critères A+B.`);
     }
   }
 
