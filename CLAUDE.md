@@ -88,7 +88,16 @@ src/
       GoalTimeline.svelte← barre timing buts H2H
       Toast.svelte      ← notifications toast
       Modal.svelte      ← modale globale
-      charts.js         ← graphiques Chart.js (tree-shaké)
+      charts.js         ← graphiques Chart.js (tree-shaké) + helpers line/stacked/horizontal
+      historique/
+        FiltersBar.svelte         ← bloc filtres multi-critères
+        ChartEvolution.svelte     ← courbes taux dans le temps (hybride 1 ou 3 courbes)
+        ChartStackedStrategy.svelte ← barres empilées validés/perdus par stratégie
+        ChartTopTeams.svelte      ← top 10 équipes par taux
+        ChartTopLeagues.svelte    ← top 10 ligues par taux
+        MatchesTable.svelte       ← tableau dense triable + expand goal-bar
+        TradesVsGlobal.svelte     ← bloc "Mes trades vs Global"
+        WhatIfExclusions.svelte   ← bloc what-if exclusions avec Wilson CI
       settings/
         ApiTest.svelte    ← test connexion API
         TradeJournal.svelte← journal des trades
@@ -114,6 +123,8 @@ src/
       teamData.js       ← fonctions partagées (loadTeamMatches, computeTeamStats, goalBar)
       teamData.test.js  ← tests unitaires teamData (14 tests)
       leagueHelpers.js  ← fonctions partagées leagues/explore (stats, expand, couleurs)
+      historyFilters.js ← filtrage AND strict + 4 agrégations pour /historique
+      historyFilters.test.js ← tests unitaires filtres + agrégations (30 tests)
     data.js             ← initApp (test connexion API)
 ```
 
@@ -250,7 +261,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B/C/D, tri fort→moyen→date, filtres jour + ligue + signal (boutons colorés par type), expand détaillé par équipe, barres timing buts, curseur interactif (* 90), tooltip buts opaque, badges Validé/Perdu/EN COURS, badge signal_type, bouton rouge "Exclure"
 - **Selection DC** (`/selection-dc`) — alertes DC, tri fort→moyen→date, filtres jour + ligue, expand H2H tableau centré, % victoire (win+nul)
 - **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B, tri fort_double→fort→moyen→date, filtres jour + ligue + signal, expand par équipe avec barres timing buts (marqueur 80' visible, buts après 80' encadrés), pills Dom/Ext affichant la longueur du streak, badge signal_type, bouton rouge "Exclure"
-- **Historique** (`/historique`) — stats filtrées !user_excluded, Global/FHG/DC/LG2/fort/moyen, bloc "Mes trades vs Global", tableau par ligue, toggle what-if exclusions (par tag + Wilson CI), liste paginée (90j + "Charger plus")
+- **Historique** (`/historique`) — dashboard analytique refondu (2026-04-23) : FiltersBar multi-critères (période + presets + stratégie + confidence + équipe + ligue + statut, AND strict), grille 2x2 de graphiques Chart.js (évolution hybride, stacked par stratégie, top 10 équipes, top 10 ligues), tableau dense triable avec expand goal-bar par match, blocs "Mes trades vs Global" (collapsible) et "What-if exclusions" (Wilson CI). Infinite scroll 50 lignes par batch. Spec : `docs/superpowers/specs/2026-04-23-historique-redesign-design.md`
 - **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs. Curseur minute dans la 1ère barre (data-tip + CSS, pas de délai, calcul * 90). Ballon encaissé : label "(Encaissé) - X'". Tooltip opaque (#1e2330 + border)
 - **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par FHG% 0-45 (depuis team_fhg_cache Supabase, affichage instantané)
 - **Classements ligues** (`/explore`) — par pays, stats, classements
@@ -262,7 +273,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Compteur API** — req restantes affiché dans la sidebar
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
 - **Supabase RLS active** — policies read-only anon, service_role pour les Netlify Functions
-- **Tests unitaires** — Vitest, 257 tests (analysis.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, h2h 16, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17)
+- **Tests unitaires** — Vitest, 287 tests (analysis.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, h2h 16, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17, historyFilters 30)
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`. Tooltip goal-dot opaque (#1e2330). bar-hover-min opaque.
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
 - **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5

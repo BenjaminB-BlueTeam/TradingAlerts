@@ -222,3 +222,159 @@ function destroyChart(canvas) {
   const existing = Chart.getChart(canvas);
   if (existing) existing.destroy();
 }
+
+// ============================================================
+// Helpers génériques pour /historique (refonte dashboard)
+// ============================================================
+
+const TOOLTIP_STYLE = {
+  backgroundColor: '#1A1D27',
+  borderColor: 'rgba(255,255,255,0.1)',
+  borderWidth: 1,
+  titleColor: '#F0F0F0',
+  bodyColor: '#A0A3B1',
+};
+const AXIS_STYLE = {
+  grid: { color: 'rgba(255,255,255,0.04)' },
+  ticks: { color: '#888780', font: { size: 11 } },
+};
+
+/**
+ * Line chart multi-séries pour l'évolution des taux.
+ * datasets = [{ label, data: [{x, y}], color }]
+ */
+export function makeLineChart(canvas, { labels, datasets }) {
+  if (!canvas) return null;
+  destroyChart(canvas);
+  const chart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: datasets.map(d => ({
+        label: d.label,
+        data: d.data,
+        borderColor: d.color,
+        backgroundColor: d.color + '20',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: d.color,
+        tension: 0.3,
+        spanGaps: true,
+      })),
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#A0A3B1', font: { size: 11 } } },
+        tooltip: {
+          ...TOOLTIP_STYLE,
+          callbacks: {
+            label: ctx => {
+              const raw = ctx.raw;
+              if (raw == null || raw.y == null) return ` ${ctx.dataset.label}: —`;
+              const { v, t } = raw;
+              return ` ${ctx.dataset.label}: ${raw.y}%  (${v ?? 0}/${t ?? 0})`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: AXIS_STYLE,
+        y: { ...AXIS_STYLE, beginAtZero: true, max: 100, ticks: { ...AXIS_STYLE.ticks, callback: v => `${v}%` } },
+      },
+    },
+  });
+  canvas._chartInstance = chart;
+  return chart;
+}
+
+/**
+ * Stacked bar chart (validés / perdus par stratégie).
+ * datasets = [{ label: 'Validés', data, color }, { label: 'Perdus', data, color }]
+ */
+export function makeStackedBarChart(canvas, { labels, datasets }) {
+  if (!canvas) return null;
+  destroyChart(canvas);
+  const chart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: datasets.map(d => ({
+        label: d.label,
+        data: d.data,
+        backgroundColor: d.color,
+        borderColor: d.border || d.color,
+        borderWidth: 1,
+        borderRadius: 4,
+      })),
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#A0A3B1', font: { size: 11 } } },
+        tooltip: {
+          ...TOOLTIP_STYLE,
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}`,
+          },
+        },
+      },
+      scales: {
+        x: { ...AXIS_STYLE, stacked: true },
+        y: { ...AXIS_STYLE, stacked: true, beginAtZero: true, ticks: { ...AXIS_STYLE.ticks, stepSize: 1 } },
+      },
+    },
+  });
+  canvas._chartInstance = chart;
+  return chart;
+}
+
+/**
+ * Horizontal bar chart (top équipes / ligues par taux).
+ * rows = [{ label, pct, total, validated, lost }]
+ */
+export function makeHorizontalBarChart(canvas, rows) {
+  if (!canvas) return null;
+  destroyChart(canvas);
+  const colors = rows.map(r => (r.pct >= 65 ? '#1D9E75' : r.pct >= 50 ? '#EF9F27' : '#E24B4A'));
+  const chart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.label),
+      datasets: [{
+        data: rows.map(r => r.pct),
+        backgroundColor: colors.map(c => c + 'AA'),
+        borderColor: colors,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...TOOLTIP_STYLE,
+          callbacks: {
+            label: ctx => {
+              const r = rows[ctx.dataIndex];
+              return ` ${r.pct}%  (${r.validated}/${r.total})`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: { ...AXIS_STYLE, beginAtZero: true, max: 100, ticks: { ...AXIS_STYLE.ticks, callback: v => `${v}%` } },
+        y: { ...AXIS_STYLE, ticks: { ...AXIS_STYLE.ticks, font: { size: 10 } } },
+      },
+    },
+  });
+  canvas._chartInstance = chart;
+  return chart;
+}
+
+export { destroyChart };
