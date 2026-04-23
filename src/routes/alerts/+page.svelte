@@ -133,7 +133,7 @@
   function onBarMove(e, key) {
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = Math.max(0, Math.min(100, (e.clientX - rect.left) / rect.width * 100));
-    const min = Math.round(pct / 100 * 95);
+    const min = Math.round(pct / 100 * 90);
     hoverBar = { key, pct, min };
   }
 
@@ -244,9 +244,9 @@
             {/if}
             {#if a.user_excluded}
               <span class="alert-badge alert-badge--exclu">EXCLUE</span>
-              <button class="btn-exclude btn-exclude--reinstate" onclick={e => { e.stopPropagation(); handleUnexclude(a); }}>Réintégrer</button>
+              <button class="btn btn--sm btn-reinstate" onclick={e => { e.stopPropagation(); handleUnexclude(a); }}>Réintégrer</button>
             {:else if a.status === 'pending'}
-              <button class="btn-exclude" onclick={e => { e.stopPropagation(); openExcludeModal(a); }} title="Exclure">✕</button>
+              <button class="btn btn--sm btn--danger" onclick={e => { e.stopPropagation(); openExcludeModal(a); }}>Exclure</button>
             {/if}
           </div>
           <span class="alert-card__arrow">{expandedId === a.id ? '▼' : '▶'}</span>
@@ -379,10 +379,8 @@
   .alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
   .alert-badge--signal { background: rgba(61,142,247,0.15); color: var(--color-accent-blue); border: 1px solid rgba(61,142,247,0.3); }
   .alert-badge--exclu { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #555; }
-  .btn-exclude { background: none; border: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 11px; padding: 2px 6px; border-radius: 4px; cursor: pointer; line-height: 1; transition: all 0.15s; }
-  .btn-exclude:hover { border-color: #e53e3e; color: #e53e3e; }
-  .btn-exclude--reinstate { border-color: var(--color-accent-blue); color: var(--color-accent-blue); }
-  .btn-exclude--reinstate:hover { background: var(--color-accent-blue); color: #fff; }
+  .btn-reinstate { border-color: var(--color-accent-blue); color: var(--color-accent-blue); background: rgba(61,142,247,0.1); }
+  .btn-reinstate:hover { background: var(--color-accent-blue); color: #fff; }
 
   /* Expand */
   .alert-expand { border-top: 1px solid var(--color-border); padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

@@ -160,9 +160,9 @@
             {/if}
             {#if a.user_excluded}
               <span class="alert-badge alert-badge--exclu">EXCLUE</span>
-              <button class="btn-exclude btn-exclude--reinstate" onclick={() => handleUnexclude(a)}>Réintégrer</button>
+              <button class="btn btn--sm btn-reinstate" onclick={() => handleUnexclude(a)}>Réintégrer</button>
             {:else if a.status === 'pending'}
-              <button class="btn-exclude" onclick={() => openExcludeModal(a)} title="Exclure cette alerte">✕</button>
+              <button class="btn btn--sm btn--danger" onclick={() => openExcludeModal(a)}>Exclure</button>
             {/if}
           </div>
         </div>
@@ -202,9 +202,9 @@
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
             {#if a.user_excluded}
               <span class="alert-badge alert-badge--exclu">EXCLUE</span>
-              <button class="btn-exclude btn-exclude--reinstate" onclick={() => handleUnexclude(a)}>Réintégrer</button>
+              <button class="btn btn--sm btn-reinstate" onclick={() => handleUnexclude(a)}>Réintégrer</button>
             {:else}
-              <button class="btn-exclude" onclick={() => openExcludeModal(a)} title="Exclure">✕</button>
+              <button class="btn btn--sm btn--danger" onclick={() => openExcludeModal(a)}>Exclure</button>
             {/if}
           </div>
         </div>
@@ -259,20 +259,8 @@
 
   .dash-alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
 
-  .btn-exclude {
-    background: none;
-    border: 1px solid var(--color-border);
-    color: var(--color-text-muted);
-    font-size: 11px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    cursor: pointer;
-    line-height: 1;
-    transition: all 0.15s;
-  }
-  .btn-exclude:hover { border-color: #e53e3e; color: #e53e3e; }
-  .btn-exclude--reinstate { border-color: var(--color-accent-blue); color: var(--color-accent-blue); font-size: 11px; }
-  .btn-exclude--reinstate:hover { background: var(--color-accent-blue); color: #fff; }
+  .btn-reinstate { border-color: var(--color-accent-blue); color: var(--color-accent-blue); background: rgba(61,142,247,0.1); }
+  .btn-reinstate:hover { background: var(--color-accent-blue); color: #fff; }
 
   .alert-badge--exclu { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #555; }
 
