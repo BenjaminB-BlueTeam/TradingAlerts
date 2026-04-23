@@ -1,8 +1,9 @@
 <script>
   import { onMount } from 'svelte';
-  import { supabase } from '$lib/api/supabase.js';
+  import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
   import { getDateStr, formatDate, formatTime, isInPlay, fhgColor, defeatColor } from '$lib/utils/formatters.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
+  import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
 
   let alerts = $state([]);
   let loading = $state(true);
@@ -20,6 +21,34 @@
 
   let generating = $state(false);
   let genMessage = $state('');
+
+  // Exclusion modale
+  let excludeModalOpen = $state(false);
+  let excludeModalAlert = $state(null);
+
+  function openExcludeModal(alert) {
+    excludeModalAlert = alert;
+    excludeModalOpen = true;
+  }
+
+  async function handleExcluded(e) {
+    const { tags, note } = e.detail;
+    try {
+      await excludeAlert(excludeModalAlert.match_id, tags, note);
+      await loadAlerts();
+    } catch (err) {
+      console.error('excludeAlert error:', err);
+    }
+  }
+
+  async function handleUnexclude(alert) {
+    try {
+      await unexcludeAlert(alert.match_id);
+      await loadAlerts();
+    } catch (err) {
+      console.error('unexcludeAlert error:', err);
+    }
+  }
 
   async function handleGenerate() {
     generating = true;
@@ -49,7 +78,7 @@
       .select('*')
       .gte('match_date', getDateStr(-3))
       .lte('match_date', getDateStr(2))
-      .eq('signal_type', 'FHG')
+      .in('signal_type', ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B'])
       .order('match_date', { ascending: false })
       .order('kickoff_unix', { ascending: true });
     if (dbError) {
@@ -202,13 +231,22 @@
             </div>
           </div>
           <div class="alert-card__badges">
-            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}<span class="sr-only"> — confiance {a.confidence === 'fort' ? 'forte' : 'moyenne'}</span></span>
+            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
+            {#if a.signal_type && a.signal_type !== 'FHG'}
+              <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
+            {/if}
             {#if a.status === 'validated'}
               <span class="alert-badge alert-badge--validated">✓ Validé</span>
             {:else if a.status === 'lost'}
               <span class="alert-badge alert-badge--lost">✗ Perdu</span>
             {:else if isInPlay(a)}
               <span class="alert-badge alert-badge--live">EN COURS</span>
+            {/if}
+            {#if a.user_excluded}
+              <span class="alert-badge alert-badge--exclu">EXCLUE</span>
+              <button class="btn-exclude btn-exclude--reinstate" onclick={e => { e.stopPropagation(); handleUnexclude(a); }}>Réintégrer</button>
+            {:else if a.status === 'pending'}
+              <button class="btn-exclude" onclick={e => { e.stopPropagation(); openExcludeModal(a); }} title="Exclure">✕</button>
             {/if}
           </div>
           <span class="alert-card__arrow">{expandedId === a.id ? '▼' : '▶'}</span>
@@ -350,7 +388,13 @@
   .alert-pill__label { font-size: 9px; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted); }
   .alert-pill__value { font-size: 13px; font-weight: 700; }
 
-  .alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; }
+  .alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+  .alert-badge--signal { background: rgba(61,142,247,0.15); color: var(--color-accent-blue); border: 1px solid rgba(61,142,247,0.3); }
+  .alert-badge--exclu { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #555; }
+  .btn-exclude { background: none; border: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 11px; padding: 2px 6px; border-radius: 4px; cursor: pointer; line-height: 1; transition: all 0.15s; }
+  .btn-exclude:hover { border-color: #e53e3e; color: #e53e3e; }
+  .btn-exclude--reinstate { border-color: var(--color-accent-blue); color: var(--color-accent-blue); }
+  .btn-exclude--reinstate:hover { background: var(--color-accent-blue); color: #fff; }
 
   /* Expand */
   .alert-expand { border-top: 1px solid var(--color-border); padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -363,3 +407,9 @@
     .alert-card__stats { width: 100%; }
   }
 </style>
+
+<ExcludeAlertModal
+  alert={excludeModalAlert}
+  bind:open={excludeModalOpen}
+  on:excluded={handleExcluded}
+/>

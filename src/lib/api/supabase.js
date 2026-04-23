@@ -208,3 +208,33 @@ export async function migrateLocalTrades(localTrades) {
     console.log(`Migration : ${rows.length} trade(s) migrés vers Supabase`)
   }
 }
+
+// ============================================================
+// EXCLUSION MANUELLE DES ALERTES
+// ============================================================
+
+/**
+ * Exclure une alerte manuellement.
+ */
+export async function excludeAlert(matchId, tags = [], note = null) {
+  const { error } = await supabase.from('alerts').update({
+    user_excluded: true,
+    user_exclusion_tags: tags.length > 0 ? tags : null,
+    user_exclusion_note: note || null,
+    user_excluded_at: new Date().toISOString(),
+  }).eq('match_id', matchId);
+  if (error) throw error;
+}
+
+/**
+ * Réintégrer une alerte précédemment exclue.
+ */
+export async function unexcludeAlert(matchId) {
+  const { error } = await supabase.from('alerts').update({
+    user_excluded: false,
+    user_exclusion_tags: null,
+    user_exclusion_note: null,
+    user_excluded_at: null,
+  }).eq('match_id', matchId);
+  if (error) throw error;
+}

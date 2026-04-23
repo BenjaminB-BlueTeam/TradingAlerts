@@ -1,17 +1,47 @@
 <script>
   import { onMount } from 'svelte';
-  import { supabase } from '$lib/api/supabase.js';
+  import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
   import { getDateStr, formatTime, isInPlay, fhgColor, defeatColor } from '$lib/utils/formatters.js';
+  import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
 
   let alerts = $state([]);
   let loading = $state(true);
   let error = $state('');
 
+  // Exclusion modale
+  let excludeModalOpen = $state(false);
+  let excludeModalAlert = $state(null);
+  let excludeError = $state('');
+
+  function openExcludeModal(alert) {
+    excludeModalAlert = alert;
+    excludeModalOpen = true;
+  }
+
+  async function handleExcluded(e) {
+    const { tags, note } = e.detail;
+    try {
+      await excludeAlert(excludeModalAlert.match_id, tags, note);
+      await loadAlerts();
+    } catch (err) {
+      excludeError = 'Erreur lors de l\'exclusion : ' + (err.message || err);
+    }
+  }
+
+  async function handleUnexclude(alert) {
+    try {
+      await unexcludeAlert(alert.match_id);
+      await loadAlerts();
+    } catch (err) {
+      excludeError = 'Erreur lors de la réintégration : ' + (err.message || err);
+    }
+  }
+
   // Stats calculees
   let todayStr = $derived(getDateStr(0));
   let todayAlerts = $derived(alerts.filter(a => a.match_date === todayStr));
-  let fhgAlerts = $derived(todayAlerts.filter(a => a.signal_type === 'FHG'));
-  let dcAlerts = $derived(todayAlerts.filter(a => a.signal_type === 'DC'));
+  let fhgAlerts = $derived(todayAlerts.filter(a => ['FHG_A','FHG_B','FHG_A+B'].includes(a.signal_type) && !a.user_excluded));
+  let dcAlerts = $derived(todayAlerts.filter(a => a.signal_type === 'DC' && !a.user_excluded));
   let validatedToday = $derived(todayAlerts.filter(a => a.status === 'validated'));
   let lostToday = $derived(todayAlerts.filter(a => a.status === 'lost'));
   let pendingToday = $derived(todayAlerts.filter(a => a.status === 'pending'));
@@ -120,13 +150,19 @@
             {/if}
           </div>
           <div class="dash-alert-card__badges">
-            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}<span class="sr-only"> — confiance {a.confidence === 'fort' ? 'forte' : 'moyenne'}</span></span>
+            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
             {#if a.status === 'validated'}
               <span class="alert-badge alert-badge--validated">Valide</span>
             {:else if a.status === 'lost'}
               <span class="alert-badge alert-badge--lost">Perdu</span>
             {:else if isInPlay(a)}
               <span class="alert-badge alert-badge--live">EN COURS</span>
+            {/if}
+            {#if a.user_excluded}
+              <span class="alert-badge alert-badge--exclu">EXCLUE</span>
+              <button class="btn-exclude btn-exclude--reinstate" onclick={() => handleUnexclude(a)}>Réintégrer</button>
+            {:else if a.status === 'pending'}
+              <button class="btn-exclude" onclick={() => openExcludeModal(a)} title="Exclure cette alerte">✕</button>
             {/if}
           </div>
         </div>
@@ -163,13 +199,29 @@
             {/if}
           </div>
           <div class="dash-alert-card__badges">
-            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}<span class="sr-only"> — confiance {a.confidence === 'fort' ? 'forte' : 'moyenne'}</span></span>
+            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
+            {#if a.user_excluded}
+              <span class="alert-badge alert-badge--exclu">EXCLUE</span>
+              <button class="btn-exclude btn-exclude--reinstate" onclick={() => handleUnexclude(a)}>Réintégrer</button>
+            {:else}
+              <button class="btn-exclude" onclick={() => openExcludeModal(a)} title="Exclure">✕</button>
+            {/if}
           </div>
         </div>
       {/each}
     </div>
   {/if}
 
+{/if}
+
+<ExcludeAlertModal
+  alert={excludeModalAlert}
+  bind:open={excludeModalOpen}
+  on:excluded={handleExcluded}
+/>
+
+{#if excludeError}
+  <p style="color:#e53e3e;font-size:12px;margin-top:8px;">{excludeError}</p>
 {/if}
 
 <style>
@@ -205,7 +257,24 @@
   .dash-alert-card__pills { display: flex; gap: 6px; flex-shrink: 0; }
   .dash-pill { font-size: 12px; font-weight: 700; background: rgba(255,255,255,0.04); border-radius: 5px; padding: 2px 8px; }
 
-  .dash-alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; }
+  .dash-alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+
+  .btn-exclude {
+    background: none;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    line-height: 1;
+    transition: all 0.15s;
+  }
+  .btn-exclude:hover { border-color: #e53e3e; color: #e53e3e; }
+  .btn-exclude--reinstate { border-color: var(--color-accent-blue); color: var(--color-accent-blue); font-size: 11px; }
+  .btn-exclude--reinstate:hover { background: var(--color-accent-blue); color: #fff; }
+
+  .alert-badge--exclu { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #555; }
 
   @media (max-width: 768px) {
     .metric-grid { grid-template-columns: repeat(2, 1fr); }
