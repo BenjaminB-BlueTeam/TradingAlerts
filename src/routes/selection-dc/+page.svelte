@@ -89,6 +89,33 @@
 
   let generating = $state(false);
   let genMessage = $state('');
+  let deleting = $state(false);
+  let deleteMessage = $state('');
+
+  async function handleDeleteVisible() {
+    const ids = filteredAlerts.map(a => a.id);
+    if (ids.length === 0) return;
+    if (!confirm(`Supprimer ${ids.length} alerte${ids.length > 1 ? 's' : ''} visible${ids.length > 1 ? 's' : ''} ?`)) return;
+    deleting = true;
+    deleteMessage = '';
+    try {
+      const res = await fetch('/.netlify/functions/delete-alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        deleteMessage = `Erreur : ${data.error}`;
+      } else {
+        deleteMessage = `${data.deleted} alerte${data.deleted > 1 ? 's' : ''} supprimée${data.deleted > 1 ? 's' : ''}`;
+        await loadAlerts();
+      }
+    } catch (e) {
+      deleteMessage = `Erreur : ${e.message}`;
+    }
+    deleting = false;
+  }
 
   async function handleGenerate() {
     generating = true;
@@ -120,12 +147,22 @@
       {alerts.length} signal{alerts.length > 1 ? 's' : ''} Double Chance — 3 derniers jours + à venir
     </p>
   </div>
-  <button class="btn btn--secondary btn--sm" onclick={handleGenerate} disabled={generating}>
-    {generating ? '⏳...' : '🔄 Actualiser'}
-  </button>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <button class="btn btn--secondary btn--sm" onclick={handleGenerate} disabled={generating}>
+      {generating ? '⏳...' : '🔄 Actualiser'}
+    </button>
+    {#if filteredAlerts.length > 0}
+      <button class="btn btn--danger btn--sm" onclick={handleDeleteVisible} disabled={deleting}>
+        {deleting ? '⏳...' : `Supprimer les ${filteredAlerts.length} visible${filteredAlerts.length > 1 ? 's' : ''}`}
+      </button>
+    {/if}
+  </div>
 </div>
 {#if genMessage}
   <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--color-text-muted);">{genMessage}</div>
+{/if}
+{#if deleteMessage}
+  <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(226,75,74,0.08);color:var(--color-danger);">{deleteMessage}</div>
 {/if}
 
 <div class="dc-filters">
