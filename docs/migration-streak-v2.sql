@@ -31,7 +31,8 @@ CREATE INDEX IF NOT EXISTS idx_alerts_user_excluded ON alerts(user_excluded);
 
 -- 6. RLS : policy UPDATE pour l'exclusion manuelle (anon peut UPDATE)
 --    Benjamin est l'unique utilisateur, policy permissive acceptable.
-CREATE POLICY IF NOT EXISTS "anon can update exclusion fields" ON alerts
+DROP POLICY IF EXISTS "anon can update exclusion fields" ON alerts;
+CREATE POLICY "anon can update exclusion fields" ON alerts
   FOR UPDATE
   USING (true)
   WITH CHECK (true);
