@@ -1,11 +1,16 @@
 /**
- * calibrate-threshold.js
+ * calibrate-threshold.js — streak v2
  *
- * Analyse les alertes terminées pour proposer des seuils optimaux.
+ * Analyse les alertes terminées (algo v2) et produit :
+ *   1. Tableau par signal_type (FHG_A, FHG_B, FHG_A+B, DC)
+ *   2. Tableau par confiance (fort_double, fort, moyen)
+ *   3. Cross-tab signal_type × confiance
+ *   4. Recommandations sur les seuils de streak
+ *
  * Usage : node scripts/calibrate-threshold.js
  *
- * Nécessite VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY en env,
- * ou les valeurs sont lues depuis le code source en fallback.
+ * Env requis : VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+ *   (ou SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)
  */
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -13,12 +18,23 @@ const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('Définir SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY (ou VITE_*) en variables d\'environnement.');
-  console.error('Exemple : SUPABASE_URL=https://xxx.supabase.co SUPABASE_SERVICE_ROLE_KEY=eyJ... node scripts/calibrate-threshold.js');
+  console.error('Ex : SUPABASE_URL=https://xxx.supabase.co SUPABASE_SERVICE_ROLE_KEY=eyJ... node scripts/calibrate-threshold.js');
   process.exit(1);
 }
 
+// Seuils actuels (v2)
+const STREAK_FORT        = 3;   // streak consécutif → fort
+const STREAK_MOYEN       = 2;   // streak consécutif → moyen
+const CONFIRM_MIN_RATE   = 0.60;// taux confirmation requis
+const CONFIRM_MIN_SAMPLE = 3;   // min matchs dans fenêtre confirmation
+
 async function fetchAlerts() {
-  const url = `${SUPABASE_URL}/rest/v1/alerts?status=in.(validated,lost)&select=signal_type,fhg_pct,dc_defeat_pct,confidence,status&order=kickoff_unix.desc`;
+  // Récupère toutes les alertes terminées (inclut v1 + v2 pour comparaison)
+  const url = `${SUPABASE_URL}/rest/v1/alerts`
+    + `?status=in.(validated,lost)`
+    + `&select=signal_type,fhg_pct,dc_defeat_pct,confidence,status,algo_version,user_excluded`
+    + `&order=kickoff_unix.desc`;
+
   const res = await fetch(url, {
     headers: {
       'apikey': SUPABASE_KEY,
@@ -32,139 +48,168 @@ async function fetchAlerts() {
   return await res.json();
 }
 
-/**
- * Intervalle de confiance de Wilson à 95%
- * https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Wilson_score_interval
- */
-function wilsonCI(successes, total) {
-  if (total === 0) return { lower: 0, upper: 0 };
-  const z = 1.96; // 95%
-  const p = successes / total;
-  const denom = 1 + z * z / total;
-  const center = (p + z * z / (2 * total)) / denom;
-  const margin = (z / denom) * Math.sqrt((p * (1 - p) + z * z / (4 * total)) / total);
+// Wilson score interval (95%)
+function wilsonCI(k, n) {
+  if (n === 0) return { lower: 0, upper: 0, lower_pct: 0, upper_pct: 0 };
+  const z = 1.96;
+  const p = k / n;
+  const denom = 1 + z * z / n;
+  const center = (p + z * z / (2 * n)) / denom;
+  const margin = (z / denom) * Math.sqrt((p * (1 - p) + z * z / (4 * n)) / n);
   return {
     lower: Math.max(0, Math.round((center - margin) * 100)),
     upper: Math.min(100, Math.round((center + margin) * 100)),
   };
 }
 
-function analyzeBuckets(alerts, scoreField, label) {
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`  ${label}`);
-  console.log(`${'='.repeat(60)}`);
+function stats(alerts) {
+  const n = alerts.length;
+  if (n === 0) return null;
+  const wins = alerts.filter(a => a.status === 'validated').length;
+  const pct = Math.round(wins / n * 100);
+  const ci = wilsonCI(wins, n);
+  return { n, wins, pct, ci };
+}
 
-  if (alerts.length < 5) {
-    console.log(`  ⚠ Seulement ${alerts.length} alertes terminées — échantillon insuffisant.`);
-    console.log(`  Revenir quand au moins 20 alertes sont disponibles.\n`);
+function printRow(label, s, width = 20) {
+  if (!s) {
+    console.log(`  ${label.padEnd(width)} ${'—'.padStart(5)}`);
     return;
   }
+  const ci = `[${s.ci.lower}-${s.ci.upper}]`;
+  console.log(
+    `  ${label.padEnd(width)} ${String(s.n).padStart(5)} ${(s.pct + '%').padStart(6)}  ${ci.padStart(12)}`
+  );
+}
 
-  const buckets = [
-    { min: 0, max: 60, label: '< 60' },
-    { min: 60, max: 65, label: '60-64' },
-    { min: 65, max: 70, label: '65-69' },
-    { min: 70, max: 75, label: '70-74' },
-    { min: 75, max: 80, label: '75-79' },
-    { min: 80, max: 85, label: '80-84' },
-    { min: 85, max: 90, label: '85-89' },
-    { min: 90, max: 101, label: '90+' },
-  ];
+function header(title) {
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`  ${title}`);
+  console.log(`${'='.repeat(60)}`);
+  console.log(`  ${''.padEnd(20)} ${'n'.padStart(5)} ${'win%'.padStart(6)}  ${'IC95 [lo-hi]'.padStart(12)}`);
+  console.log(`  ${'-'.repeat(48)}`);
+}
 
-  console.log(`\n  ${'Score'.padEnd(8)} ${'n'.padStart(5)} ${'win%'.padStart(6)} ${'IC95'.padStart(12)}`);
-  console.log(`  ${'-'.repeat(35)}`);
-
-  let bestFort = null;
-  let bestMoyen = null;
-
-  for (const bucket of buckets) {
-    const inBucket = alerts.filter(a => {
-      const score = a[scoreField];
-      if (score == null) return false;
-      return score >= bucket.min && score < bucket.max;
-    });
-
-    if (inBucket.length === 0) continue;
-
-    const wins = inBucket.filter(a => a.status === 'validated').length;
-    const winPct = Math.round((wins / inBucket.length) * 100);
-    const ci = wilsonCI(wins, inBucket.length);
-
-    console.log(`  ${bucket.label.padEnd(8)} ${String(inBucket.length).padStart(5)} ${(winPct + '%').padStart(6)} [${ci.lower}-${ci.upper}]`.padStart(12));
-
-    // Seuil fort : borne inf IC95 >= 70%
-    if (ci.lower >= 70 && !bestFort) {
-      bestFort = bucket.min;
-    }
-    // Seuil moyen : borne inf IC95 >= 55%
-    if (ci.lower >= 55 && !bestMoyen) {
-      bestMoyen = bucket.min;
-    }
+function recommend(s, label) {
+  if (!s || s.n < 5) {
+    console.log(`  ⚠ ${label} : échantillon insuffisant (${s ? s.n : 0} alertes — min 5)`);
+    return;
   }
-
-  console.log();
-
-  // Résumé global
-  const totalWins = alerts.filter(a => a.status === 'validated').length;
-  const globalPct = Math.round((totalWins / alerts.length) * 100);
-  const globalCI = wilsonCI(totalWins, alerts.length);
-  console.log(`  Global : ${totalWins}/${alerts.length} = ${globalPct}% [IC95: ${globalCI.lower}-${globalCI.upper}%]`);
-
-  // Recommandations
-  console.log();
-  if (bestFort) {
-    console.log(`  → Seuil FORT recommandé : >= ${bestFort}% (borne inf IC95 >= 70%)`);
+  if (s.ci.lower >= 70) {
+    console.log(`  ✓ ${label} : solide (borne inf IC95 >= 70%)`);
+  } else if (s.ci.lower >= 55) {
+    console.log(`  ~ ${label} : acceptable (borne inf IC95 >= 55%)`);
   } else {
-    console.log(`  → Seuil FORT : pas assez de données pour recommander (aucun bucket avec IC95 inf >= 70%)`);
+    console.log(`  ✗ ${label} : insuffisant (borne inf IC95 < 55%) — envisager de relever le seuil`);
   }
-  if (bestMoyen) {
-    console.log(`  → Seuil MOYEN recommandé : >= ${bestMoyen}% (borne inf IC95 >= 55%)`);
-  } else {
-    console.log(`  → Seuil MOYEN : pas assez de données pour recommander`);
-  }
-
-  // Seuils actuels
-  console.log(`  → Seuils actuels : fort >= 80%, moyen >= 70%`);
-  console.log();
 }
 
 async function main() {
-  console.log('Chargement des alertes terminées depuis Supabase...');
-  const alerts = await fetchAlerts();
-  console.log(`${alerts.length} alertes terminées trouvées.`);
+  console.log('\nCalibrateur de seuils — streak v2');
+  console.log('Chargement des alertes terminées depuis Supabase...\n');
 
-  if (alerts.length === 0) {
-    console.log('Aucune alerte terminée. Rien à analyser.');
+  const all = await fetchAlerts();
+  console.log(`${all.length} alertes terminées au total.`);
+
+  // Séparer v1 vs v2
+  const v2 = all.filter(a => a.algo_version === 'v2' && !a.user_excluded);
+  const v1 = all.filter(a => a.algo_version !== 'v2');
+
+  console.log(`  v1 (ancien algo) : ${v1.length}`);
+  console.log(`  v2 (streak)      : ${v2.length}`);
+
+  if (v2.length === 0) {
+    console.log('\n⚠ Aucune alerte v2 terminée. Exécutez le cron generate-alerts.js et attendez des résultats.');
+    if (v1.length > 0) {
+      console.log('\nAnalyse v1 pour comparaison de référence :');
+      const sv1 = stats(v1);
+      console.log(`  Global v1 : ${sv1.wins}/${sv1.n} = ${sv1.pct}% [IC95: ${sv1.ci.lower}-${sv1.ci.upper}%]`);
+    }
     return;
   }
 
-  // Par confiance
-  const fort = alerts.filter(a => a.confidence === 'fort');
-  const moyen = alerts.filter(a => a.confidence === 'moyen');
-  console.log(`  dont ${fort.length} fort, ${moyen.length} moyen`);
-  if (fort.length > 0) {
-    const fortWins = fort.filter(a => a.status === 'validated').length;
-    console.log(`  Fort : ${fortWins}/${fort.length} = ${Math.round(fortWins / fort.length * 100)}%`);
+  // ── 1. Par signal_type ──────────────────────────────────────
+  header(`Par signal_type  (v2, n=${v2.length})`);
+
+  const sigTypes = ['FHG_A', 'FHG_B', 'FHG_A+B', 'DC'];
+  const sigStats = {};
+  for (const sig of sigTypes) {
+    sigStats[sig] = stats(v2.filter(a => a.signal_type === sig));
+    printRow(sig, sigStats[sig]);
   }
-  if (moyen.length > 0) {
-    const moyenWins = moyen.filter(a => a.status === 'validated').length;
-    console.log(`  Moyen : ${moyenWins}/${moyen.length} = ${Math.round(moyenWins / moyen.length * 100)}%`);
+  const fhgAll = v2.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B'].includes(a.signal_type));
+  printRow('FHG (tous)', stats(fhgAll));
+  printRow('Global v2', stats(v2));
+
+  // ── 2. Par confiance ────────────────────────────────────────
+  header(`Par confiance  (v2 FHG, n=${fhgAll.length})`);
+
+  const confLevels = ['fort_double', 'fort', 'moyen'];
+  const confStats = {};
+  for (const conf of confLevels) {
+    confStats[conf] = stats(fhgAll.filter(a => a.confidence === conf));
+    printRow(conf, confStats[conf]);
   }
 
-  // FHG
-  const fhg = alerts.filter(a => a.signal_type === 'FHG' || a.signal_type === 'FHG+DC');
-  analyzeBuckets(fhg, 'fhg_pct', `FHG (${fhg.length} alertes)`);
+  // ── 3. Cross-tab signal_type × confiance ────────────────────
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`  Cross-tab signal_type × confiance`);
+  console.log(`${'='.repeat(60)}`);
+  console.log(`  ${''.padEnd(12)} ${'fort_double'.padStart(13)} ${'fort'.padStart(13)} ${'moyen'.padStart(13)}`);
+  console.log(`  ${'-'.repeat(54)}`);
+
+  for (const sig of ['FHG_A', 'FHG_B', 'FHG_A+B']) {
+    const row = v2.filter(a => a.signal_type === sig);
+    const cells = confLevels.map(conf => {
+      const s = stats(row.filter(a => a.confidence === conf));
+      if (!s) return '    —    ';
+      return `${s.pct}%(${s.n})`.padStart(13);
+    });
+    console.log(`  ${sig.padEnd(12)} ${cells.join('')}`);
+  }
+
+  // ── 4. Recommandations ──────────────────────────────────────
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`  Recommandations (seuils actuels: FORT=${STREAK_FORT}, MOYEN=${STREAK_MOYEN}, CONFIRM=${Math.round(CONFIRM_MIN_RATE * 100)}%)`);
+  console.log(`${'='.repeat(60)}\n`);
+
+  recommend(confStats['fort_double'], 'fort_double');
+  recommend(confStats['fort'],        'fort        ');
+  recommend(confStats['moyen'],       'moyen       ');
+
+  console.log();
+
+  // Comparaison FHG_A vs FHG_B
+  const sA = sigStats['FHG_A'];
+  const sB = sigStats['FHG_B'];
+  if (sA && sA.n >= 5 && sB && sB.n >= 5) {
+    const diff = sA.pct - sB.pct;
+    if (Math.abs(diff) >= 10) {
+      const better = diff > 0 ? 'FHG_A' : 'FHG_B';
+      const worse  = diff > 0 ? 'FHG_B' : 'FHG_A';
+      console.log(`  ⚡ ${better} surperforme ${worse} de ${Math.abs(diff)}% — envisager de retirer ${worse} ou relever son seuil.`);
+    } else {
+      console.log(`  ~ FHG_A et FHG_B ont des performances similaires (écart ${Math.abs(diff)}%).`);
+    }
+  }
+
+  // Combo vs standalone
+  const sCombo   = sigStats['FHG_A+B'];
+  const sStandalone = stats(fhgAll.filter(a => a.signal_type !== 'FHG_A+B'));
+  if (sCombo && sCombo.n >= 5 && sStandalone && sStandalone.n >= 5) {
+    const diff = sCombo.pct - sStandalone.pct;
+    console.log(`  ${diff >= 5 ? '✓' : '~'} FHG_A+B combo : ${sCombo.pct}% vs standalone : ${sStandalone.pct}% (écart ${diff > 0 ? '+' : ''}${diff}%)`);
+    if (diff < 0) {
+      console.log(`    → Le combo est moins performant. Vérifier les critères de sélection A+B.`);
+    }
+  }
 
   // DC
-  const dc = alerts.filter(a => a.signal_type === 'DC' || a.signal_type === 'FHG+DC');
-  analyzeBuckets(dc, 'dc_defeat_pct', `DC — par % défaite (${dc.length} alertes, plus bas = mieux)`);
+  const sDC = sigStats['DC'];
+  if (sDC) recommend(sDC, 'DC          ');
 
-  // FHG+DC combo
-  const combo = alerts.filter(a => a.signal_type === 'FHG+DC');
-  if (combo.length > 0) {
-    const comboWins = combo.filter(a => a.status === 'validated').length;
-    console.log(`\n  FHG+DC combo : ${comboWins}/${combo.length} = ${Math.round(comboWins / combo.length * 100)}%`);
-  }
+  console.log(`\n  Seuils actuels : STREAK_FORT=${STREAK_FORT}, STREAK_MOYEN=${STREAK_MOYEN}, CONFIRM_MIN_RATE=${CONFIRM_MIN_RATE}, CONFIRM_MIN_SAMPLE=${CONFIRM_MIN_SAMPLE}`);
+  console.log(`  Pour modifier : netlify/functions/lib/analysis.cjs + src/lib/core/scoring.js\n`);
 }
 
 main().catch(e => {
