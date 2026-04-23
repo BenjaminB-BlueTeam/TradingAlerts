@@ -62,7 +62,6 @@
 <!-- TOPBAR MOBILE -->
 <div class="topbar">
   <button class="burger-btn" onclick={() => sidebarOpen = !sidebarOpen} aria-label="Menu">☰</button>
-  <span class="topbar__title">FHG Tracker</span>
   <div class="topbar__right">
     <div class="api-dot {apiDotClass}"></div>
   </div>
