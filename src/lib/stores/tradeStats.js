@@ -6,8 +6,12 @@
 import { get } from 'svelte/store';
 import { trades } from './appStore.js';
 
-export function calcStatsTradesGlobal() {
-  const list = get(trades).filter(t => t.resultat !== 'non_joue');
+/**
+ * Pure computation — accepts a list of resolved trades (resultat !== 'non_joue').
+ * @param {Array} list - filtered trades array
+ * @returns {object|null}
+ */
+export function computeTradeStats(list) {
   if (list.length === 0) return null;
 
   const gagnes = list.filter(t => t.resultat === 'gagne').length;
@@ -56,4 +60,9 @@ export function calcStatsTradesGlobal() {
     maxWin, maxLoss,
     sufficientData: total >= 20,
   };
+}
+
+export function calcStatsTradesGlobal() {
+  const list = get(trades).filter(t => t.resultat !== 'non_joue');
+  return computeTradeStats(list);
 }
