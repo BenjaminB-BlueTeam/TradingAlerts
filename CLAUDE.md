@@ -24,7 +24,7 @@ App **SvelteKit** de **trading sportif football**. Identifie les matchs avec for
 | Données | API FootyStats (`football-data-api.com`) via proxy Netlify sécurisé |
 | Persistance | Supabase (PostgreSQL) — alerts, trades, team_seasons, h2h_matches, seed_jobs |
 | Charts | Chart.js 4.4 (tree-shaké, imports sélectifs) |
-| Tests | Vitest (174 tests) |
+| Tests | Vitest (191 tests) |
 
 ### Variables d'environnement
 
@@ -211,7 +211,7 @@ Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même f
 - **Compteur API** — req restantes affiché dans la sidebar
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
 - **Supabase RLS active** — policies read-only anon, service_role pour les Netlify Functions
-- **Tests unitaires** — Vitest, 174 tests (analysis.cjs 162, scoring 41, h2h 21, cache 20, formatters 22, teamData 14, tradeStore 14)
+- **Tests unitaires** — Vitest, 191 tests (analysis.cjs 162, scoring 41, h2h 21, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17)
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
 - **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5
@@ -221,8 +221,7 @@ Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même f
 
 ## Roadmap — prochaines étapes
 
-- [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API
-- [ ] Tests pour `tradeStats.js`
+- [ ] Attendre ~20 alertes terminées (validated/lost) → lancer `scripts/calibrate-threshold.js`
 
 ---
 
