@@ -106,12 +106,17 @@ function confirmationRate(matches, windowSize, checkFn) {
 // --- Veto H2H ---
 
 /**
- * Si H2H >= 3 et team n'a jamais marqué en 1MT (0-45) dans ces H2H → veto.
- * Pas de filtre par configuration home/away.
+ * Si H2H (même config dom/ext) >= 3 et team n'a jamais marqué en 1MT → veto.
+ * teamIsHome : true = l'équipe joue dom dans le match à venir (filtre H2H où elle était dom)
+ *              false = l'équipe joue ext (filtre H2H où elle était ext)
+ *              null = aucun filtre (ancien comportement)
  */
-function isH2HCleanSheetFirstHalf(h2h, teamId) {
-  if (h2h.length < 3) return false;
-  const scoredCount = h2h.filter(m => teamScoredInFirstHalf(m, teamId)).length;
+function isH2HCleanSheetFirstHalf(h2h, teamId, teamIsHome = null) {
+  const filtered = teamIsHome === null
+    ? h2h
+    : h2h.filter(m => teamIsHome ? m.home_team_id === teamId : m.away_team_id === teamId);
+  if (filtered.length < 3) return false;
+  const scoredCount = filtered.filter(m => teamScoredInFirstHalf(m, teamId)).length;
   return scoredCount === 0;
 }
 
@@ -120,6 +125,7 @@ function isH2HCleanSheetFirstHalf(h2h, teamId) {
 function analyzeScenarioA(teamMatches, teamId, opponentMatches, opponentId) {
   if (teamMatches.length < STREAK_MIN_MATCHES) return null;
 
+  // Scénario A : l'équipe marque en 31-45 sur STREAK_FORT matchs CONSÉCUTIFS
   const streakScored = computeStreak(teamMatches, m => teamScored31to45(m, teamId));
   const oppConcedes = confirmationRate(
     opponentMatches,
@@ -127,13 +133,11 @@ function analyzeScenarioA(teamMatches, teamId, opponentMatches, opponentId) {
     m => teamConcededInFirstHalf(m, opponentId)
   );
 
-  const principalFort = streakScored >= STREAK_FORT;
-  const principalMoyen = streakScored >= STREAK_MOYEN;
+  const principalOK = streakScored >= STREAK_FORT;
   const confirmOK = oppConcedes.rate >= CONFIRM_MIN_RATE && oppConcedes.total >= CONFIRM_MIN_SAMPLE;
 
   let confidence = null;
-  if (principalFort && confirmOK) confidence = 'fort';
-  else if (principalMoyen && confirmOK) confidence = 'moyen';
+  if (principalOK && confirmOK) confidence = 'fort';
 
   return {
     scenario: 'A',
@@ -147,25 +151,26 @@ function analyzeScenarioA(teamMatches, teamId, opponentMatches, opponentId) {
 function analyzeScenarioB(opponentMatches, opponentId, teamMatches, teamId) {
   if (opponentMatches.length < STREAK_MIN_MATCHES) return null;
 
-  const streakConceded = computeStreak(opponentMatches, m => teamConceded31to45(m, opponentId));
+  // Scénario B : l'adversaire a encaissé en 31-45 dans au moins STREAK_FORT
+  // des CONFIRM_WINDOW derniers matchs (non nécessairement consécutifs)
+  const window = opponentMatches.slice(0, CONFIRM_WINDOW);
+  const countConceded = window.filter(m => teamConceded31to45(m, opponentId)).length;
   const teamScores = confirmationRate(
     teamMatches,
     CONFIRM_WINDOW,
     m => teamScoredInFirstHalf(m, teamId)
   );
 
-  const principalFort = streakConceded >= STREAK_FORT;
-  const principalMoyen = streakConceded >= STREAK_MOYEN;
+  const principalOK = countConceded >= STREAK_FORT;
   const confirmOK = teamScores.rate >= CONFIRM_MIN_RATE && teamScores.total >= CONFIRM_MIN_SAMPLE;
 
   let confidence = null;
-  if (principalFort && confirmOK) confidence = 'fort';
-  else if (principalMoyen && confirmOK) confidence = 'moyen';
+  if (principalOK && confirmOK) confidence = 'moyen';
 
   return {
     scenario: 'B',
     confidence,
-    streakConceded,
+    countConceded,
     teamScoresRate: Math.round(teamScores.rate * 100),
     teamScoresSample: `${teamScores.count}/${teamScores.total}`,
   };
@@ -177,15 +182,16 @@ function analyzeScenarioB(opponentMatches, opponentId, teamMatches, teamId) {
  * Analyse streak FHG pour une équipe ciblée.
  * Retourne { isAlert, signalType, confidence, factors, cleanSheetBlock }.
  *
- * @param {Array}  teamMatches      matchs de l'équipe dans le contexte (home OU away), triés DESC
- * @param {number} teamId           id de l'équipe ciblée
- * @param {Array}  opponentMatches  matchs de l'adversaire dans le contexte OPPOSÉ, triés DESC
- * @param {number} opponentId       id de l'adversaire
- * @param {Array}  h2h              H2H entre les deux équipes (non filtré par config)
+ * @param {Array}   teamMatches      matchs de l'équipe dans le contexte (home OU away), triés DESC
+ * @param {number}  teamId           id de l'équipe ciblée
+ * @param {Array}   opponentMatches  matchs de l'adversaire dans le contexte OPPOSÉ, triés DESC
+ * @param {number}  opponentId       id de l'adversaire
+ * @param {Array}   h2h              H2H entre les deux équipes (toutes configs)
+ * @param {boolean|null} teamIsHome  true=dom, false=ext — filtre le veto H2H par config
  */
-function analyzeStreakAlert(teamMatches, teamId, opponentMatches, opponentId, h2h) {
-  // Veto H2H (global, pas filtré par config)
-  if (isH2HCleanSheetFirstHalf(h2h, teamId)) {
+function analyzeStreakAlert(teamMatches, teamId, opponentMatches, opponentId, h2h, teamIsHome = null) {
+  // Veto H2H filtré par configuration domicile/extérieur
+  if (isH2HCleanSheetFirstHalf(h2h, teamId, teamIsHome)) {
     return { isAlert: false, cleanSheetBlock: true };
   }
 

@@ -134,8 +134,8 @@ exports.handler = async (event) => {
 
         let bestFHG = null;
         if (doFHG) {
-          const fhgHome = analyzeStreakAlert(homeMatches, m.homeID, oppMatchesForHome, m.awayID, h2h);
-          const fhgAway = analyzeStreakAlert(awayMatches, m.awayID, oppMatchesForAway, m.homeID, h2h);
+          const fhgHome = analyzeStreakAlert(homeMatches, m.homeID, oppMatchesForHome, m.awayID, h2h, true);   // équipe joue dom
+          const fhgAway = analyzeStreakAlert(awayMatches, m.awayID, oppMatchesForAway, m.homeID, h2h, false);  // équipe joue ext
 
           // Debug sample : 5 premiers matchs
           if (results.debug_sample.length < 5) {
