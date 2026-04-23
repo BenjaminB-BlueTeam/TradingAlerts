@@ -42,6 +42,10 @@ export async function seedLeague(seasonId) {
     league_id: String(seasonId),
   });
 
+  if (data.error) {
+    return { matches: 0, errors: [data.error] };
+  }
+
   if (!data.rows || data.rows.length === 0) {
     return { matches: 0, errors: data.errors || [] };
   }
