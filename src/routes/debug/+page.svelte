@@ -470,7 +470,9 @@
       {:else}
         ⚠ Aucune alerte générée — {genResult.analyzed} matchs analysés ({genResult.existingBlocked ?? 0} bloqués par existants), aucun ne correspond aux critères {genResult.type || ''}
         {#if genResult.errors?.length > 0}
-          <br/><span style="color:var(--color-danger);">{genResult.errors.length} erreurs</span>
+          <div style="margin-top:6px;font-size:10px;font-family:monospace;color:var(--color-danger);">
+            {#each genResult.errors as err}<div>✗ {err}</div>{/each}
+          </div>
         {/if}
         {#if genResult.debug_sample?.length > 0}
           <div style="margin-top:8px;font-size:10px;font-family:monospace;opacity:0.8;">
