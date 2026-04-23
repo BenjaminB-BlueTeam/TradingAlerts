@@ -152,21 +152,24 @@ describe('analyzeScenarioA (ESM)', () => {
   it('retourne null si < STREAK_MIN_MATCHES matchs équipe', () => {
     expect(analyzeScenarioA(homeMatches31to45(2), 100, oppConcedesHalf(5), 200)).toBeNull();
   });
-  it('confidence null si streak < STREAK_MOYEN', () => {
+  it('confidence null si streak < STREAK_FORT (=3)', () => {
     const teamMatches = [makeMatch({ goalEvents: [] }), ...homeMatches31to45(3)];
     const r = analyzeScenarioA(teamMatches, 100, oppConcedesHalf(5), 200);
     expect(r.confidence).toBeNull();
+    expect(r.streakScored).toBe(0);
   });
-  it('confidence moyen si streak 2 + confirmation OK', () => {
+  it('confidence null si streak 2 (inférieur au minimum de 3)', () => {
     const teamMatches = [...homeMatches31to45(2), makeMatch({ goalEvents: [] })];
     const opp = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
     const r = analyzeScenarioA(teamMatches, 100, opp, 200);
-    expect(r.confidence).toBe('moyen');
+    expect(r.confidence).toBeNull();
+    expect(r.streakScored).toBe(2);
   });
-  it('confidence fort si streak 3+ + confirmation OK', () => {
+  it('confidence fort si streak >= 3 + confirmation OK', () => {
     const opp = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
     const r = analyzeScenarioA(homeMatches31to45(4), 100, opp, 200);
     expect(r.confidence).toBe('fort');
+    expect(r.streakScored).toBe(4);
   });
   it('confidence null si taux confirmation < 60%', () => {
     const opp = [
@@ -194,22 +197,39 @@ describe('analyzeScenarioB (ESM)', () => {
   it('retourne null si < STREAK_MIN_MATCHES matchs adversaire', () => {
     expect(analyzeScenarioB(homeMatches31to45(2), 200, homeMatches31to45(5), 100)).toBeNull();
   });
-  it('confidence moyen si streak adversaire encaisse 31-45 (2) + confirmation OK', () => {
+  it('confidence null si count encaissés < 3 sur 5 matchs', () => {
     const opp = [
       makeMatch({ goalEvents: [goal(35, true)] }),
       makeMatch({ goalEvents: [goal(35, true)] }),
       makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    const team = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyzeScenarioB(opp, 200, team, 100);
+    expect(r.confidence).toBeNull();
+    expect(r.countConceded).toBe(2);
+  });
+  it('confidence moyen si count encaissés >= 3 sur 5 + confirmation OK (non-consécutif)', () => {
+    // 3 encaissés sur 5 — non consécutifs (1, _, 1, _, 1)
+    const opp = [
+      makeMatch({ goalEvents: [goal(35, true)] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [goal(35, true)] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [goal(35, true)] }),
     ];
     const team = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
     const r = analyzeScenarioB(opp, 200, team, 100);
     expect(r.confidence).toBe('moyen');
-    expect(r.streakConceded).toBe(2);
+    expect(r.countConceded).toBe(3);
   });
-  it('confidence fort si streak adversaire 3+', () => {
+  it('confidence moyen si 4/5 encaissés (consécutifs ou non)', () => {
     const opp = Array(4).fill(null).map(() => makeMatch({ goalEvents: [goal(35, true)] }));
     const team = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
     const r = analyzeScenarioB(opp, 200, team, 100);
-    expect(r.confidence).toBe('fort');
+    expect(r.confidence).toBe('moyen');
+    expect(r.countConceded).toBe(4);
   });
 });
 
@@ -238,7 +258,7 @@ describe('analyserStreakFHG (ESM)', () => {
     const oppMatches = Array(4).fill(null).map(() => makeMatch({ goalEvents: [goal(35, true)] }));
     const r = analyserStreakFHG(teamMatches, 100, oppMatches, 200, []);
     // A : streakScored=4 ✓, confirmation (200 encaisse en 1MT) = oppMatches goal(35,true) -> 200 n'est pas home -> e.home !== false -> true -> 4/4 ✓
-    // B : streakConceded=4 (200 encaisse en 31-45 dans oppMatches) ✓, confirmation (100 marque en 1MT) = teamMatches goal(35,true) -> 4/4 ✓
+    // B : countConceded=4 (200 encaisse en 31-45 dans oppMatches) ✓, confirmation (100 marque en 1MT) = teamMatches goal(35,true) -> 4/4 ✓
     expect(r.isAlert).toBe(true);
     expect(r.signalType).toBe('FHG_A+B');
     expect(r.confidence).toBe('fort_double');
