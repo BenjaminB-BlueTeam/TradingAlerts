@@ -50,7 +50,7 @@ netlify/functions/
   check-results.js      ← cron 1h — vérifie résultats matchs pending terminés (fenêtre 31-45 min)
   seed-data.js          ← seed Supabase (team_seasons, h2h_matches) (auth token requis)
   daily-seed.js         ← cron quotidien 6h UTC — seed matchs d'hier dans h2h_matches
-  compute-team-fhg.js  ← cron quotidien 7h UTC — calcule FHG% 0-45 min par equipe depuis h2h_matches, upsert dans team_fhg_cache
+  compute-team-fhg.js  ← cron quotidien 7h UTC — calcule FHG% 0-45 min (goal_events) par (season_id, team_id), upsert team_fhg_cache
   lib/
     api.js              ← helpers partagés (footyRequest, supabaseQuery)
     analysis.cjs        ← logique FHG streak v2 + DC (server-side CJS)
@@ -157,7 +157,7 @@ Spec complète : `SPEC_STREAK_V2.md` à la racine du projet.
 2. Confirmation : l'adversaire a concédé en 1MT dans >= 60% de ses 5 derniers matchs (min 3)
 
 **Scénario B** — l'adversaire concède en 31-45 :
-1. Streak : l'adversaire a concédé en 31-45 dans les N derniers matchs
+1. Count : l'adversaire a concédé en 31-45 dans au moins 3 des 5 derniers matchs (non nécessairement consécutifs)
 2. Confirmation : l'équipe marque en 1MT dans >= 60% de ses 5 derniers matchs (min 3)
 
 ### Signal résultant
@@ -168,11 +168,13 @@ Spec complète : `SPEC_STREAK_V2.md` à la racine du projet.
 | B seul | `FHG_B` |
 
 ### Confiance
-| Streak | Confidence |
-|--------|-----------|
-| >= 3 consécutifs (`STREAK_FORT`) | `fort` |
-| == 2 consécutifs (`STREAK_MOYEN`) | `moyen` |
-| A+B avec fort des deux | `fort_double` |
+| Critère | Scénario | Confidence |
+|---------|----------|-----------|
+| Streak A >= 3 consécutifs (`STREAK_FORT`) + confirmation | A | `fort` |
+| Count B >= 3/5 (non-consécutif) + confirmation | B | `moyen` |
+| A et B actifs simultanément | A+B | `fort_double` |
+
+> Scénario A : streak 2 consécutifs → null (seuil minimum = 3). `STREAK_MOYEN` exporté mais non utilisé dans l'algo actuel.
 
 ### Veto H2H
 Si >= 3 H2H et l'équipe n'a jamais marqué en 1MT (0-45 min) → exclusion totale.
@@ -193,28 +195,29 @@ Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même f
 
 ## Ce qui est implémenté
 
-- **Algo FHG streak v2** (2026-04-23) — `analysis.cjs` + `scoring.js` : 2 scénarios (A/B), signaux FHG_A/FHG_B/FHG_A+B, confiance fort_double/fort/moyen, veto H2H 1MT. Spec : `SPEC_STREAK_V2.md`
+- **Algo FHG streak v2** (2026-04-23) — `analysis.cjs` + `scoring.js` : Scénario A (streak consécutif >=3 → fort), Scénario B (count 3/5 non-consécutif → moyen), FHG_A+B → fort_double, veto H2H 1MT. Spec : `SPEC_STREAK_V2.md`
 - **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) : génère FHG_A/B/A+B + DC, algo_version='v2', table Supabase `alerts`
 - **Vérification auto résultats** — `check-results.js` (cron 1h) : FHG sur buts 31-45 min via goal_events, DC sur résultat final, statut -> validated/lost/expired (cleanup 48h)
 - **Daily seed auto** — `daily-seed.js` (cron 6h UTC) : seed matchs d'hier dans `h2h_matches`
-- **Exclusion manuelle** — bouton ✕ sur dashboard/alertes/historique, ExcludeAlertModal (7 tags + note), reinsertion possible, what-if stats dans /historique (Wilson CI 95% par tag)
-- **Dashboard** (`/`) — KPIs + alertes du jour/a venir, bouton ✕ sur pending, badge EXCLUE
-- **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B, filtres par jour, expand détaillé par équipe, barres timing buts, curseur interactif, badges Validé/Perdu/EN COURS, badge signal_type, exclusion
+- **Calcul FHG% équipes** — `compute-team-fhg.js` (cron 7h UTC) : FHG% 0-45 par (season_id, team_id) depuis `h2h_matches`, upsert dans `team_fhg_cache`
+- **Exclusion manuelle** — bouton rouge "Exclure" (btn--danger) sur dashboard/alertes, ExcludeAlertModal (7 tags + note), réintégration possible, what-if stats dans /historique (Wilson CI 95% par tag)
+- **Dashboard** (`/`) — KPIs + alertes du jour/a venir, bouton rouge "Exclure" sur pending, badge EXCLUE
+- **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B, filtres par jour, expand détaillé par équipe, barres timing buts, curseur interactif (minute correcte: * 90), tooltip buts opaque, badges Validé/Perdu/EN COURS, badge signal_type, bouton rouge "Exclure"
 - **Selection DC** (`/selection-dc`) — alertes DC, filtres par jour, expand H2H tableau centré, % victoire (win+nul)
 - **Historique** (`/historique`) — stats filtrées !user_excluded, Global/FHG/DC/fort/moyen, bloc "Mes trades vs Global", tableau par ligue, toggle what-if exclusions (par tag + Wilson CI), liste paginée (90j + "Charger plus")
-- **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs. Curseur minute dans la 1ère barre (via `data-tip` + CSS, pas de délai). Ballon encaissé : label "(Encaissé) - X'"
+- **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs. Curseur minute dans la 1ère barre (data-tip + CSS, pas de délai, calcul * 90). Ballon encaissé : label "(Encaissé) - X'". Tooltip opaque (#1e2330 + border)
 - **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par FHG% 0-45 (depuis team_fhg_cache Supabase, affichage instantané)
 - **Classements ligues** (`/explore`) — par pays, stats, classements
 - **Paramètres** (`/settings`) — 5 sous-composants (ApiTest, TradeJournal, TradeStats, BankrollCalc, DangerZone)
 - **Config** (`/config`) — configuration algo (section Admin)
-- **Debug** (`/debug`) — test API/Supabase, boutons génération alertes FHG/DC, seed complet, rattrapage matchs, token auth, testeur API brut
+- **Debug** (`/debug`) — test API/Supabase, boutons génération alertes FHG/DC, seed complet, rattrapage matchs, token auth, testeur API brut. Panel CRON : liste des 4 crons avec schedule, description, temps avant prochain run, bouton "Lancer maintenant"
 - **Proxy Netlify sécurisé** — whitelist endpoints, CORS restreint
 - **Cache localStorage TTL** — éviction auto par endpoint
 - **Compteur API** — req restantes affiché dans la sidebar
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
 - **Supabase RLS active** — policies read-only anon, service_role pour les Netlify Functions
-- **Tests unitaires** — Vitest, 191 tests (analysis.cjs 162, scoring 41, h2h 21, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17)
-- **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`
+- **Tests unitaires** — Vitest, 194 tests (analysis.cjs 162, scoring 44, h2h 21, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17)
+- **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`. Tooltip goal-dot opaque (#1e2330). bar-hover-min opaque.
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
 - **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5
 - **Calibration seuils** — `scripts/calibrate-threshold.js` : cross-tab signal_type × confiance, Wilson CI, recommandations STREAK_FORT/MOYEN
