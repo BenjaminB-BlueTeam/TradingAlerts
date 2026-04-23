@@ -78,7 +78,7 @@ exports.handler = async () => {
         if (alert.kickoff_unix && (nowUnix - alert.kickoff_unix) > STALE_SECONDS) {
           const ok = await supabaseUpdate('alerts', alert.match_id, alert.signal_type, {
             status: 'expired',
-            result_checked_at: new Date().toISOString(),
+            verified_at: new Date().toISOString(),
           });
           if (ok) {
             results.checked++;
@@ -106,7 +106,7 @@ exports.handler = async () => {
 
         const ok = await supabaseUpdate('alerts', alert.match_id, signalType, {
           status: newStatus,
-          result_checked_at: new Date().toISOString(),
+          verified_at: new Date().toISOString(),
         });
 
         if (ok) {
