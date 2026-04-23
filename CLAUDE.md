@@ -202,8 +202,8 @@ Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même f
 - **Calcul FHG% équipes** — `compute-team-fhg.js` (cron 7h UTC) : FHG% 0-45 par (season_id, team_id) depuis `h2h_matches`, upsert dans `team_fhg_cache`
 - **Exclusion manuelle** — bouton rouge "Exclure" (btn--danger) sur dashboard/alertes, ExcludeAlertModal (7 tags + note), réintégration possible, what-if stats dans /historique (Wilson CI 95% par tag)
 - **Dashboard** (`/`) — KPIs + alertes du jour/a venir, bouton rouge "Exclure" sur pending, badge EXCLUE
-- **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B, filtres par jour, expand détaillé par équipe, barres timing buts, curseur interactif (minute correcte: * 90), tooltip buts opaque, badges Validé/Perdu/EN COURS, badge signal_type, bouton rouge "Exclure"
-- **Selection DC** (`/selection-dc`) — alertes DC, filtres par jour, expand H2H tableau centré, % victoire (win+nul)
+- **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B/C/D, tri fort→moyen→date, filtres jour + ligue + signal (boutons colorés par type), expand détaillé par équipe, barres timing buts, curseur interactif (* 90), tooltip buts opaque, badges Validé/Perdu/EN COURS, badge signal_type, bouton rouge "Exclure"
+- **Selection DC** (`/selection-dc`) — alertes DC, tri fort→moyen→date, filtres jour + ligue, expand H2H tableau centré, % victoire (win+nul)
 - **Historique** (`/historique`) — stats filtrées !user_excluded, Global/FHG/DC/fort/moyen, bloc "Mes trades vs Global", tableau par ligue, toggle what-if exclusions (par tag + Wilson CI), liste paginée (90j + "Charger plus")
 - **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs. Curseur minute dans la 1ère barre (data-tip + CSS, pas de délai, calcul * 90). Ballon encaissé : label "(Encaissé) - X'". Tooltip opaque (#1e2330 + border)
 - **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par FHG% 0-45 (depuis team_fhg_cache Supabase, affichage instantané)
@@ -216,7 +216,7 @@ Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même f
 - **Compteur API** — req restantes affiché dans la sidebar
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
 - **Supabase RLS active** — policies read-only anon, service_role pour les Netlify Functions
-- **Tests unitaires** — Vitest, 194 tests (analysis.cjs 162, scoring 44, h2h 21, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17)
+- **Tests unitaires** — Vitest, 213 tests (analysis.cjs 162, scoring 44, h2h 16, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17)
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`. Tooltip goal-dot opaque (#1e2330). bar-hover-min opaque.
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
 - **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5

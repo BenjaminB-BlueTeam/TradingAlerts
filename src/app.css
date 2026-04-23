@@ -57,7 +57,7 @@
 
 /* ---- RESET ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 14px; scroll-behavior: smooth; }
+html { font-size: 14px; scroll-behavior: smooth; overflow-x: hidden; }
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background: var(--color-bg-primary);
@@ -581,8 +581,8 @@ td.td-grey   { color: var(--color-text-muted); }
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,0.5); }
   .sidebar__close-btn { display: block; }
-  .main-content { margin-left: 0; }
-  .topbar { display: flex; }
+  .main-content { margin-left: 0; padding-top: var(--topbar-height); }
+  .topbar { display: flex; position: fixed; top: 0; left: 0; right: 0; width: 100%; }
   .page-container { padding: 16px; }
   .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
   .metric-card { padding: 14px; }
