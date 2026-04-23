@@ -9,8 +9,8 @@ const { footyRequest, supabaseQuery } = require('./lib/api');
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-async function supabaseUpdate(table, matchId, updates) {
-  const url = `${SUPABASE_URL}/rest/v1/${table}?match_id=eq.${matchId}`;
+async function supabaseUpdate(table, matchId, signalType, updates) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}?match_id=eq.${matchId}&signal_type=eq.${encodeURIComponent(signalType)}`;
   const res = await fetch(url, {
     method: 'PATCH',
     headers: {
@@ -44,10 +44,9 @@ function evaluateFHG(matchData) {
     const hasGoal3145 = goalMinutes.some(m => m >= 31 && m <= 45);
     return hasGoal3145 ? 'validated' : 'lost';
   }
-  // Fallback: no goal timing data available — use HT goals
-  console.warn(`[check-results] match ${matchData.id}: goal_timings unavailable, falling back to ht_goals`);
-  const htGoals = (matchData.ht_goals_team_a || 0) + (matchData.ht_goals_team_b || 0);
-  return htGoals > 0 ? 'validated' : 'lost';
+  // Fallback conservateur : sans timing précis on ne valide pas (évite les faux positifs)
+  console.warn(`[check-results] match ${matchData.id}: goal_timings unavailable, marking lost (conservative)`);
+  return 'lost';
 }
 
 function evaluateDC(matchData, dcBestSide) {
@@ -77,7 +76,7 @@ exports.handler = async () => {
       try {
         // Staleness check: mark as expired if kickoff was > 48h ago
         if (alert.kickoff_unix && (nowUnix - alert.kickoff_unix) > STALE_SECONDS) {
-          const ok = await supabaseUpdate('alerts', alert.match_id, {
+          const ok = await supabaseUpdate('alerts', alert.match_id, alert.signal_type, {
             status: 'expired',
             result_checked_at: new Date().toISOString(),
           });
@@ -96,7 +95,8 @@ exports.handler = async () => {
         const signalType = alert.signal_type;
         let newStatus;
 
-        if (['FHG', 'FHG_DOM', 'FHG_EXT'].includes(signalType)) {
+        const FHG_TYPES = ['FHG', 'FHG_DOM', 'FHG_EXT', 'FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D'];
+        if (FHG_TYPES.includes(signalType)) {
           newStatus = evaluateFHG(matchData);
         } else if (signalType === 'DC') {
           newStatus = evaluateDC(matchData, alert.dc_best_side);
@@ -104,7 +104,7 @@ exports.handler = async () => {
           continue;
         }
 
-        const ok = await supabaseUpdate('alerts', alert.match_id, {
+        const ok = await supabaseUpdate('alerts', alert.match_id, signalType, {
           status: newStatus,
           result_checked_at: new Date().toISOString(),
         });

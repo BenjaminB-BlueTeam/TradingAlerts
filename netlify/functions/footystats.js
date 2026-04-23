@@ -60,7 +60,7 @@ exports.handler = async (event) => {
       statusCode: response.status,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': 'https://tradingfootalerts.netlify.app',
+        'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || 'https://tradingfootalerts.netlify.app',
       },
       body: JSON.stringify(data),
     };

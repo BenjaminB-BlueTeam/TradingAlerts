@@ -29,7 +29,7 @@ async function supabaseDelete(matchIds) {
 }
 
 async function supabaseInsert(table, rows) {
-  const url = `${SUPABASE_URL}/rest/v1/${table}?on_conflict=match_id`;
+  const url = `${SUPABASE_URL}/rest/v1/${table}?on_conflict=match_id,signal_type`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -213,7 +213,7 @@ exports.handler = async (event) => {
         if (hasDC) {
           alerts.push({
             ...baseFields,
-            match_id: hasFHG ? m.id * -1 : m.id, // ID unique si les deux existent
+            match_id: m.id,
             signal_type: 'DC',
             fhg_pct: null,
             fhg_confidence: null,
@@ -242,7 +242,7 @@ exports.handler = async (event) => {
     results.newAlerts = newAlerts.length;
     if (newAlerts.length > 0) {
       // Supprimer les vieilles alertes FHG_DOM/FHG_EXT/FHG avant insert (évite les conflits match_id)
-      const matchIdsToClean = newAlerts.map(a => a.match_id).filter(id => id > 0);
+      const matchIdsToClean = newAlerts.map(a => a.match_id);
       if (matchIdsToClean.length > 0) {
         await supabaseDelete(matchIdsToClean);
       }

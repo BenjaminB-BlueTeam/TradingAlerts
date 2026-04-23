@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { analyserH2H, formaterH2HTimeline, getBadgeH2H } from './h2h.js';
+import { analyserH2H, getBadgeH2H } from './h2h.js';
 
 // ============================================================
 // analyserH2H
@@ -119,67 +119,6 @@ describe('analyserH2H', () => {
     ];
     const result = analyserH2H(h2h, 'Team A', 3);
     expect(result.message).toContain('confrontations');
-  });
-});
-
-// ============================================================
-// formaterH2HTimeline
-// ============================================================
-describe('formaterH2HTimeline', () => {
-  it('returns empty array for empty input', () => {
-    expect(formaterH2HTimeline([])).toEqual([]);
-  });
-
-  it('returns empty array for undefined input', () => {
-    expect(formaterH2HTimeline()).toEqual([]);
-  });
-
-  it('formats matches correctly', () => {
-    const h2h = [{
-      date: '2024-01-15',
-      homeGoals: 2,
-      awayGoals: 1,
-      homeGoals_HT: 1,
-      awayGoals_HT: 0,
-      equipe_ciblee_but_avant_45min: true,
-      goals: [{ minute: 10 }],
-    }];
-    const result = formaterH2HTimeline(h2h, 'Team A');
-    expect(result).toHaveLength(1);
-    expect(result[0].score).toBe('2-1');
-    expect(result[0].htScore).toBe('MT: 1-0');
-    expect(result[0].butMT).toBe(true);
-    expect(result[0].goals).toEqual([{ minute: 10 }]);
-    expect(result[0].total).toBe(3);
-  });
-
-  it('only returns last 5 matches', () => {
-    const h2h = Array.from({ length: 8 }, (_, i) => ({
-      date: `2024-01-${String(i + 1).padStart(2, '0')}`,
-      homeGoals: 1,
-      awayGoals: 0,
-      homeGoals_HT: 0,
-      awayGoals_HT: 0,
-      equipe_ciblee_but_avant_45min: false,
-    }));
-    const result = formaterH2HTimeline(h2h, 'Team A');
-    expect(result).toHaveLength(5);
-  });
-
-  it('handles missing goals and scores gracefully', () => {
-    const h2h = [{
-      date: null,
-      homeGoals: undefined,
-      awayGoals: undefined,
-      homeGoals_HT: undefined,
-      awayGoals_HT: undefined,
-      equipe_ciblee_but_avant_45min: null,
-    }];
-    const result = formaterH2HTimeline(h2h, 'Team A');
-    expect(result).toHaveLength(1);
-    expect(result[0].date).toBe('\u2014'); // em dash
-    expect(result[0].butMT).toBe(false);
-    expect(result[0].total).toBe(0);
   });
 });
 

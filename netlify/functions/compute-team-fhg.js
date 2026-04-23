@@ -48,8 +48,8 @@ async function fetchMatches(seasonStart) {
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) {
-      console.error(`[compute-team-fhg] Supabase error: ${res.status}`);
-      break;
+      const txt = await res.text().catch(() => '');
+      throw new Error(`[compute-team-fhg] Supabase fetch error: HTTP ${res.status} — ${txt.slice(0, 200)}`);
     }
     const batch = await res.json();
     if (!Array.isArray(batch) || batch.length === 0) break;
@@ -77,8 +77,8 @@ async function upsertCache(rows) {
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) {
-      const txt = await res.text();
-      console.error(`[compute-team-fhg] upsert error: ${res.status} ${txt}`);
+      const txt = await res.text().catch(() => '');
+      throw new Error(`[compute-team-fhg] upsert error: HTTP ${res.status} — ${txt.slice(0, 200)}`);
     }
   }
 }

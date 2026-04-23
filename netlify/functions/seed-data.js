@@ -53,7 +53,7 @@ function respond(statusCode, body) {
     statusCode,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': 'https://tradingfootalerts.netlify.app',
+      'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || 'https://tradingfootalerts.netlify.app',
     },
     body: JSON.stringify(body),
   };
