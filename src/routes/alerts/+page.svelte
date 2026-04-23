@@ -118,10 +118,28 @@
     loading = false;
   }
 
-  let filteredAlerts = $derived(alerts.filter(a => {
-    if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
-    return true;
-  }));
+  let selectedLeague = $state('toutes');
+  let selectedSignal = $state('tous');
+  let availableLeagues = $derived([...new Set(alerts.map(a => a.league_name).filter(Boolean))].sort());
+  const CONF_ORDER = { fort_double: 0, fort: 1, moyen: 2 };
+
+  let filteredAlerts = $derived(
+    alerts
+      .filter(a => {
+        if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
+        if (selectedLeague !== 'toutes' && a.league_name !== selectedLeague) return false;
+        if (selectedSignal !== 'tous' && a.signal_type !== selectedSignal) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.match_date < b.match_date) return -1;
+        if (a.match_date > b.match_date) return 1;
+        const ca = CONF_ORDER[a.confidence] ?? 99;
+        const cb = CONF_ORDER[b.confidence] ?? 99;
+        if (ca !== cb) return ca - cb;
+        return (a.kickoff_unix || 0) - (b.kickoff_unix || 0);
+      })
+  );
 
   // Charger les derniers matchs d'une \u00e9quipe dans son contexte
   async function loadTeamMatches(teamId, context) {
@@ -206,6 +224,32 @@
       {day.label} ({count})
     </button>
   {/each}
+</div>
+
+<div class="alerts-sub-filters">
+  <div class="sub-filter-group">
+    <span class="sub-filter-label">Ligue</span>
+    <select class="alerts-filter-select" bind:value={selectedLeague}>
+      <option value="toutes">Toutes</option>
+      {#each availableLeagues as league}
+        {@const count = alerts.filter(a => a.league_name === league && (selectedDay === null || a.match_date === getDateStr(selectedDay))).length}
+        <option value={league}>{league} ({count})</option>
+      {/each}
+    </select>
+  </div>
+  <div class="sub-filter-group">
+    <span class="sub-filter-label">Signal</span>
+    <button class="alerts-filter-btn" class:active={selectedSignal === 'tous'} onclick={() => selectedSignal = 'tous'}>Tous</button>
+    {#each ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D'] as sig}
+      {@const count = alerts.filter(a => a.signal_type === sig && (selectedDay === null || a.match_date === getDateStr(selectedDay))).length}
+      {#if count > 0}
+        <button class="alerts-filter-btn sig-btn sig-btn--{sig.replace('+','p')}" class:active={selectedSignal === sig}
+          onclick={() => selectedSignal = selectedSignal === sig ? 'tous' : sig}>
+          {sig} ({count})
+        </button>
+      {/if}
+    {/each}
+  </div>
 </div>
 
 {#if error}
@@ -384,9 +428,20 @@
 {/if}
 
 <style>
-  .alerts-filters { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+  .alerts-filters { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
   .alerts-filter-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 5px 12px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
   .alerts-filter-btn.active { background: var(--color-accent-blue); border-color: var(--color-accent-blue); color: white; }
+
+  .alerts-sub-filters { display: flex; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; padding: 8px 12px; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px; }
+  .sub-filter-group { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .sub-filter-label { font-size: 11px; color: var(--color-text-muted); font-weight: 500; white-space: nowrap; }
+  .alerts-filter-select { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 4px 8px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; max-width: 220px; }
+  /* Couleurs signal buttons */
+  .sig-btn--FHG_A.active  { background: rgba(29,158,117,0.25); border-color: var(--color-accent-green); color: var(--color-accent-green); }
+  .sig-btn--FHG_B.active  { background: rgba(100,160,230,0.2); border-color: #7cb9f7; color: #7cb9f7; }
+  .sig-btn--FHG_ApB.active { background: rgba(29,158,117,0.35); border-color: var(--color-accent-green); color: #fff; }
+  .sig-btn--FHG_C.active  { background: rgba(127,119,221,0.2); border-color: var(--color-badge-violet); color: var(--color-badge-violet); }
+  .sig-btn--FHG_D.active  { background: rgba(239,159,39,0.2); border-color: var(--color-warning-orange); color: var(--color-warning-orange); }
 
   .alerts-list { display: flex; flex-direction: column; gap: 8px; }
 

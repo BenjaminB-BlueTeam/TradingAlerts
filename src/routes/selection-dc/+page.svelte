@@ -38,10 +38,26 @@
     loading = false;
   }
 
-  let filteredAlerts = $derived(alerts.filter(a => {
-    if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
-    return true;
-  }));
+  let selectedLeague = $state('toutes');
+  let availableLeagues = $derived([...new Set(alerts.map(a => a.league_name).filter(Boolean))].sort());
+  const CONF_ORDER = { fort_double: 0, fort: 1, moyen: 2 };
+
+  let filteredAlerts = $derived(
+    alerts
+      .filter(a => {
+        if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
+        if (selectedLeague !== 'toutes' && a.league_name !== selectedLeague) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.match_date < b.match_date) return -1;
+        if (a.match_date > b.match_date) return 1;
+        const ca = CONF_ORDER[a.confidence] ?? 99;
+        const cb = CONF_ORDER[b.confidence] ?? 99;
+        if (ca !== cb) return ca - cb;
+        return (a.kickoff_unix || 0) - (b.kickoff_unix || 0);
+      })
+  );
 
   async function loadH2H(homeId, awayId) {
     const key = `${homeId}_${awayId}`;
@@ -179,6 +195,19 @@
   {/each}
 </div>
 
+<div class="dc-sub-filters">
+  <div class="sub-filter-group">
+    <span class="sub-filter-label">Ligue</span>
+    <select class="dc-filter-select" bind:value={selectedLeague}>
+      <option value="toutes">Toutes</option>
+      {#each availableLeagues as league}
+        {@const count = alerts.filter(a => a.league_name === league && (selectedDay === null || a.match_date === getDateStr(selectedDay))).length}
+        <option value={league}>{league} ({count})</option>
+      {/each}
+    </select>
+  </div>
+</div>
+
 {#if error}
   <p class="error-msg">{error}</p>
 {/if}
@@ -282,9 +311,14 @@
 {/if}
 
 <style>
-  .dc-filters { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+  .dc-filters { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
   .dc-filter-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 5px 12px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
   .dc-filter-btn.active { background: var(--color-accent-blue); border-color: var(--color-accent-blue); color: white; }
+
+  .dc-sub-filters { display: flex; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; padding: 8px 12px; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px; }
+  .sub-filter-group { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .sub-filter-label { font-size: 11px; color: var(--color-text-muted); font-weight: 500; white-space: nowrap; }
+  .dc-filter-select { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 4px 8px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; max-width: 240px; }
 
   .dc-list { display: flex; flex-direction: column; gap: 8px; }
 
