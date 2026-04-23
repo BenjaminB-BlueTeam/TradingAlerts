@@ -16,9 +16,14 @@
   let chartCanvas = $state(null);
   let chartInstance = $state(null);
 
-  let scoreClass = $derived((sc.compositeScore || 0) >= 80 ? 'green' : (sc.compositeScore || 0) >= 70 ? 'orange' : 'grey');
-  let fhgColor   = $derived((sc.pct1MT || 0) >= 80 ? 'green' : (sc.pct1MT || 0) >= 70 ? 'orange' : 'grey');
-  let advColor   = $derived((sc.pctAdversaire || 0) >= 50 ? 'green' : (sc.pctAdversaire || 0) >= 30 ? 'orange' : 'grey');
+  // Streak v2 : extraire les factors du scoreChoisi
+  let streakA    = $derived(sc.signalType === 'FHG_A+B' ? sc.factors?.scenarioA : (sc.signalType === 'FHG_A' ? sc.factors : null));
+  let streakB    = $derived(sc.signalType === 'FHG_A+B' ? sc.factors?.scenarioB : (sc.signalType === 'FHG_B' ? sc.factors : null));
+  let streakPrincipal = $derived(streakA?.streakScored ?? streakB?.streakConceded ?? 0);
+  let confirmRate = $derived(streakA?.oppConcedesRate ?? streakB?.teamScoresRate ?? 0);
+  let scoreClass = $derived(sc.confidence === 'fort_double' ? 'green' : sc.confidence === 'fort' ? 'green' : sc.confidence === 'moyen' ? 'orange' : 'grey');
+  let fhgColor   = $derived(streakPrincipal >= 3 ? 'green' : streakPrincipal >= 2 ? 'orange' : 'grey');
+  let advColor   = $derived(confirmRate >= 60 ? 'green' : confirmRate >= 40 ? 'orange' : 'grey');
   let windowActive = $derived(isWindowActive(m.time));
   let h2hTimeline = $derived(formaterH2HTimeline(m.h2h || [], m.equipeSignal || ''));
 
@@ -100,65 +105,60 @@
     <!-- BADGES -->
     <div class="match-card__badges">
       {#if sc.isAlert}
-        <span class="badge badge--1mt">ALERTE FHG</span>
+        <span class="badge badge--1mt">{sc.signalType || 'ALERTE FHG'}</span>
       {/if}
-      {#if sc.warningH2H === 'vert'}
-        <span class="badge badge--h2h-vert">✓ H2H ✓ ({sc.butsH2H1MT}/{sc.nbH2H})</span>
-      {:else if sc.warningH2H === 'orange'}
-        <span class="badge badge--h2h-orange">⚠ H2H ⚠ ({sc.butsH2H1MT}/{sc.nbH2H})</span>
-      {:else if sc.warningH2H === 'insuffisant'}
-        <span class="badge badge--h2h-gris">? H2H ? ({sc.nbH2H || 0})</span>
-      {/if}
-      {#if sc.excluded}
-        <span class="badge badge--exclu">{sc.exclusionReason}</span>
+      {#if sc.cleanSheetBlock}
+        <span class="badge badge--exclu">✗ Clean Sheet H2H</span>
       {/if}
       {#if windowActive}
         <span class="badge badge--window-open">🕐 FENÊTRE ACTIVE</span>
       {/if}
     </div>
 
-    <!-- STATS BARS -->
+    <!-- STATS BARS streak v2 -->
     <div class="match-card__stats">
-      <div class="stat-row">
-        <span class="stat-row__label">But en 1MT</span>
-        <div class="stat-row__bar">
-          <div class="progress-bar">
-            <div class="progress-bar__fill progress-bar__fill--{fhgColor}"
-              style="width:{Math.min(sc.pct1MT || 0, 100)}%"></div>
-          </div>
-        </div>
-        <span class="stat-row__value {fhgColor}">{sc.pct1MT || 0}%</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-row__label">2+ buts en 1MT</span>
-        <div class="stat-row__bar">
-          <div class="progress-bar">
-            <div class="progress-bar__fill progress-bar__fill--{(sc.pct2Plus1MT || 0) >= 30 ? 'green' : 'orange'}"
-              style="width:{Math.min(sc.pct2Plus1MT || 0, 100)}%"></div>
-          </div>
-        </div>
-        <span class="stat-row__value">{sc.pct2Plus1MT || 0}%</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-row__label">Adversaire encaisse 1MT</span>
-        <div class="stat-row__bar">
-          <div class="progress-bar">
-            <div class="progress-bar__fill progress-bar__fill--{advColor}"
-              style="width:{Math.min(sc.pctAdversaire || 0, 100)}%"></div>
-          </div>
-        </div>
-        <span class="stat-row__value {advColor}">{sc.pctAdversaire || 0}%</span>
-      </div>
-      {#if sc.pctReaction !== null && sc.pctReaction !== undefined}
+      {#if streakA}
         <div class="stat-row">
-          <span class="stat-row__label">Réaction si menée</span>
+          <span class="stat-row__label">Streak A (marque 31-45)</span>
           <div class="stat-row__bar">
             <div class="progress-bar">
-              <div class="progress-bar__fill progress-bar__fill--{(sc.pctReaction || 0) >= 30 ? 'green' : 'orange'}"
-                style="width:{Math.min(sc.pctReaction || 0, 100)}%"></div>
+              <div class="progress-bar__fill progress-bar__fill--{fhgColor}"
+                style="width:{Math.min((streakA.streakScored / 5) * 100, 100)}%"></div>
             </div>
           </div>
-          <span class="stat-row__value">{sc.pctReaction}%</span>
+          <span class="stat-row__value {fhgColor}">{streakA.streakScored} match{streakA.streakScored > 1 ? 's' : ''}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-row__label">Adv. encaisse 1MT (A)</span>
+          <div class="stat-row__bar">
+            <div class="progress-bar">
+              <div class="progress-bar__fill progress-bar__fill--{advColor}"
+                style="width:{Math.min(streakA.oppConcedesRate, 100)}%"></div>
+            </div>
+          </div>
+          <span class="stat-row__value {advColor}">{streakA.oppConcedesRate}% ({streakA.oppConcedesSample})</span>
+        </div>
+      {/if}
+      {#if streakB}
+        <div class="stat-row">
+          <span class="stat-row__label">Streak B (adv. encaisse 31-45)</span>
+          <div class="stat-row__bar">
+            <div class="progress-bar">
+              <div class="progress-bar__fill progress-bar__fill--{fhgColor}"
+                style="width:{Math.min((streakB.streakConceded / 5) * 100, 100)}%"></div>
+            </div>
+          </div>
+          <span class="stat-row__value {fhgColor}">{streakB.streakConceded} match{streakB.streakConceded > 1 ? 's' : ''}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-row__label">Équipe marque 1MT (B)</span>
+          <div class="stat-row__bar">
+            <div class="progress-bar">
+              <div class="progress-bar__fill progress-bar__fill--{advColor}"
+                style="width:{Math.min(streakB.teamScoresRate, 100)}%"></div>
+            </div>
+          </div>
+          <span class="stat-row__value {advColor}">{streakB.teamScoresRate}% ({streakB.teamScoresSample})</span>
         </div>
       {/if}
     </div>
@@ -166,8 +166,9 @@
     <!-- FOOTER -->
     <div class="match-card__footer">
       <div class="match-card__score-global">
-        <span class="score-number {scoreClass}">{sc.compositeScore || 0}</span>
-        <span class="score-label">%</span>
+        <span class="score-number {scoreClass}" style="font-size:13px;letter-spacing:0">
+          {sc.confidence || '—'}
+        </span>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         {#if m.scoreDC}
@@ -196,53 +197,36 @@
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-          <!-- Pourcentages détaillés -->
-          <div class="detail-section">
-            <div class="detail-section__title">🎯 Détail des % bruts</div>
+        <!-- Détail factors streak -->
+        {#if sc.factors}
+          <div class="detail-section" style="margin-bottom:20px;">
+            <div class="detail-section__title">🎯 Détail streak</div>
             <div class="dc-indicator">
-              <div>
-                <div class="dc-indicator__label">But en 1MT</div>
-                <div class="dc-indicator__value">{sc.pct1MT || 0}%</div>
-              </div>
-              <div>
-                <div class="dc-indicator__label">2+ buts 1MT</div>
-                <div class="dc-indicator__value">{sc.pct2Plus1MT || 0}%</div>
-              </div>
-              <div>
-                <div class="dc-indicator__label">Adv. encaisse</div>
-                <div class="dc-indicator__value">{sc.pctAdversaire || 0}%</div>
-              </div>
-              {#if sc.pctReaction !== null && sc.pctReaction !== undefined}
+              {#if sc.signalType === 'FHG_A' || sc.signalType === 'FHG_A+B'}
+                {@const fA = sc.signalType === 'FHG_A+B' ? sc.factors.scenarioA : sc.factors}
                 <div>
-                  <div class="dc-indicator__label">Réaction</div>
-                  <div class="dc-indicator__value">{sc.pctReaction}%</div>
+                  <div class="dc-indicator__label">Streak A (marque 31-45)</div>
+                  <div class="dc-indicator__value">{fA?.streakScored ?? '—'} matchs</div>
+                </div>
+                <div>
+                  <div class="dc-indicator__label">Adv. encaisse 1MT</div>
+                  <div class="dc-indicator__value">{fA?.oppConcedesRate ?? '—'}% ({fA?.oppConcedesSample ?? '—'})</div>
+                </div>
+              {/if}
+              {#if sc.signalType === 'FHG_B' || sc.signalType === 'FHG_A+B'}
+                {@const fB = sc.signalType === 'FHG_A+B' ? sc.factors.scenarioB : sc.factors}
+                <div>
+                  <div class="dc-indicator__label">Streak B (adv. encaisse 31-45)</div>
+                  <div class="dc-indicator__value">{fB?.streakConceded ?? '—'} matchs</div>
+                </div>
+                <div>
+                  <div class="dc-indicator__label">Équipe marque 1MT</div>
+                  <div class="dc-indicator__value">{fB?.teamScoresRate ?? '—'}% ({fB?.teamScoresSample ?? '—'})</div>
                 </div>
               {/if}
             </div>
           </div>
-
-          <!-- DC -->
-          <div class="detail-section">
-            <div class="detail-section__title">🔄 Indicateur DC</div>
-            {#if m.scoreDC}
-              <div class="dc-indicator">
-                <div>
-                  <div class="dc-indicator__label">Score DC</div>
-                  <div class="dc-indicator__value">{m.scoreDC} pts</div>
-                </div>
-                <div>
-                  <div class="dc-indicator__label">Retour si encaisse</div>
-                  <div style="font-size:14px;font-weight:600;color:var(--color-accent-blue);">
-                    {m.teamData?.pct_retour_si_encaisse || '—'}%
-                  </div>
-                </div>
-              </div>
-            {:else}
-              <p style="font-size:12px;color:var(--color-text-muted);">DC non disponible (FHG &lt; 70%)</p>
-            {/if}
-          </div>
-        </div>
+        {/if}
 
         <!-- H2H Timeline -->
         {#if h2hTimeline.length > 0}

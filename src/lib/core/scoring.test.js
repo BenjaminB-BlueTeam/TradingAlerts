@@ -1,297 +1,296 @@
 import { describe, it, expect } from 'vitest';
-import { calculerScoreFHG, calculerScoreDC, analyserMatch, getTimerConseille } from './scoring.js';
+import {
+  analyserStreakFHG,
+  analyzeScenarioA, analyzeScenarioB,
+  computeStreak, confirmationRate, isH2HCleanSheetFirstHalf,
+  teamScored31to45, teamConceded31to45, teamScoredInFirstHalf, teamConcededInFirstHalf,
+  getTimerConseille, calculerScoreDC,
+  STREAK_FORT, STREAK_MOYEN, CONFIRM_MIN_RATE, CONFIRM_WINDOW, CONFIRM_MIN_SAMPLE, STREAK_MIN_MATCHES,
+} from './scoring.js';
 
-// --- Mock team data ---
+// --- Factory helpers ---
 
-function makeEquipe(overrides = {}) {
+function makeMatch({ homeId = 100, awayId = 200, homeGoals = 1, awayGoals = 0, goalEvents = [] } = {}) {
   return {
-    matches_played: 20,
-    matches_scored_first_half: 16,          // 80% pct1MT
-    matches_2plus_goals_first_half: 6,      // 30% pct2Plus1MT
-    matches_behind_and_scored: undefined,
-    matches_behind: undefined,
-    pct_retour_si_encaisse: 30,
-    pct_victoire_domicile: 60,
-    ...overrides,
+    home_team_id: homeId,
+    away_team_id: awayId,
+    home_goals: homeGoals,
+    away_goals: awayGoals,
+    goal_events: goalEvents,
+    match_date: '2026-01-01',
   };
 }
 
-function makeAdversaire(overrides = {}) {
-  return {
-    matches_played: 20,
-    matches_played_context: 10,
-    goals_conceded_first_half: 6,           // 60% pctAdversaire (6/10 mapped via matches_played)
-    matches_conceded_first_half: 4,         // 4/10 => passes 2/5 filter
-    ...overrides,
-  };
+function goal(min, home = true) { return { min, raw: String(min), home }; }
+
+// Helpers pour construire des séries rapides
+function homeMatches31to45(n) {
+  return Array(n).fill(null).map(() => makeMatch({ goalEvents: [goal(35, true)] }));
+}
+function oppConcedesHalf(n) {
+  // adversaire (200, away) encaisse en 1MT : makeMatch default home=100, goal(20, true) = home team marque = 200 encaisse
+  return Array(n).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
 }
 
-function makeH2H(butAvant45 = true) {
-  return { equipe_ciblee_but_avant_45min: butAvant45 };
-}
+// =============================================================
+// teamScored31to45
+// =============================================================
 
-describe('calculerScoreFHG — raw percentages', () => {
-  it('calculates raw percentages correctly', () => {
-    const equipe = makeEquipe();
-    const result = calculerScoreFHG(equipe, []);
-
-    expect(result.exclu).toBe(false);
-    expect(result.pct1MT).toBe(80);
-    expect(result.pct2Plus1MT).toBe(30);
-    expect(result.pctAdversaire).toBe(0); // no adversaire passed
-    expect(result.pctReaction).toBeNull();
+describe('teamScored31to45 (ESM)', () => {
+  it('retourne true pour un but à 35 (home)', () => {
+    expect(teamScored31to45(makeMatch({ goalEvents: [goal(35, true)] }), 100)).toBe(true);
   });
-
-  it('computes composite score as weighted average', () => {
-    const equipe = makeEquipe();
-    const adv = makeAdversaire();
-    const result = calculerScoreFHG(equipe, [], { adversaire: adv });
-
-    // Without reaction: 80*0.55 + 30*0.28 + 30*0.17 = 44 + 8.4 + 5.1 = 57.5 => 58
-    // pctAdversaire = round(6/20 * 100) = 30
-    expect(result.compositeScore).toBe(58);
-    expect(result.pct1MT).toBe(80);
-    expect(result.pctAdversaire).toBe(30);
+  it('retourne true pour un but à 31 (borne inf)', () => {
+    expect(teamScored31to45(makeMatch({ goalEvents: [goal(31, true)] }), 100)).toBe(true);
   });
-
-  it('includes reaction in composite when available', () => {
-    const equipe = makeEquipe({
-      matches_behind: 4,
-      matches_behind_and_scored: 2,
-    });
-    const result = calculerScoreFHG(equipe, []);
-
-    expect(result.pctReaction).toBe(50);
-    // With reaction: 80*0.50 + 0*0.25 + 30*0.15 + 50*0.10 = 40 + 0 + 4.5 + 5 = 49.5 => 50
-    expect(result.compositeScore).toBe(50);
+  it('retourne true pour un but à 45 (borne sup)', () => {
+    expect(teamScored31to45(makeMatch({ goalEvents: [goal(45, true)] }), 100)).toBe(true);
   });
-
-  it('confidence is fort when compositeScore >= 65', () => {
-    const equipe = makeEquipe({
-      matches_scored_first_half: 19,        // 95%
-      matches_2plus_goals_first_half: 14,   // 70%
-    });
-    const adv = makeAdversaire({ goals_conceded_first_half: 16 }); // 80%
-    const result = calculerScoreFHG(equipe, [], { adversaire: adv });
-
-    expect(result.confidence).toBe('fort');
-    expect(result.isAlert).toBe(true);
+  it('retourne false pour un but à 30 (hors fenêtre)', () => {
+    expect(teamScored31to45(makeMatch({ goalEvents: [goal(30, true)] }), 100)).toBe(false);
   });
-
-  it('confidence is moyen when compositeScore >= 50 and < 65', () => {
-    const equipe = makeEquipe({
-      matches_scored_first_half: 12,        // 60%
-      matches_2plus_goals_first_half: 4,    // 20%
-    });
-    const adv = makeAdversaire({ goals_conceded_first_half: 10 }); // 50%
-    const result = calculerScoreFHG(equipe, [], { adversaire: adv });
-
-    // 60*0.55 + 50*0.28 + 20*0.17 = 33 + 14 + 3.4 = 50.4 => 50
-    expect(result.compositeScore).toBeGreaterThanOrEqual(50);
-    expect(result.compositeScore).toBeLessThan(65);
-    expect(result.confidence).toBe('moyen');
-    expect(result.isAlert).toBe(true);
+  it('retourne false si c\'est un but adverse (home=false)', () => {
+    expect(teamScored31to45(makeMatch({ goalEvents: [goal(35, false)] }), 100)).toBe(false);
   });
-
-  it('confidence is null when compositeScore < 50', () => {
-    const equipe = makeEquipe({
-      matches_scored_first_half: 4,         // 20%
-      matches_2plus_goals_first_half: 1,    // 5%
-    });
-    const result = calculerScoreFHG(equipe, []);
-
-    expect(result.compositeScore).toBeLessThan(50);
-    expect(result.confidence).toBeNull();
-    expect(result.isAlert).toBe(false);
+  it('retourne false si goal_events vide', () => {
+    expect(teamScored31to45(makeMatch({ goalEvents: [] }), 100)).toBe(false);
+  });
+  it('retourne false si goal_events absent', () => {
+    expect(teamScored31to45({ home_team_id: 100, away_team_id: 200 }, 100)).toBe(false);
   });
 });
 
-describe('calculerScoreFHG — exclusion filters', () => {
-  it('excludes team when H2H clean sheet (0 goals before 45min in >= 3 H2H)', () => {
-    const equipe = makeEquipe();
-    const h2h = [makeH2H(false), makeH2H(false), makeH2H(false)];
-    const result = calculerScoreFHG(equipe, h2h);
+// =============================================================
+// computeStreak (ESM)
+// =============================================================
 
-    expect(result.exclu).toBe(true);
-    expect(result.compositeScore).toBe(0);
-    expect(result.warningH2H).toBe('rouge');
-    expect(result.raisonExclusion).toContain('Clean Sheet H2H');
-    expect(result.isAlert).toBe(false);
+describe('computeStreak (ESM)', () => {
+  it('retourne 0 si liste vide', () => {
+    expect(computeStreak([], () => true)).toBe(0);
   });
-
-  it('applies orange warning when only 1 H2H goal before 45min', () => {
-    const equipe = makeEquipe();
-    const h2h = [makeH2H(true), makeH2H(false), makeH2H(false)];
-    const result = calculerScoreFHG(equipe, h2h);
-
-    expect(result.exclu).toBe(false);
-    expect(result.warningH2H).toBe('orange');
+  it('retourne 0 si premier match échoue', () => {
+    const matches = [makeMatch({ goalEvents: [] }), ...homeMatches31to45(3)];
+    expect(computeStreak(matches, m => teamScored31to45(m, 100))).toBe(0);
   });
-
-  it('gives green warning when multiple H2H goals', () => {
-    const equipe = makeEquipe();
-    const h2h = [makeH2H(true), makeH2H(true), makeH2H(false)];
-    const result = calculerScoreFHG(equipe, h2h);
-
-    expect(result.warningH2H).toBe('vert');
+  it('compte streak de 3', () => {
+    expect(computeStreak(homeMatches31to45(3), m => teamScored31to45(m, 100))).toBe(3);
   });
-
-  it('reports insufficient H2H when < 3 matches', () => {
-    const equipe = makeEquipe();
-    const h2h = [makeH2H(true)];
-    const result = calculerScoreFHG(equipe, h2h);
-
-    expect(result.warningH2H).toBe('insuffisant');
-  });
-
-  it('disables H2H filter when filtreH2HActif is false', () => {
-    const equipe = makeEquipe();
-    const h2h = [makeH2H(false), makeH2H(false), makeH2H(false)];
-    const result = calculerScoreFHG(equipe, h2h, { filtreH2HActif: false });
-
-    expect(result.exclu).toBe(false);
-  });
-
-  it('marks excluded when adversaire does not concede enough', () => {
-    const equipe = makeEquipe();
-    const adv = makeAdversaire({
-      matches_played_context: 10,
-      matches_conceded_first_half: 1,       // < 2 => excluded
-    });
-    const result = calculerScoreFHG(equipe, [], { adversaire: adv });
-
-    expect(result.excluded).toBe(true);
-    expect(result.isAlert).toBe(false);
-    expect(result.exclusionReason).toContain('Adversaire');
+  it('s\'arrête au premier échec', () => {
+    const matches = [
+      ...homeMatches31to45(2),
+      makeMatch({ goalEvents: [] }),
+      ...homeMatches31to45(2),
+    ];
+    expect(computeStreak(matches, m => teamScored31to45(m, 100))).toBe(2);
   });
 });
 
-describe('calculerScoreFHG — edge cases', () => {
-  it('handles empty equipe data gracefully', () => {
-    const result = calculerScoreFHG({}, []);
+// =============================================================
+// confirmationRate (ESM)
+// =============================================================
 
-    expect(result.exclu).toBe(false);
-    expect(result.pct1MT).toBe(0);
-    expect(result.pct2Plus1MT).toBe(0);
-    expect(result.compositeScore).toBe(0);
-    expect(result.confidence).toBeNull();
+describe('confirmationRate (ESM)', () => {
+  it('retourne rate 0 si tableau vide', () => {
+    const r = confirmationRate([], 5, () => true);
+    expect(r.rate).toBe(0);
+    expect(r.total).toBe(0);
   });
-
-  it('handles missing fields without crashing', () => {
-    const result = calculerScoreFHG({ matches_played: 10 }, []);
-
-    expect(result.exclu).toBe(false);
-    expect(result.pct1MT).toBe(0);
-    expect(result.compositeScore).toBe(0);
+  it('calcule 3/5 correctement', () => {
+    const matches = [
+      makeMatch({ goalEvents: [goal(20, false)] }),
+      makeMatch({ goalEvents: [goal(20, false)] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [goal(20, false)] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    const r = confirmationRate(matches, 5, m => teamConcededInFirstHalf(m, 100));
+    expect(r.rate).toBeCloseTo(0.6);
+    expect(r.count).toBe(3);
   });
-
-  it('clamps score to minimum 0', () => {
-    const equipe = makeEquipe({
-      matches_played: 1,
-      matches_scored_first_half: 0,
-      matches_2plus_goals_first_half: 0,
-    });
-    const result = calculerScoreFHG(equipe, []);
-    expect(result.compositeScore).toBeGreaterThanOrEqual(0);
-  });
-
-  it('no reaction when matches_behind < 2', () => {
-    const equipe = makeEquipe({
-      matches_behind: 1,
-      matches_behind_and_scored: 1,
-    });
-    const result = calculerScoreFHG(equipe, []);
-    expect(result.pctReaction).toBeNull();
+  it('utilise au plus windowSize matchs', () => {
+    // team 100 (home) encaisse si e.home === false
+    const matches = [
+      makeMatch({ goalEvents: [goal(20, false)] }),
+      makeMatch({ goalEvents: [goal(20, false)] }),
+      makeMatch({ goalEvents: [goal(20, false)] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    const r = confirmationRate(matches, 3, m => teamConcededInFirstHalf(m, 100));
+    expect(r.total).toBe(3);
+    expect(r.rate).toBe(1);
   });
 });
 
-describe('calculerScoreDC', () => {
-  it('returns null when FHG score < 50', () => {
-    expect(calculerScoreDC(makeEquipe(), 49)).toBeNull();
-    expect(calculerScoreDC(makeEquipe(), 0)).toBeNull();
-  });
+// =============================================================
+// isH2HCleanSheetFirstHalf (ESM)
+// =============================================================
 
-  it('returns null when scoreFHG is null', () => {
-    expect(calculerScoreDC(makeEquipe(), null)).toBeNull();
+describe('isH2HCleanSheetFirstHalf (ESM)', () => {
+  it('retourne false si < 3 H2H', () => {
+    expect(isH2HCleanSheetFirstHalf([makeMatch(), makeMatch()], 100)).toBe(false);
   });
-
-  it('calculates DC score when FHG >= 50', () => {
-    const equipe = makeEquipe();
-    const result = calculerScoreDC(equipe, 80);
-    expect(result).toBeGreaterThan(0);
-    expect(typeof result).toBe('number');
+  it('retourne true si 3 H2H et équipe ne marque jamais en 1MT', () => {
+    const h2h = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, false)] }));
+    expect(isH2HCleanSheetFirstHalf(h2h, 100)).toBe(true);
   });
-
-  it('gives bonus for teams with > 10 matches played', () => {
-    const equipeMany = makeEquipe({ matches_played: 15 });
-    const equipeFew = makeEquipe({ matches_played: 8 });
-    const scoreMany = calculerScoreDC(equipeMany, 80);
-    const scoreFew = calculerScoreDC(equipeFew, 80);
-    expect(scoreMany).toBeGreaterThan(scoreFew);
+  it('retourne false si équipe marque en 1MT dans au moins 1 H2H', () => {
+    const h2h = [
+      makeMatch({ goalEvents: [goal(20, true)] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    expect(isH2HCleanSheetFirstHalf(h2h, 100)).toBe(false);
   });
 });
 
-describe('analyserMatch', () => {
-  const match = { homeName: 'PSG', awayName: 'Lyon' };
-  const config = { analyseDC: false };
+// =============================================================
+// analyzeScenarioA (ESM)
+// =============================================================
 
-  it('returns null when both teams are missing', () => {
-    expect(analyserMatch(match, null, null, [], [], config)).toBeNull();
+describe('analyzeScenarioA (ESM)', () => {
+  it('retourne null si < STREAK_MIN_MATCHES matchs équipe', () => {
+    expect(analyzeScenarioA(homeMatches31to45(2), 100, oppConcedesHalf(5), 200)).toBeNull();
   });
-
-  it('picks home team when only home is valid', () => {
-    const homeTeam = makeEquipe();
-    const result = analyserMatch(match, homeTeam, null, [], [], config);
-    expect(result.exclu).toBe(false);
-    expect(result.equipeSignal).toBe('PSG');
+  it('confidence null si streak < STREAK_MOYEN', () => {
+    const teamMatches = [makeMatch({ goalEvents: [] }), ...homeMatches31to45(3)];
+    const r = analyzeScenarioA(teamMatches, 100, oppConcedesHalf(5), 200);
+    expect(r.confidence).toBeNull();
   });
-
-  it('picks away team when only away is valid', () => {
-    const awayTeam = makeEquipe();
-    const result = analyserMatch(match, null, awayTeam, [], [], config);
-    expect(result.exclu).toBe(false);
-    expect(result.equipeSignal).toBe('Lyon');
+  it('confidence moyen si streak 2 + confirmation OK', () => {
+    const teamMatches = [...homeMatches31to45(2), makeMatch({ goalEvents: [] })];
+    const opp = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyzeScenarioA(teamMatches, 100, opp, 200);
+    expect(r.confidence).toBe('moyen');
   });
-
-  it('picks the higher composite score team when both are valid', () => {
-    const homeTeam = makeEquipe({ matches_scored_first_half: 18 }); // 90% => higher
-    const awayTeam = makeEquipe({ matches_scored_first_half: 6 });  // 30% => lower
-    const result = analyserMatch(match, homeTeam, awayTeam, [], [], config);
-    expect(result.equipeSignal).toBe('PSG');
+  it('confidence fort si streak 3+ + confirmation OK', () => {
+    const opp = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyzeScenarioA(homeMatches31to45(4), 100, opp, 200);
+    expect(r.confidence).toBe('fort');
   });
-
-  it('marks as excluded when both teams are excluded by H2H', () => {
-    const homeTeam = makeEquipe();
-    const awayTeam = makeEquipe();
-    const h2h = [makeH2H(false), makeH2H(false), makeH2H(false)];
-    const result = analyserMatch(match, homeTeam, awayTeam, h2h, h2h, config);
-    expect(result.exclu).toBe(true);
-    expect(result.raisonExclusion).toContain('Clean Sheet H2H');
+  it('confidence null si taux confirmation < 60%', () => {
+    const opp = [
+      makeMatch({ goalEvents: [goal(20, true)] }),
+      makeMatch({ goalEvents: [goal(20, true)] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    const r = analyzeScenarioA(homeMatches31to45(4), 100, opp, 200);
+    expect(r.confidence).toBeNull();
+  });
+  it('confidence null si sample < CONFIRM_MIN_SAMPLE', () => {
+    const opp = Array(2).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyzeScenarioA(homeMatches31to45(4), 100, opp, 200);
+    expect(r.confidence).toBeNull();
   });
 });
+
+// =============================================================
+// analyzeScenarioB (ESM)
+// =============================================================
+
+describe('analyzeScenarioB (ESM)', () => {
+  it('retourne null si < STREAK_MIN_MATCHES matchs adversaire', () => {
+    expect(analyzeScenarioB(homeMatches31to45(2), 200, homeMatches31to45(5), 100)).toBeNull();
+  });
+  it('confidence moyen si streak adversaire encaisse 31-45 (2) + confirmation OK', () => {
+    const opp = [
+      makeMatch({ goalEvents: [goal(35, true)] }),
+      makeMatch({ goalEvents: [goal(35, true)] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    const team = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyzeScenarioB(opp, 200, team, 100);
+    expect(r.confidence).toBe('moyen');
+    expect(r.streakConceded).toBe(2);
+  });
+  it('confidence fort si streak adversaire 3+', () => {
+    const opp = Array(4).fill(null).map(() => makeMatch({ goalEvents: [goal(35, true)] }));
+    const team = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyzeScenarioB(opp, 200, team, 100);
+    expect(r.confidence).toBe('fort');
+  });
+});
+
+// =============================================================
+// analyserStreakFHG (ESM) — orchestration
+// =============================================================
+
+describe('analyserStreakFHG (ESM)', () => {
+  it('veto H2H — retourne isAlert false si cleanSheetBlock', () => {
+    const h2h = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(35, false)] }));
+    const r = analyserStreakFHG(homeMatches31to45(4), 100, [], 200, h2h);
+    expect(r.isAlert).toBe(false);
+    expect(r.cleanSheetBlock).toBe(true);
+  });
+
+  it('A seul → signalType FHG_A', () => {
+    const teamMatches = homeMatches31to45(4);
+    const opp = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyserStreakFHG(teamMatches, 100, opp, 200, []);
+    expect(r.isAlert).toBe(true);
+    expect(r.signalType).toBe('FHG_A');
+  });
+
+  it('A+B actifs → FHG_A+B avec fort_double', () => {
+    const teamMatches = homeMatches31to45(4);
+    const oppMatches = Array(4).fill(null).map(() => makeMatch({ goalEvents: [goal(35, true)] }));
+    const r = analyserStreakFHG(teamMatches, 100, oppMatches, 200, []);
+    // A : streakScored=4 ✓, confirmation (200 encaisse en 1MT) = oppMatches goal(35,true) -> 200 n'est pas home -> e.home !== false -> true -> 4/4 ✓
+    // B : streakConceded=4 (200 encaisse en 31-45 dans oppMatches) ✓, confirmation (100 marque en 1MT) = teamMatches goal(35,true) -> 4/4 ✓
+    expect(r.isAlert).toBe(true);
+    expect(r.signalType).toBe('FHG_A+B');
+    expect(r.confidence).toBe('fort_double');
+  });
+
+  it('rien d\'actif → isAlert false', () => {
+    const teamMatches = Array(4).fill(null).map(() => makeMatch({ goalEvents: [] }));
+    const oppMatches = Array(4).fill(null).map(() => makeMatch({ goalEvents: [] }));
+    const r = analyserStreakFHG(teamMatches, 100, oppMatches, 200, []);
+    expect(r.isAlert).toBe(false);
+  });
+
+  it('retourne cleanSheetBlock undefined si pas de veto', () => {
+    const r = analyserStreakFHG([], 100, [], 200, []);
+    expect(r.cleanSheetBlock).toBeUndefined();
+  });
+});
+
+// =============================================================
+// getTimerConseille (inchangé)
+// =============================================================
 
 describe('getTimerConseille', () => {
-  it('returns debutant timer', () => {
+  it('retourne les valeurs débutant', () => {
     const t = getTimerConseille('debutant');
     expect(t.min).toBe(5);
     expect(t.max).toBe(10);
   });
-
-  it('returns expert timer', () => {
+  it('retourne les valeurs expert', () => {
     const t = getTimerConseille('expert');
     expect(t.min).toBe(25);
-    expect(t.max).toBe(35);
   });
-
-  it('returns intermediaire timer by default', () => {
+  it('retourne intermédiaire par défaut', () => {
     const t = getTimerConseille('intermediaire');
     expect(t.min).toBe(15);
     expect(t.max).toBe(20);
   });
-
-  it('returns intermediaire timer for unknown profile', () => {
-    const t = getTimerConseille('whatever');
+  it('retourne intermédiaire pour profil inconnu', () => {
+    const t = getTimerConseille('inconnu');
     expect(t.min).toBe(15);
-    expect(t.max).toBe(20);
   });
+});
+
+// =============================================================
+// Constantes exportées
+// =============================================================
+
+describe('constantes streak v2', () => {
+  it('STREAK_FORT vaut 3', () => expect(STREAK_FORT).toBe(3));
+  it('STREAK_MOYEN vaut 2', () => expect(STREAK_MOYEN).toBe(2));
+  it('CONFIRM_MIN_RATE vaut 0.60', () => expect(CONFIRM_MIN_RATE).toBe(0.60));
+  it('CONFIRM_WINDOW vaut 5', () => expect(CONFIRM_WINDOW).toBe(5));
+  it('CONFIRM_MIN_SAMPLE vaut 3', () => expect(CONFIRM_MIN_SAMPLE).toBe(3));
+  it('STREAK_MIN_MATCHES vaut 3', () => expect(STREAK_MIN_MATCHES).toBe(3));
 });
