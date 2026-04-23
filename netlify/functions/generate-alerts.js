@@ -6,7 +6,7 @@
    ================================================ */
 
 const { footyRequest, supabaseQuery } = require('./lib/api');
-const { analyzeFHGFromMatches, analyzeDCFromH2H } = require('./lib/analysis.cjs');
+const { analyzeStreakAlert, analyzeDCFromH2H } = require('./lib/analysis.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -110,13 +110,19 @@ exports.handler = async (event) => {
 
         let bestFHG = null;
         if (doFHG) {
-          const fhgHome = analyzeFHGFromMatches(homeMatches, 'home', h2h, m.homeID, oppMatchesForHome);
-          const fhgAway = analyzeFHGFromMatches(awayMatches, 'away', h2h, m.awayID, oppMatchesForAway);
-          bestFHG = (fhgHome?.isAlert && fhgAway?.isAlert)
-            ? (fhgHome.score >= fhgAway.score ? fhgHome : fhgAway)
-            : fhgHome?.isAlert ? fhgHome
-            : fhgAway?.isAlert ? fhgAway
-            : null;
+          const fhgHome = analyzeStreakAlert(homeMatches, m.homeID, oppMatchesForHome, m.awayID, h2h);
+          const fhgAway = analyzeStreakAlert(awayMatches, m.awayID, oppMatchesForAway, m.homeID, h2h);
+          // Hiérarchie de confidence : fort_double > fort > moyen
+          const priority = { fort_double: 3, fort: 2, moyen: 1 };
+          const scoreHome = fhgHome?.isAlert ? (priority[fhgHome.confidence] || 0) : 0;
+          const scoreAway = fhgAway?.isAlert ? (priority[fhgAway.confidence] || 0) : 0;
+          if (scoreHome === 0 && scoreAway === 0) {
+            bestFHG = null;
+          } else if (scoreHome >= scoreAway) {
+            bestFHG = { ...fhgHome, team: 'home', teamId: m.homeID, teamName: m.home_name };
+          } else {
+            bestFHG = { ...fhgAway, team: 'away', teamId: m.awayID, teamName: m.away_name };
+          }
         }
 
         let dc = null;
@@ -146,14 +152,15 @@ exports.handler = async (event) => {
           alerts.push({
             ...baseFields,
             match_id: m.id,
-            signal_type: 'FHG',
-            fhg_pct: bestFHG.score,
-            fhg_confidence: bestFHG.confidence,
-            fhg_factors: bestFHG.factors,
+            signal_type: bestFHG.signalType,        // FHG_A | FHG_B | FHG_A+B
+            fhg_pct: null,                           // obsolete avec streak v2
+            fhg_confidence: bestFHG.confidence,      // moyen | fort | fort_double
+            fhg_factors: bestFHG.factors,            // jsonb avec streak, rates, samples
             dc_defeat_pct: null,
             dc_best_side: null,
             dc_confidence: null,
             confidence: bestFHG.confidence,
+            algo_version: 'v2',
           });
         }
         if (hasDC) {

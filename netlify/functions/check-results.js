@@ -96,7 +96,7 @@ exports.handler = async () => {
         const signalType = alert.signal_type;
         let newStatus;
 
-        if (signalType === 'FHG') {
+        if (signalType === 'FHG' || signalType === 'FHG_A' || signalType === 'FHG_B' || signalType === 'FHG_A+B') {
           newStatus = evaluateFHG(matchData);
         } else if (signalType === 'DC') {
           newStatus = evaluateDC(matchData, alert.dc_best_side);
