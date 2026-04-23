@@ -13,6 +13,21 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABA
 
 // --- Helpers ---
 
+async function supabaseDelete(matchIds) {
+  if (!matchIds.length) return true;
+  const url = `${SUPABASE_URL}/rest/v1/alerts?match_id=in.(${matchIds.join(',')})&signal_type=in.(FHG_DOM,FHG_EXT,FHG)`;
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Prefer': 'return=minimal',
+    },
+    signal: AbortSignal.timeout(8000),
+  });
+  return res.ok;
+}
+
 async function supabaseInsert(table, rows) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?on_conflict=match_id`;
   const res = await fetch(url, {
@@ -21,12 +36,17 @@ async function supabaseInsert(table, rows) {
       'apikey': SUPABASE_KEY,
       'Authorization': `Bearer ${SUPABASE_KEY}`,
       'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates,return=minimal',
+      'Prefer': 'resolution=ignore-duplicates,return=minimal',
     },
     body: JSON.stringify(rows),
     signal: AbortSignal.timeout(8000),
   });
-  return res.ok;
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => '');
+    console.error(`[supabaseInsert] HTTP ${res.status}: ${errBody}`);
+    throw new Error(`Insert HTTP ${res.status}: ${errBody.slice(0, 200)}`);
+  }
+  return true;
 }
 
 function getDateStr(offsetDays) {
@@ -216,10 +236,19 @@ exports.handler = async (event) => {
 
     // Insérer les nouvelles alertes
     console.log(`[generate-alerts] Analysis done — ${results.analyzed} matches analyzed, ${newAlerts.length} new alerts to insert`);
+    results.newAlerts = newAlerts.length;
     if (newAlerts.length > 0) {
-      const ok = await supabaseInsert('alerts', newAlerts);
-      if (ok) results.alerts_created = newAlerts.length;
-      else results.errors.push('Insert alerts failed');
+      // Supprimer les vieilles alertes FHG_DOM/FHG_EXT/FHG avant insert (évite les conflits match_id)
+      const matchIdsToClean = newAlerts.map(a => a.match_id).filter(id => id > 0);
+      if (matchIdsToClean.length > 0) {
+        await supabaseDelete(matchIdsToClean);
+      }
+      try {
+        await supabaseInsert('alerts', newAlerts);
+        results.alerts_created = newAlerts.length;
+      } catch (e) {
+        results.errors.push(`Insert failed: ${e.message}`);
+      }
     }
 
     console.log(`[generate-alerts] END — ${results.alerts_created} alerts created, ${results.errors.length} errors`);
