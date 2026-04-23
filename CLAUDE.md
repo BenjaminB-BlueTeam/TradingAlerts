@@ -221,7 +221,6 @@ Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même f
 
 ## Roadmap — prochaines étapes
 
-- [ ] Exécuter `docs/migration-streak-v2.sql` dans Supabase SQL Editor (Benjamin)
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API
 - [ ] Tests pour `tradeStats.js`
 
