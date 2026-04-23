@@ -208,6 +208,90 @@
     backfillRunning = false;
   }
 
+  // --- CRON : next run ---
+  const CRONS = [
+    {
+      id: 'generate-alerts',
+      label: 'Génération alertes',
+      fn: 'generate-alerts.js',
+      schedule: '0 */12 * * *',
+      human: 'Tous les jours à 0h et 12h UTC',
+      desc: 'Génère les alertes FHG/DC pour J, J+1, J+2 depuis h2h_matches + team_seasons.',
+    },
+    {
+      id: 'check-results',
+      label: 'Vérification résultats',
+      fn: 'check-results.js',
+      schedule: '0 * * * *',
+      human: 'Toutes les heures (minute 0)',
+      desc: 'Clôture les alertes pending dont le match est terminé (validated / lost / expired).',
+    },
+    {
+      id: 'daily-seed',
+      label: 'Seed quotidien',
+      fn: 'daily-seed.js',
+      schedule: '0 6 * * *',
+      human: 'Tous les jours à 6h UTC',
+      desc: 'Seed dans h2h_matches les matchs joués hier (goal_events inclus).',
+    },
+    {
+      id: 'compute-team-fhg',
+      label: 'FHG% équipes',
+      fn: 'compute-team-fhg.js',
+      schedule: '0 7 * * *',
+      human: 'Tous les jours à 7h UTC',
+      desc: 'Calcule le % de matchs avec un but 0-45 min (stoppage compris) par équipe, upsert dans team_fhg_cache.',
+    },
+  ];
+
+  function nextRun(schedule) {
+    // Parsing simplifié pour les schedules fixes utilisés ici
+    const now = new Date();
+    const utcH = now.getUTCHours();
+    const utcM = now.getUTCMinutes();
+    const nowMins = utcH * 60 + utcM;
+
+    if (schedule === '0 * * * *') {
+      // Toutes les heures
+      const minsUntil = 60 - utcM;
+      return `dans ${minsUntil} min`;
+    }
+    if (schedule === '0 */12 * * *') {
+      // 0h et 12h
+      const targets = [0, 12 * 60];
+      const next = targets.find(t => t > nowMins) ?? (targets[0] + 24 * 60);
+      const diff = next - nowMins;
+      return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
+    }
+    if (schedule === '0 6 * * *') {
+      const target = 6 * 60;
+      const diff = target > nowMins ? target - nowMins : 24 * 60 - nowMins + target;
+      return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
+    }
+    if (schedule === '0 7 * * *') {
+      const target = 7 * 60;
+      const diff = target > nowMins ? target - nowMins : 24 * 60 - nowMins + target;
+      return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
+    }
+    return '—';
+  }
+
+  // --- FHG Cache trigger ---
+  let fhgCacheRunning = $state(false);
+  let fhgCacheResult = $state(null);
+
+  async function handleComputeFhg() {
+    fhgCacheRunning = true;
+    fhgCacheResult = null;
+    try {
+      const res = await fetch('/.netlify/functions/compute-team-fhg');
+      fhgCacheResult = await res.json();
+    } catch (e) {
+      fhgCacheResult = { error: e.message };
+    }
+    fhgCacheRunning = false;
+  }
+
   // --- Testeur API brut ---
   let copyLabel = $state('📋 Copier');
 
@@ -289,6 +373,36 @@
 
 <h1 class="page-title">🐛 Debug</h1>
 <p class="page-subtitle">Outils de diagnostic, seed et test API</p>
+
+<!-- CRON -->
+<div class="settings-block">
+  <div class="settings-block__title">⏱ Crons Netlify</div>
+  <div class="cron-list">
+    {#each CRONS as cron}
+      <div class="cron-item">
+        <div class="cron-item__header">
+          <span class="cron-item__label">{cron.label}</span>
+          <span class="cron-item__next">{nextRun(cron.schedule)}</span>
+        </div>
+        <div class="cron-item__fn">{cron.fn}</div>
+        <div class="cron-item__schedule">{cron.human}</div>
+        <div class="cron-item__desc">{cron.desc}</div>
+        {#if cron.id === 'compute-team-fhg'}
+          <div style="margin-top:8px;">
+            <button class="btn btn--secondary btn--sm" onclick={handleComputeFhg} disabled={fhgCacheRunning}>
+              {fhgCacheRunning ? '⏳ Calcul...' : '▶ Lancer maintenant'}
+            </button>
+            {#if fhgCacheResult}
+              <span class="debug-result" class:success={!fhgCacheResult.error} class:error={fhgCacheResult.error} style="margin-left:8px;display:inline-block;padding:3px 8px;font-size:11px;">
+                {fhgCacheResult.error ? '✗ ' + fhgCacheResult.error : `✓ ${fhgCacheResult.teams ?? '?'} équipes, ${fhgCacheResult.matches ?? '?'} matchs`}
+              </span>
+            {/if}
+          </div>
+        {/if}
+      </div>
+    {/each}
+  </div>
+</div>
 
 <!-- TEST API FOOTYSTATS -->
 <div class="settings-block">
@@ -527,6 +641,51 @@
 </div>
 
 <style>
+  /* ---- CRON ---- */
+  .cron-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .cron-item {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .cron-item__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .cron-item__label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .cron-item__next {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-accent-green);
+    background: rgba(29,158,117,0.1);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .cron-item__fn {
+    font-size: 11px;
+    font-family: monospace;
+    color: var(--color-accent-blue);
+    margin-bottom: 2px;
+  }
+  .cron-item__schedule {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+  }
+  .cron-item__desc {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+
+  /* ---- DEBUG ---- */
   .debug-result {
     margin-top: 8px;
     padding: 8px 12px;
