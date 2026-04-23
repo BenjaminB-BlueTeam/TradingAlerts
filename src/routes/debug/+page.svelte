@@ -468,9 +468,21 @@
           <br/><span style="color:var(--color-signal-moyen);">{genResult.errors.length} erreurs lors de l'analyse</span>
         {/if}
       {:else}
-        ⚠ Aucune alerte générée — {genResult.analyzed} matchs analysés, aucun ne correspond aux critères {genResult.type || ''}
+        ⚠ Aucune alerte générée — {genResult.analyzed} matchs analysés ({genResult.existingBlocked ?? 0} bloqués par existants), aucun ne correspond aux critères {genResult.type || ''}
         {#if genResult.errors?.length > 0}
           <br/><span style="color:var(--color-danger);">{genResult.errors.length} erreurs</span>
+        {/if}
+        {#if genResult.debug_sample?.length > 0}
+          <div style="margin-top:8px;font-size:10px;font-family:monospace;opacity:0.8;">
+            <strong>Sample 5 premiers matchs :</strong>
+            {#each genResult.debug_sample as s}
+              <div style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.1);padding-top:4px;">
+                {s.match} — homeM:{s.homeMatches} awayM:{s.awayMatches} h2h:{s.h2h} oppH:{s.oppForHome} oppA:{s.oppForAway}
+                <br/>FHG Dom: alert={s.fhgHome.isAlert} conf={s.fhgHome.conf} block={s.fhgHome.block}
+                / FHG Ext: alert={s.fhgAway.isAlert} conf={s.fhgAway.conf} block={s.fhgAway.block}
+              </div>
+            {/each}
+          </div>
         {/if}
       {/if}
     </div>

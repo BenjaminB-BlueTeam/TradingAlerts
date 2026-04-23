@@ -95,6 +95,8 @@ exports.handler = async (event) => {
     // Filter matches to analyze
     const matchesToAnalyze = allMatches.filter(m => m.id && m.homeID && m.awayID && !existingIds.has(m.id));
     results.analyzed = matchesToAnalyze.length;
+    results.existingBlocked = allMatches.length - matchesToAnalyze.length;
+    results.debug_sample = []; // sera rempli avec les 5 premiers matchs analysés
 
     // Process matches in batches of 5 for concurrency control
     const BATCH_SIZE = 5;
@@ -114,6 +116,21 @@ exports.handler = async (event) => {
         if (doFHG) {
           const fhgHome = analyzeStreakAlert(homeMatches, m.homeID, oppMatchesForHome, m.awayID, h2h);
           const fhgAway = analyzeStreakAlert(awayMatches, m.awayID, oppMatchesForAway, m.homeID, h2h);
+
+          // Debug sample : 5 premiers matchs
+          if (results.debug_sample.length < 5) {
+            results.debug_sample.push({
+              match: `${m.home_name} vs ${m.away_name}`,
+              homeMatches: homeMatches.length,
+              awayMatches: awayMatches.length,
+              h2h: h2h.length,
+              oppForHome: oppMatchesForHome.length,
+              oppForAway: oppMatchesForAway.length,
+              fhgHome: { isAlert: fhgHome?.isAlert, conf: fhgHome?.confidence, block: fhgHome?.cleanSheetBlock },
+              fhgAway: { isAlert: fhgAway?.isAlert, conf: fhgAway?.confidence, block: fhgAway?.cleanSheetBlock },
+            });
+          }
+
           // Hiérarchie de confidence : fort_double > fort > moyen
           const priority = { fort_double: 3, fort: 2, moyen: 1 };
           const scoreHome = fhgHome?.isAlert ? (priority[fhgHome.confidence] || 0) : 0;
