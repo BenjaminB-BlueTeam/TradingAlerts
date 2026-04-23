@@ -44,12 +44,13 @@
   }));
 
   async function loadH2H(homeId, awayId) {
-    const key = [homeId, awayId].sort().join('_');
+    const key = `${homeId}_${awayId}`;
     if (h2hCache[key]) return h2hCache[key];
     const { data } = await supabase
       .from('h2h_matches')
       .select('*')
-      .or(`and(home_team_id.eq.${homeId},away_team_id.eq.${awayId}),and(home_team_id.eq.${awayId},away_team_id.eq.${homeId})`)
+      .eq('home_team_id', homeId)
+      .eq('away_team_id', awayId)
       .order('match_date', { ascending: false })
       .limit(10);
     h2hCache[key] = data || [];
@@ -64,7 +65,7 @@
   }
 
   function getH2H(homeId, awayId) {
-    return h2hCache[[homeId, awayId].sort().join('_')] || [];
+    return h2hCache[`${homeId}_${awayId}`] || [];
   }
 
   function formatDateFull(dateStr) {
@@ -252,7 +253,8 @@
           {@const favName = a.dc_best_side === 'home' ? a.home_team_name : a.away_team_name}
           <div class="dc-expand">
             <div class="dc-expand__title">
-              H2H — <strong>{favName}</strong> gagne ou fait nul dans {100 - a.dc_defeat_pct}% des cas ({a.h2h_count} matchs)
+              H2H même config — <strong>{favName}</strong> gagne ou fait nul dans {100 - a.dc_defeat_pct}% des cas ({a.h2h_count} matchs total)
+              {#if h2h.length === 0}<span style="color:var(--color-danger);margin-left:4px;">— aucun H2H dans cette config</span>{/if}
             </div>
             {#if h2h.length > 0}
               <table class="h2h-table">

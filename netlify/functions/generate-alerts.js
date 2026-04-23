@@ -21,7 +21,7 @@ async function supabaseInsert(table, rows) {
       'apikey': SUPABASE_KEY,
       'Authorization': `Bearer ${SUPABASE_KEY}`,
       'Content-Type': 'application/json',
-      'Prefer': 'resolution=ignore-duplicates,return=minimal',
+      'Prefer': 'resolution=merge-duplicates,return=minimal',
     },
     body: JSON.stringify(rows),
     signal: AbortSignal.timeout(8000),
@@ -83,9 +83,10 @@ exports.handler = async (event) => {
     }
 
     // Récupérer les alertes existantes pour ne pas dupliquer
+    // On ne bloque que les alertes v2 (FHG_A/B/A+B et DC) — les vieilles FHG_DOM/FHG_EXT ne bloquent plus
     const matchIds = allMatches.map(m => m.id).filter(Boolean);
     const existing = await supabaseQuery('alerts',
-      `match_id=in.(${matchIds.join(',')})&select=match_id`
+      `match_id=in.(${matchIds.join(',')})&signal_type=in.(FHG_A,FHG_B,FHG_A%2BB,DC)&select=match_id`
     );
     const existingIds = new Set(existing.map(a => a.match_id));
 
