@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   analyserStreakFHG,
-  analyzeScenarioA, analyzeScenarioB,
+  analyzeScenarioA, analyzeScenarioB, analyzeScenarioC, analyzeScenarioD,
   computeStreak, confirmationRate, isH2HCleanSheetFirstHalf,
   teamScored31to45, teamConceded31to45, teamScoredInFirstHalf, teamConcededInFirstHalf,
   getTimerConseille, calculerScoreDC,
@@ -227,6 +227,105 @@ describe('analyzeScenarioB (ESM)', () => {
 });
 
 // =============================================================
+// analyzeScenarioC (ESM)
+// =============================================================
+
+describe('analyzeScenarioC (ESM)', () => {
+  it('retourne null si < STREAK_MIN_MATCHES matchs équipe', () => {
+    expect(analyzeScenarioC(homeMatches31to45(2), 100, oppConcedesHalf(3), 200)).toBeNull();
+  });
+  it('confidence null si streak != 2 (streak=1)', () => {
+    const team = [makeMatch({ goalEvents: [goal(35, true)] }), makeMatch({ goalEvents: [] }), makeMatch({ goalEvents: [] })];
+    const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyzeScenarioC(team, 100, opp, 200);
+    expect(r.confidence).toBeNull();
+  });
+  it('confidence null si streak=2 mais adversaire encaisse seulement 2/3', () => {
+    const team = [...homeMatches31to45(2), makeMatch({ goalEvents: [] })];
+    const opp = [
+      makeMatch({ goalEvents: [goal(20, true)] }),
+      makeMatch({ goalEvents: [goal(20, true)] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    const r = analyzeScenarioC(team, 100, opp, 200);
+    expect(r.confidence).toBeNull();
+    expect(r.oppConcedesCount).toBe(2);
+  });
+  it('confidence moyen si streak=2 + adversaire encaisse 3/3', () => {
+    const team = [...homeMatches31to45(2), makeMatch({ goalEvents: [] })];
+    const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyzeScenarioC(team, 100, opp, 200);
+    expect(r.confidence).toBe('moyen');
+    expect(r.streakScored).toBe(2);
+    expect(r.oppConcedesCount).toBe(3);
+  });
+  it('confidence null si streak=3 (scénario A, pas C)', () => {
+    const team = homeMatches31to45(3);
+    const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyzeScenarioC(team, 100, opp, 200);
+    expect(r.confidence).toBeNull();
+    expect(r.streakScored).toBe(3);
+  });
+});
+
+// =============================================================
+// analyzeScenarioD (ESM)
+// =============================================================
+
+describe('analyzeScenarioD (ESM)', () => {
+  it('retourne null si < STREAK_MIN_MATCHES matchs équipe', () => {
+    expect(analyzeScenarioD(homeMatches31to45(2), 100, oppConcedesHalf(5), 200)).toBeNull();
+  });
+  it('retourne null si < STREAK_MIN_MATCHES matchs adversaire', () => {
+    expect(analyzeScenarioD(homeMatches31to45(5), 100, oppConcedesHalf(2), 200)).toBeNull();
+  });
+  it('confidence null si équipe marque mais ne concède pas en 31-45', () => {
+    const team = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(35, true)] }));
+    const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyzeScenarioD(team, 100, opp, 200);
+    expect(r.confidence).toBeNull();
+    expect(r.concededCount).toBe(0);
+  });
+  it('confidence null si équipe concède mais ne marque pas en 31-45', () => {
+    const team = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(35, false)] }));
+    const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyzeScenarioD(team, 100, opp, 200);
+    expect(r.confidence).toBeNull();
+    expect(r.scoredCount).toBe(0);
+  });
+  it('confidence null si adversaire ne marque pas en 1MT', () => {
+    const team = [
+      makeMatch({ goalEvents: [goal(35, true), goal(38, false)] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    // opp matches: team 200 is away → goal(20, false) = 200 scores; no goal = 200 doesn't score
+    const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [] }));
+    const r = analyzeScenarioD(team, 100, opp, 200);
+    expect(r.confidence).toBeNull();
+    expect(r.oppScoresCount).toBe(0);
+  });
+  it('confidence moyen si équipe marque ET concède en 31-45 + adversaire marque en 1MT', () => {
+    const team = [
+      makeMatch({ goalEvents: [goal(35, true), goal(38, false)] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    // opp matches: team 200 is away → goal(20, false) means 200 (away) scores in 1MT
+    const opp = [
+      makeMatch({ goalEvents: [goal(20, false)] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    const r = analyzeScenarioD(team, 100, opp, 200);
+    expect(r.confidence).toBe('moyen');
+    expect(r.scoredCount).toBe(1);
+    expect(r.concededCount).toBe(1);
+    expect(r.oppScoresCount).toBe(1);
+  });
+});
+
+// =============================================================
 // analyserStreakFHG (ESM) — orchestration
 // =============================================================
 
@@ -267,6 +366,43 @@ describe('analyserStreakFHG (ESM)', () => {
   it('retourne cleanSheetBlock undefined si pas de veto', () => {
     const r = analyserStreakFHG([], 100, [], 200, []);
     expect(r.cleanSheetBlock).toBeUndefined();
+  });
+
+  it('C seul → signalType FHG_C si A et B null', () => {
+    // streak=2 + adversaire encaisse 3/3
+    const team = [...homeMatches31to45(2), makeMatch({ goalEvents: [] })];
+    const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyserStreakFHG(team, 100, opp, 200, []);
+    expect(r.isAlert).toBe(true);
+    expect(r.signalType).toBe('FHG_C');
+    expect(r.confidence).toBe('moyen');
+  });
+
+  it('D seul → signalType FHG_D si A, B et C null', () => {
+    // équipe marque ET concède en 31-45 sur 1/3 + opp marque en 1MT
+    const team = [
+      makeMatch({ goalEvents: [goal(35, true), goal(38, false)] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    // opp = matchs de 200 (away) → goal(20, false) = 200 marque en 1MT
+    const opp = [
+      makeMatch({ goalEvents: [goal(20, false)] }),
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+    ];
+    const r = analyserStreakFHG(team, 100, opp, 200, []);
+    expect(r.isAlert).toBe(true);
+    expect(r.signalType).toBe('FHG_D');
+    expect(r.confidence).toBe('moyen');
+  });
+
+  it('A prime sur C si A actif', () => {
+    // streak=3 (A active) + opp encaisse 3/3 (C aussi eligible, mais A prioritaire)
+    const team = homeMatches31to45(3);
+    const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const r = analyserStreakFHG(team, 100, opp, 200, []);
+    expect(r.signalType).toBe('FHG_A');
   });
 });
 

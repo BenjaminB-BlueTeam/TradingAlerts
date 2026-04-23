@@ -110,7 +110,7 @@
     ? Math.round((terminated.filter(a => a.status === 'validated').length / terminated.length) * 100)
     : null);
 
-  let fhgTerminated = $derived(terminated.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)));
+  let fhgTerminated = $derived(terminated.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)));
   let fhgPct = $derived(fhgTerminated.length
     ? Math.round((fhgTerminated.filter(a => a.status === 'validated').length / fhgTerminated.length) * 100)
     : null);
@@ -184,7 +184,7 @@
     : alerts.filter(a => !a.user_excluded));
 
   let filteredAlerts = $derived(listBase.filter(a => {
-    if (activeFilter === 'fhg')       return ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type);
+    if (activeFilter === 'fhg')       return ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type);
     if (activeFilter === 'dc')        return a.signal_type === 'DC';
     if (activeFilter === 'validated') return a.status === 'validated';
     if (activeFilter === 'lost')      return a.status === 'lost';
@@ -197,7 +197,7 @@
       ? alerts.filter(a => a.user_excluded)
       : alerts.filter(a => !a.user_excluded);
     if (key === 'tous')      return base.length;
-    if (key === 'fhg')       return base.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)).length;
+    if (key === 'fhg')       return base.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)).length;
     if (key === 'dc')        return base.filter(a => a.signal_type === 'DC').length;
     if (key === 'validated') return base.filter(a => a.status === 'validated').length;
     if (key === 'lost')      return base.filter(a => a.status === 'lost').length;

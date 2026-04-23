@@ -105,7 +105,7 @@
       .select('*')
       .gte('match_date', getDateStr(-3))
       .lte('match_date', getDateStr(2))
-      .in('signal_type', ['FHG_A', 'FHG_B', 'FHG_A+B'])
+      .in('signal_type', ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D'])
       .order('match_date', { ascending: false })
       .order('kickoff_unix', { ascending: true });
     if (dbError) {

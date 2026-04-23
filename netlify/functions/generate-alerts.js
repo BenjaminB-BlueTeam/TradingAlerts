@@ -106,7 +106,7 @@ exports.handler = async (event) => {
     // On ne bloque que les alertes du même type que ce qu'on génère
     // (FHG ne bloque pas DC et vice-versa, les vieilles FHG_DOM/FHG_EXT ne bloquent plus)
     const matchIds = allMatches.map(m => m.id).filter(Boolean);
-    const fhgTypes = 'FHG_A,FHG_B,FHG_A%2BB';
+    const fhgTypes = 'FHG_A,FHG_B,FHG_A%2BB,FHG_C,FHG_D';
     const blockTypes = doFHG && doDC ? `${fhgTypes},DC` : doFHG ? fhgTypes : 'DC';
     const existing = await supabaseQuery('alerts',
       `match_id=in.(${matchIds.join(',')})&signal_type=in.(${blockTypes})&select=match_id`

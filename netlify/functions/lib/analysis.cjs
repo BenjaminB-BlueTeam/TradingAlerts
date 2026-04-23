@@ -121,6 +121,58 @@ function isH2HCleanSheetFirstHalf(h2h, teamId, teamIsHome = null) {
 
 // --- Scénarios ---
 
+// Scénario C : streak court (>=2) + confirmation très forte (3/3 adversaire encaisse en 1MT)
+function analyzeScenarioC(teamMatches, teamId, opponentMatches, opponentId) {
+  if (teamMatches.length < STREAK_MIN_MATCHES) return null;
+
+  const streakScored = computeStreak(teamMatches, m => teamScored31to45(m, teamId));
+  const window = opponentMatches.slice(0, CONFIRM_WINDOW);
+  const oppConcedesCount = window.filter(m => teamConcededInFirstHalf(m, opponentId)).length;
+
+  // Streak 2 exactement (si >=3, scénario A aurait dû déclencher)
+  const principalOK = streakScored === STREAK_MOYEN;
+  // Confirmation forte : 3/3 (tout le CONFIRM_WINDOW)
+  const confirmOK = window.length >= CONFIRM_WINDOW && oppConcedesCount >= CONFIRM_WINDOW;
+  let confidence = null;
+  if (principalOK && confirmOK) confidence = 'moyen';
+
+  return {
+    scenario: 'C',
+    confidence,
+    streakScored,
+    oppConcedesCount,
+    oppConcedesWindow: window.length,
+  };
+}
+
+// Scénario D : double activité 31-45 (marque ET encaisse) + adversaire marque en 1MT
+function analyzeScenarioD(teamMatches, teamId, opponentMatches, opponentId) {
+  if (teamMatches.length < STREAK_MIN_MATCHES || opponentMatches.length < STREAK_MIN_MATCHES) return null;
+
+  const recentTeam = teamMatches.slice(0, CONFIRM_WINDOW);
+  const scoredCount = recentTeam.filter(m => teamScored31to45(m, teamId)).length;
+  const concededCount = recentTeam.filter(m => teamConceded31to45(m, teamId)).length;
+
+  const recentOpp = opponentMatches.slice(0, CONFIRM_WINDOW);
+  const oppScoresCount = recentOpp.filter(m => teamScoredInFirstHalf(m, opponentId)).length;
+
+  // L'équipe marque ET encaisse en 31-45 sur les 3 derniers + adversaire marque en 1MT
+  const principalOK = scoredCount >= CONFIRM_MIN_COUNT && concededCount >= CONFIRM_MIN_COUNT;
+  const confirmOK = oppScoresCount >= CONFIRM_MIN_COUNT;
+  let confidence = null;
+  if (principalOK && confirmOK) confidence = 'moyen';
+
+  return {
+    scenario: 'D',
+    confidence,
+    scoredCount,
+    concededCount,
+    oppScoresCount,
+    teamWindow: recentTeam.length,
+    oppWindow: recentOpp.length,
+  };
+}
+
 function analyzeScenarioA(teamMatches, teamId, opponentMatches, opponentId) {
   if (teamMatches.length < STREAK_MIN_MATCHES) return null;
 
@@ -192,8 +244,6 @@ function analyzeStreakAlert(teamMatches, teamId, opponentMatches, opponentId, h2
   const aActive = a?.confidence != null;
   const bActive = b?.confidence != null;
 
-  if (!aActive && !bActive) return { isAlert: false };
-
   if (aActive && bActive) {
     return {
       isAlert: true,
@@ -203,13 +253,33 @@ function analyzeStreakAlert(teamMatches, teamId, opponentMatches, opponentId, h2
     };
   }
 
-  const best = aActive ? a : b;
-  return {
-    isAlert: true,
-    signalType: best.scenario === 'A' ? 'FHG_A' : 'FHG_B',
-    confidence: best.confidence,
-    factors: best,
-  };
+  if (aActive || bActive) {
+    const best = aActive ? a : b;
+    return {
+      isAlert: true,
+      signalType: best.scenario === 'A' ? 'FHG_A' : 'FHG_B',
+      confidence: best.confidence,
+      factors: best,
+    };
+  }
+
+  // Scénarios additifs C et D — seulement si A et B n'ont pas déclenché
+  const c = analyzeScenarioC(teamMatches, teamId, opponentMatches, opponentId);
+  const d = analyzeScenarioD(teamMatches, teamId, opponentMatches, opponentId);
+  const cActive = c?.confidence != null;
+  const dActive = d?.confidence != null;
+
+  if (cActive || dActive) {
+    const best = cActive ? c : d;
+    return {
+      isAlert: true,
+      signalType: best.scenario === 'C' ? 'FHG_C' : 'FHG_D',
+      confidence: best.confidence,
+      factors: best,
+    };
+  }
+
+  return { isAlert: false };
 }
 
 module.exports = {
@@ -222,6 +292,8 @@ module.exports = {
   analyzeStreakAlert,
   analyzeScenarioA,
   analyzeScenarioB,
+  analyzeScenarioC,
+  analyzeScenarioD,
   computeStreak,
   confirmationRate,
   isH2HCleanSheetFirstHalf,
