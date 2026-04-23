@@ -428,6 +428,7 @@
   @media (max-width: 768px) {
     .alert-card__header { flex-wrap: wrap; }
     .alert-card__stats { width: 100%; }
+    .alert-card__badges { flex-wrap: wrap; }
   }
 </style>
 

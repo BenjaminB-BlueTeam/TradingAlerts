@@ -341,5 +341,7 @@
   @media (max-width: 768px) {
     .dc-card__header { flex-wrap: wrap; }
     .dc-card__stats { width: 100%; }
+    .dc-expand { overflow-x: auto; }
+    .h2h-table { min-width: 340px; }
   }
 </style>

@@ -567,5 +567,9 @@
   @media (max-width: 768px) {
     .conf-row { grid-template-columns: 1fr; }
     .whatif-tag-label { min-width: 100px; }
+    .page-header { flex-wrap: wrap; }
+    .kpi-row { gap: 6px; }
+    .kpi-card { padding: 10px 8px; }
+    .kpi-value { font-size: 22px; }
   }
 </style>
