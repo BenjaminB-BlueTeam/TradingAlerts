@@ -24,7 +24,7 @@ App **SvelteKit** de **trading sportif football**. Identifie les matchs avec for
 | Données | API FootyStats (`football-data-api.com`) via proxy Netlify sécurisé |
 | Persistance | Supabase (PostgreSQL) — alerts, trades, team_seasons, h2h_matches, seed_jobs |
 | Charts | Chart.js 4.4 (tree-shaké, imports sélectifs) |
-| Tests | Vitest (139 tests) |
+| Tests | Vitest (174 tests) |
 
 ### Variables d'environnement
 
@@ -52,8 +52,8 @@ netlify/functions/
   daily-seed.js         ← cron quotidien 6h UTC — seed matchs d'hier dans h2h_matches
   lib/
     api.js              ← helpers partagés (footyRequest, supabaseQuery)
-    analysis.cjs        ← logique FHG/DC extraite et testable (server-side)
-    analysis.test.js    ← tests unitaires analyse FHG/DC (19 tests)
+    analysis.cjs        ← logique FHG streak v2 + DC (server-side CJS)
+    analysis.test.js    ← tests unitaires streak/DC (162 tests)
     parseMatch.js       ← parseMatchRow partagé (daily-seed + seed-data)
 src/
   app.css               ← styles globaux (variables CSS, badges, goal-bar, responsive)
@@ -97,8 +97,8 @@ src/
       tradeStore.test.js← tests unitaires tradeStore (14 tests)
       tradeStats.js     ← calcul stats trades (fonction pure)
     core/
-      scoring.js        ← algorithme FHG (% bruts) + DC (client-side)
-      scoring.test.js   ← tests unitaires scoring (29 tests)
+      scoring.js        ← algorithme FHG streak v2 + DC (client-side ESM, miroir de analysis.cjs)
+      scoring.test.js   ← tests unitaires streak (41 tests)
       h2h.js            ← analyse head-to-head
       h2h.test.js       ← tests unitaires h2h (21 tests)
       filters.js        ← isWindowActive (fenêtre 31-45 min)
@@ -144,66 +144,84 @@ src/
 
 ---
 
-## Algorithme FHG
+## Algorithme FHG — streak v2 (depuis 2026-04-23)
 
-### Client-side (`scoring.js` — utilisé par MatchCard sur /matches)
+Spec complète : `SPEC_STREAK_V2.md` à la racine du projet.
 
-% bruts calculés par équipe (domicile ET extérieur, meilleur retenu) :
+### Deux scenarii indépendants (domicile ET extérieur évalués séparément)
 
-1. **Filtre H2H Clean Sheet** (exclusion totale) — si >=3 H2H et l'équipe n'a jamais marqué (toutes minutes)
-2. **Filtre adversaire** — l'adversaire doit encaisser en 1MT dans >=2 de ses 5 derniers matchs
-3. **Score composite** (moyenne pondérée) :
-   - `pct1MT` — % matchs où l'équipe marque en 1MT (poids **50%**)
-   - `pctAdversaire` — % matchs où l'adversaire encaisse en 1MT (poids **25%**)
-   - `pct2Plus1MT` — % matchs avec 2+ buts en 1MT (poids **15%**)
-   - `pctReaction` — réaction quand menée en 1MT (poids **10%**)
-4. Si `pctReaction` indisponible, redistribution : pct1MT 55%, pctAdversaire 28%, pct2Plus1MT 17%
+**Scénario A** — l'équipe marque en 31-45 :
+1. Streak : elle a marqué en 31-45 dans les N derniers matchs (dom ou ext selon le rôle)
+2. Confirmation : l'adversaire a concédé en 1MT dans >= 60% de ses 5 derniers matchs (min 3)
 
-**Seuils** : Fort >=65% | Moyen >=50% (adaptés à la fenêtre 31-45 min)
+**Scénario B** — l'adversaire concède en 31-45 :
+1. Streak : l'adversaire a concédé en 31-45 dans les N derniers matchs
+2. Confirmation : l'équipe marque en 1MT dans >= 60% de ses 5 derniers matchs (min 3)
 
-### Server-side (`analysis.cjs` — utilisé par generate-alerts.js cron)
+### Signal résultant
+| Cas | signal_type |
+|-----|------------|
+| A et B | `FHG_A+B` (priorité max) |
+| A seul | `FHG_A` |
+| B seul | `FHG_B` |
 
-Même formule composite avec les mêmes poids (50/25/15/10), mais :
-- Utilise `goal_events` filtré fenêtre **31-45 min** (minutes exactes depuis Supabase)
-- Seuils identiques : Fort >=65% | Moyen >=50%
-- Accepte `?type=FHG` ou `?type=DC` pour filtrer (boutons Actualiser dans les pages sélection)
+### Confiance
+| Streak | Confidence |
+|--------|-----------|
+| >= 3 consécutifs (`STREAK_FORT`) | `fort` |
+| == 2 consécutifs (`STREAK_MOYEN`) | `moyen` |
+| A+B avec fort des deux | `fort_double` |
 
-### DC (Double Chance)
-- Analyse H2H : `analyzeDCFromH2H` — % victoire (win+nul) >= 80% (fort) ou >= 70% (moyen), min 5 H2H
-- FHG et DC sont des alertes **séparées** (pas de tag combiné FHG+DC)
+### Veto H2H
+Si >= 3 H2H et l'équipe n'a jamais marqué en 1MT (0-45 min) → exclusion totale.
+
+### Constantes partagées (analysis.cjs + scoring.js)
+```
+STREAK_FORT=3, STREAK_MOYEN=2, CONFIRM_MIN_RATE=0.60, CONFIRM_WINDOW=5, CONFIRM_MIN_SAMPLE=3, STREAK_MIN_MATCHES=3
+```
+
+### DC (inchangé)
+`analyzeDCFromH2H` — % victoire (win+nul) H2H : fort <= 10% défaite, moyen <= 20%, min 5 H2H.
+
+### Duplication ESM/CJS intentionnelle
+`analysis.cjs` (server, CommonJS) et `scoring.js` (client, ESM) contiennent la même logique streak.
+Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même format.
 
 ---
 
 ## Ce qui est implémenté
 
-- **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) + `analysis.cjs` : FHG et DC créent des alertes séparées (pas de tag combiné), confiance fort/moyen, table Supabase `alerts`
+- **Algo FHG streak v2** (2026-04-23) — `analysis.cjs` + `scoring.js` : 2 scénarios (A/B), signaux FHG_A/FHG_B/FHG_A+B, confiance fort_double/fort/moyen, veto H2H 1MT. Spec : `SPEC_STREAK_V2.md`
+- **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) : génère FHG_A/B/A+B + DC, algo_version='v2', table Supabase `alerts`
 - **Vérification auto résultats** — `check-results.js` (cron 1h) : FHG sur buts 31-45 min via goal_events, DC sur résultat final, statut -> validated/lost/expired (cleanup 48h)
 - **Daily seed auto** — `daily-seed.js` (cron 6h UTC) : seed matchs d'hier dans `h2h_matches`
-- **Dashboard** (`/`) — KPIs + alertes du jour/a venir depuis Supabase
-- **Selection FHG** (`/alerts`) — alertes FHG, filtres par jour, bouton Actualiser, expand detaille par equipe, barres timing buts, curseur interactif, badges Valide/Perdu/EN COURS
-- **Selection DC** (`/selection-dc`) — alertes DC, filtres par jour, bouton Actualiser, expand H2H tableau centré (style Flashscore, badges W/D/L carrés, favori gras+souligné, date DD/MM/YY), % victoire (win+nul)
-- **Historique** (`/historique`) — stats globales (Global/FHG/DC/fort/moyen), bloc "Mes trades vs Global", tableau par ligue, liste paginee (90 jours + bouton "Charger plus")
-- **Matchs a venir** (`/matches`) — cards avec badge FHG 31-45% par equipe (chargé avant affichage), expand barres timing buts, déduplication matchs
-- **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout selectionner/deselectionner
+- **Exclusion manuelle** — bouton ✕ sur dashboard/alertes/historique, ExcludeAlertModal (7 tags + note), reinsertion possible, what-if stats dans /historique (Wilson CI 95% par tag)
+- **Dashboard** (`/`) — KPIs + alertes du jour/a venir, bouton ✕ sur pending, badge EXCLUE
+- **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B, filtres par jour, expand détaillé par équipe, barres timing buts, curseur interactif, badges Validé/Perdu/EN COURS, badge signal_type, exclusion
+- **Selection DC** (`/selection-dc`) — alertes DC, filtres par jour, expand H2H tableau centré, % victoire (win+nul)
+- **Historique** (`/historique`) — stats filtrées !user_excluded, Global/FHG/DC/fort/moyen, bloc "Mes trades vs Global", tableau par ligue, toggle what-if exclusions (par tag + Wilson CI), liste paginée (90j + "Charger plus")
+- **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs
+- **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner
 - **Classements ligues** (`/explore`) — par pays, stats, classements
-- **Parametres** (`/settings`) — 5 sous-composants (ApiTest, TradeJournal, TradeStats, BankrollCalc, DangerZone)
+- **Paramètres** (`/settings`) — 5 sous-composants (ApiTest, TradeJournal, TradeStats, BankrollCalc, DangerZone)
 - **Config** (`/config`) — configuration algo (section Admin)
 - **Debug** (`/debug`) — test API/Supabase, boutons génération alertes FHG/DC, seed complet, rattrapage matchs, token auth, testeur API brut
-- **Proxy Netlify securise** — whitelist endpoints, CORS restreint
-- **Cache localStorage TTL** — eviction auto par endpoint
-- **Compteur API** — req restantes affiche dans la sidebar
-- **Svelte 5 runes** — migration complete : `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
-- **Accessibilite** — keyboard handlers, `aria-pressed`/`aria-expanded`, `.sr-only`, skip-to-content, `<h1>` sur toutes les pages, contraste WCAG
+- **Proxy Netlify sécurisé** — whitelist endpoints, CORS restreint
+- **Cache localStorage TTL** — éviction auto par endpoint
+- **Compteur API** — req restantes affiché dans la sidebar
+- **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
 - **Supabase RLS active** — policies read-only anon, service_role pour les Netlify Functions
-- **Tests unitaires** — Vitest, 139 tests (scoring 29, h2h 21, cache 20, analysis 19, formatters 22, teamData 14, tradeStore 14)
-- **CSS centralise** — badges, goal-bar, team-detail, match-row dans `app.css`
-- **Fetch timeouts** — 8s sur tous les appels reseau (fonctions Netlify)
-- **Parallelisation queries** — `generate-alerts.js` traite les matchs par batch de 5
+- **Tests unitaires** — Vitest, 174 tests (analysis.cjs 162, scoring 41, h2h 21, cache 20, formatters 22, teamData 14, tradeStore 14)
+- **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`
+- **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
+- **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5
+- **Calibration seuils** — `scripts/calibrate-threshold.js` : cross-tab signal_type × confiance, Wilson CI, recommandations STREAK_FORT/MOYEN
 
 ---
 
-## Roadmap — prochaines etapes
+## Roadmap — prochaines étapes
 
+- [ ] Exécuter `docs/migration-streak-v2.sql` dans Supabase SQL Editor (Benjamin)
 - [ ] Adapter `renderGoalTimeline` aux vrais champs FootyStats API
 - [ ] Tests pour `tradeStats.js`
 
@@ -211,15 +229,15 @@ Même formule composite avec les mêmes poids (50/25/15/10), mais :
 
 ## Decisions actees
 
-1. FHG = analyse comportementale par equipe (pas H2H), dom/ext separes
-2. DC analysee independamment du FHG, basee H2H uniquement
-3. Verification FHG a la MT (pas a la volee — VAR)
-4. Terminologie : Valide / Perdu
-5. Seuil adversaire encaisse : 2/5 minimum
-6. Pas de mode demo — donnees reelles uniquement
-7. Pas de cotes/stakes/profits dans l'app
-8. Pas de bouton "Analyse IA" — Benjamin fait sa propre analyse
-9. Cle anon sans fallback hardcode
+1. FHG = streak comportemental par équipe (pas H2H), dom/ext séparés — algo streak v2 depuis 2026-04-23
+2. DC analysée indépendamment du FHG, basée H2H uniquement (inchangé)
+3. Vérification FHG à la MT (pas à la volée — VAR)
+4. Terminologie : Validé / Perdu
+5. Pas de mode démo — données réelles uniquement
+6. Pas de cotes/stakes/profits dans l'app
+7. Pas de bouton "Analyse IA" — Benjamin fait sa propre analyse
+8. Clé anon sans fallback hardcodé
+9. ESM/CJS : scoring.js (frontend ESM) et analysis.cjs (backend CJS) dupliquent la logique streak — pas de fichier partagé (incompatibilité bundlers)
 
 ---
 
