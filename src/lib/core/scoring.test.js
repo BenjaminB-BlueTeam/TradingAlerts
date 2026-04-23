@@ -5,7 +5,7 @@ import {
   computeStreak, confirmationRate, isH2HCleanSheetFirstHalf,
   teamScored31to45, teamConceded31to45, teamScoredInFirstHalf, teamConcededInFirstHalf,
   getTimerConseille, calculerScoreDC,
-  STREAK_FORT, STREAK_MOYEN, CONFIRM_MIN_RATE, CONFIRM_WINDOW, CONFIRM_MIN_SAMPLE, STREAK_MIN_MATCHES,
+  STREAK_FORT, STREAK_MOYEN, CONFIRM_WINDOW, CONFIRM_MIN_COUNT, STREAK_MIN_MATCHES,
 } from './scoring.js';
 
 // --- Factory helpers ---
@@ -165,27 +165,22 @@ describe('analyzeScenarioA (ESM)', () => {
     expect(r.confidence).toBeNull();
     expect(r.streakScored).toBe(2);
   });
-  it('confidence fort si streak >= 3 + confirmation OK', () => {
-    const opp = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
-    const r = analyzeScenarioA(homeMatches31to45(4), 100, opp, 200);
-    expect(r.confidence).toBe('fort');
-    expect(r.streakScored).toBe(4);
-  });
-  it('confidence null si taux confirmation < 60%', () => {
+  it('confidence fort si streak >= 3 + adversaire encaisse >= 1 sur les 3 derniers', () => {
     const opp = [
-      makeMatch({ goalEvents: [goal(20, true)] }),
-      makeMatch({ goalEvents: [goal(20, true)] }),
-      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [goal(20, true)] }), // 200 encaisse en 1MT
       makeMatch({ goalEvents: [] }),
       makeMatch({ goalEvents: [] }),
     ];
     const r = analyzeScenarioA(homeMatches31to45(4), 100, opp, 200);
-    expect(r.confidence).toBeNull();
+    expect(r.confidence).toBe('fort');
+    expect(r.streakScored).toBe(4);
+    expect(r.oppConcedesCount).toBe(1);
   });
-  it('confidence null si sample < CONFIRM_MIN_SAMPLE', () => {
-    const opp = Array(2).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+  it('confidence null si adversaire n\'encaisse jamais en 1MT sur les 3 derniers', () => {
+    const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [] }));
     const r = analyzeScenarioA(homeMatches31to45(4), 100, opp, 200);
     expect(r.confidence).toBeNull();
+    expect(r.oppConcedesCount).toBe(0);
   });
 });
 
@@ -197,39 +192,37 @@ describe('analyzeScenarioB (ESM)', () => {
   it('retourne null si < STREAK_MIN_MATCHES matchs adversaire', () => {
     expect(analyzeScenarioB(homeMatches31to45(2), 200, homeMatches31to45(5), 100)).toBeNull();
   });
-  it('confidence null si count encaissés < 3 sur 5 matchs', () => {
+  it('confidence null si streak consécutif encaissé < 3', () => {
+    // Adversaire encaisse en 31-45 dans seulement 2 matchs consécutifs (cassé au 3e)
     const opp = [
       makeMatch({ goalEvents: [goal(35, true)] }),
       makeMatch({ goalEvents: [goal(35, true)] }),
-      makeMatch({ goalEvents: [] }),
-      makeMatch({ goalEvents: [] }),
-      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),  // cassé
+      makeMatch({ goalEvents: [goal(35, true)] }),
     ];
-    const team = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const team = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
     const r = analyzeScenarioB(opp, 200, team, 100);
     expect(r.confidence).toBeNull();
-    expect(r.countConceded).toBe(2);
+    expect(r.streakConceded).toBe(2);
   });
-  it('confidence moyen si count encaissés >= 3 sur 5 + confirmation OK (non-consécutif)', () => {
-    // 3 encaissés sur 5 — non consécutifs (1, _, 1, _, 1)
-    const opp = [
-      makeMatch({ goalEvents: [goal(35, true)] }),
-      makeMatch({ goalEvents: [] }),
-      makeMatch({ goalEvents: [goal(35, true)] }),
-      makeMatch({ goalEvents: [] }),
-      makeMatch({ goalEvents: [goal(35, true)] }),
-    ];
-    const team = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
-    const r = analyzeScenarioB(opp, 200, team, 100);
-    expect(r.confidence).toBe('moyen');
-    expect(r.countConceded).toBe(3);
-  });
-  it('confidence moyen si 4/5 encaissés (consécutifs ou non)', () => {
+  it('confidence moyen si streak consécutif >= 3 + équipe marque >= 1 sur les 3 derniers', () => {
     const opp = Array(4).fill(null).map(() => makeMatch({ goalEvents: [goal(35, true)] }));
-    const team = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
+    const team = [
+      makeMatch({ goalEvents: [goal(20, true)] }), // 100 marque en 1MT
+      makeMatch({ goalEvents: [] }),
+      makeMatch({ goalEvents: [] }),
+    ];
     const r = analyzeScenarioB(opp, 200, team, 100);
     expect(r.confidence).toBe('moyen');
-    expect(r.countConceded).toBe(4);
+    expect(r.streakConceded).toBe(4);
+    expect(r.teamScoresCount).toBe(1);
+  });
+  it('confidence null si équipe ne marque jamais en 1MT sur les 3 derniers', () => {
+    const opp = Array(4).fill(null).map(() => makeMatch({ goalEvents: [goal(35, true)] }));
+    const team = Array(3).fill(null).map(() => makeMatch({ goalEvents: [] }));
+    const r = analyzeScenarioB(opp, 200, team, 100);
+    expect(r.confidence).toBeNull();
+    expect(r.teamScoresCount).toBe(0);
   });
 });
 
@@ -309,8 +302,7 @@ describe('getTimerConseille', () => {
 describe('constantes streak v2', () => {
   it('STREAK_FORT vaut 3', () => expect(STREAK_FORT).toBe(3));
   it('STREAK_MOYEN vaut 2', () => expect(STREAK_MOYEN).toBe(2));
-  it('CONFIRM_MIN_RATE vaut 0.60', () => expect(CONFIRM_MIN_RATE).toBe(0.60));
-  it('CONFIRM_WINDOW vaut 5', () => expect(CONFIRM_WINDOW).toBe(5));
-  it('CONFIRM_MIN_SAMPLE vaut 3', () => expect(CONFIRM_MIN_SAMPLE).toBe(3));
+  it('CONFIRM_WINDOW vaut 3', () => expect(CONFIRM_WINDOW).toBe(3));
+  it('CONFIRM_MIN_COUNT vaut 1', () => expect(CONFIRM_MIN_COUNT).toBe(1));
   it('STREAK_MIN_MATCHES vaut 3', () => expect(STREAK_MIN_MATCHES).toBe(3));
 });

@@ -9,9 +9,8 @@
 
 export const STREAK_FORT = 3;
 export const STREAK_MOYEN = 2;
-export const CONFIRM_MIN_RATE = 0.60;
-export const CONFIRM_WINDOW = 5;
-export const CONFIRM_MIN_SAMPLE = 3;
+export const CONFIRM_WINDOW = 3;    // fenêtre de confirmation : 3 derniers matchs
+export const CONFIRM_MIN_COUNT = 1; // minimum 1 match de confirmation sur les 3 derniers
 export const STREAK_MIN_MATCHES = 3;
 
 // --- Helpers événements ---
@@ -87,48 +86,42 @@ export function analyzeScenarioA(teamMatches, teamId, opponentMatches, opponentI
 
   // Scénario A : l'équipe marque en 31-45 sur STREAK_FORT matchs CONSÉCUTIFS
   const streakScored = computeStreak(teamMatches, m => teamScored31to45(m, teamId));
-  const oppConcedes = confirmationRate(
-    opponentMatches,
-    CONFIRM_WINDOW,
-    m => teamConcededInFirstHalf(m, opponentId)
-  );
+  const window = opponentMatches.slice(0, CONFIRM_WINDOW);
+  const oppConcedesCount = window.filter(m => teamConcededInFirstHalf(m, opponentId)).length;
 
-  const confirmOK = oppConcedes.rate >= CONFIRM_MIN_RATE && oppConcedes.total >= CONFIRM_MIN_SAMPLE;
+  const principalOK = streakScored >= STREAK_FORT;
+  const confirmOK = oppConcedesCount >= CONFIRM_MIN_COUNT;
   let confidence = null;
-  if (streakScored >= STREAK_FORT && confirmOK) confidence = 'fort';
+  if (principalOK && confirmOK) confidence = 'fort';
 
   return {
     scenario: 'A',
     confidence,
     streakScored,
-    oppConcedesRate: Math.round(oppConcedes.rate * 100),
-    oppConcedesSample: `${oppConcedes.count}/${oppConcedes.total}`,
+    oppConcedesCount,
+    oppConcedesWindow: window.length,
   };
 }
 
 export function analyzeScenarioB(opponentMatches, opponentId, teamMatches, teamId) {
   if (opponentMatches.length < STREAK_MIN_MATCHES) return null;
 
-  // Scénario B : l'adversaire a encaissé en 31-45 dans au moins STREAK_FORT
-  // des CONFIRM_WINDOW derniers matchs (non nécessairement consécutifs)
-  const window = opponentMatches.slice(0, CONFIRM_WINDOW);
-  const countConceded = window.filter(m => teamConceded31to45(m, opponentId)).length;
-  const teamScores = confirmationRate(
-    teamMatches,
-    CONFIRM_WINDOW,
-    m => teamScoredInFirstHalf(m, teamId)
-  );
+  // Scénario B : l'adversaire encaisse en 31-45 sur STREAK_FORT matchs CONSÉCUTIFS
+  const streakConceded = computeStreak(opponentMatches, m => teamConceded31to45(m, opponentId));
+  const window = teamMatches.slice(0, CONFIRM_WINDOW);
+  const teamScoresCount = window.filter(m => teamScoredInFirstHalf(m, teamId)).length;
 
-  const confirmOK = teamScores.rate >= CONFIRM_MIN_RATE && teamScores.total >= CONFIRM_MIN_SAMPLE;
+  const principalOK = streakConceded >= STREAK_FORT;
+  const confirmOK = teamScoresCount >= CONFIRM_MIN_COUNT;
   let confidence = null;
-  if (countConceded >= STREAK_FORT && confirmOK) confidence = 'moyen';
+  if (principalOK && confirmOK) confidence = 'moyen';
 
   return {
     scenario: 'B',
     confidence,
-    countConceded,
-    teamScoresRate: Math.round(teamScores.rate * 100),
-    teamScoresSample: `${teamScores.count}/${teamScores.total}`,
+    streakConceded,
+    teamScoresCount,
+    teamScoresWindow: window.length,
   };
 }
 
