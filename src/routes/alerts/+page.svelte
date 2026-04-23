@@ -105,7 +105,7 @@
       .select('*')
       .gte('match_date', getDateStr(-3))
       .lte('match_date', getDateStr(2))
-      .in('signal_type', ['FHG', 'FHG_DOM', 'FHG_EXT'])
+      .in('signal_type', ['FHG_A', 'FHG_B', 'FHG_A+B'])
       .order('match_date', { ascending: false })
       .order('kickoff_unix', { ascending: true });
     if (dbError) {
@@ -270,7 +270,7 @@
           <div class="alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
             {#if a.signal_type && a.signal_type !== 'FHG'}
-              <span class="alert-badge alert-badge--signal">{a.signal_type === 'FHG_DOM' ? 'FHG Dom.' : a.signal_type === 'FHG_EXT' ? 'FHG Ext.' : a.signal_type}</span>
+              <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
             {/if}
             {#if a.status === 'validated'}
               <span class="alert-badge alert-badge--validated">✓ Validé</span>

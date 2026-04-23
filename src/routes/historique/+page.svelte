@@ -110,7 +110,7 @@
     ? Math.round((terminated.filter(a => a.status === 'validated').length / terminated.length) * 100)
     : null);
 
-  let fhgTerminated = $derived(terminated.filter(a => ['FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)));
+  let fhgTerminated = $derived(terminated.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)));
   let fhgPct = $derived(fhgTerminated.length
     ? Math.round((fhgTerminated.filter(a => a.status === 'validated').length / fhgTerminated.length) * 100)
     : null);
@@ -184,7 +184,7 @@
     : alerts.filter(a => !a.user_excluded));
 
   let filteredAlerts = $derived(listBase.filter(a => {
-    if (activeFilter === 'fhg')       return ['FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type);
+    if (activeFilter === 'fhg')       return ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type);
     if (activeFilter === 'dc')        return a.signal_type === 'DC';
     if (activeFilter === 'validated') return a.status === 'validated';
     if (activeFilter === 'lost')      return a.status === 'lost';
@@ -197,7 +197,7 @@
       ? alerts.filter(a => a.user_excluded)
       : alerts.filter(a => !a.user_excluded);
     if (key === 'tous')      return base.length;
-    if (key === 'fhg')       return base.filter(a => ['FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)).length;
+    if (key === 'fhg')       return base.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)).length;
     if (key === 'dc')        return base.filter(a => a.signal_type === 'DC').length;
     if (key === 'validated') return base.filter(a => a.status === 'validated').length;
     if (key === 'lost')      return base.filter(a => a.status === 'lost').length;
@@ -225,16 +225,15 @@
   }
 
   function typeBadgeCls(signalType) {
-    if (signalType === 'DC')      return 'type-badge--dc';
-    if (signalType === 'FHG_DOM') return 'type-badge--dom';
-    if (signalType === 'FHG_EXT') return 'type-badge--ext';
+    if (signalType === 'DC')       return 'type-badge--dc';
+    if (signalType === 'FHG_A+B')  return 'type-badge--ab';
+    if (signalType === 'FHG_A')    return 'type-badge--dom';
+    if (signalType === 'FHG_B')    return 'type-badge--ext';
     return 'type-badge--fhg';
   }
 
   function signalLabel(type) {
-    if (type === 'FHG_DOM') return 'FHG Dom.';
-    if (type === 'FHG_EXT') return 'FHG Ext.';
-    return type;
+    return type; // FHG_A, FHG_B, FHG_A+B sont déjà lisibles
   }
 
   onMount(() => { loadAlerts(); });
@@ -548,6 +547,7 @@
   .type-badge--fhg  { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
   .type-badge--dom  { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
   .type-badge--ext  { background: rgba(100,160,230,0.15); color: #7cb9f7; }
+  .type-badge--ab   { background: rgba(29,158,117,0.2); color: var(--color-accent-green); }
   .type-badge--dc   { background: rgba(239,159,39,0.15); color: var(--color-signal-moyen); }
 
   .res-label { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }

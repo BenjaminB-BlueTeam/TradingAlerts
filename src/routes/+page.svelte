@@ -40,7 +40,7 @@
   // Stats calculees
   let todayStr = $derived(getDateStr(0));
   let todayAlerts = $derived(alerts.filter(a => a.match_date === todayStr));
-  let fhgAlerts = $derived(todayAlerts.filter(a => ['FHG_DOM','FHG_EXT'].includes(a.signal_type) && !a.user_excluded));
+  let fhgAlerts = $derived(todayAlerts.filter(a => ['FHG_A','FHG_B','FHG_A+B'].includes(a.signal_type) && !a.user_excluded));
   let dcAlerts = $derived(todayAlerts.filter(a => a.signal_type === 'DC' && !a.user_excluded));
   let validatedToday = $derived(todayAlerts.filter(a => a.status === 'validated'));
   let lostToday = $derived(todayAlerts.filter(a => a.status === 'lost'));
