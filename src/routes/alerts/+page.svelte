@@ -262,19 +262,10 @@
               <div class="team-detail__header">
                 <span class="team-detail__name">{a.home_team_name}</span>
                 <span class="team-detail__context">Domicile</span>
-                {#if hoverBar?.key === `${a.id}_home`}
-                  <span class="bar-hover-min">{hoverBar.min}'</span>
-                {/if}
-                {#if homeStats}
-                  <div class="team-detail__summary">
-                    <span>1MT: <strong style:color={fhgColor(homeStats.pctGoal1MT)}>{homeStats.pctGoal1MT}%</strong></span>
-                    <span>AVG: <strong>{homeStats.avgGoals}</strong></span>
-                  </div>
-                {/if}
               </div>
               {#if homeMatches.length > 0}
                 <div class="team-matches">
-                  {#each homeMatches as m}
+                  {#each homeMatches as m, i}
                     {@const bar = goalBar(m, 'home')}
                     {@const barKey = `${a.id}_home`}
                     <div class="match-row">
@@ -292,8 +283,11 @@
                           {#if hoverBar?.key === barKey}
                             <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
                           {/if}
+                          {#if hoverBar?.key === barKey && i === 0}
+                            <span class="bar-hover-min" style="position:absolute;bottom:calc(100% + 4px);left:{hoverBar.pct}%;transform:translateX(-50%);z-index:10;">{hoverBar.min}'</span>
+                          {/if}
                           {#each bar.goals as g}
-                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.label || g.min + '\''}"></span>
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
                           {/each}
                         </div>
                       </div>
@@ -309,19 +303,10 @@
               <div class="team-detail__header">
                 <span class="team-detail__name">{a.away_team_name}</span>
                 <span class="team-detail__context">Exterieur</span>
-                {#if hoverBar?.key === `${a.id}_away`}
-                  <span class="bar-hover-min">{hoverBar.min}'</span>
-                {/if}
-                {#if awayStats}
-                  <div class="team-detail__summary">
-                    <span>1MT: <strong style:color={fhgColor(awayStats.pctGoal1MT)}>{awayStats.pctGoal1MT}%</strong></span>
-                    <span>AVG: <strong>{awayStats.avgGoals}</strong></span>
-                  </div>
-                {/if}
               </div>
               {#if awayMatches.length > 0}
                 <div class="team-matches">
-                  {#each awayMatches as m}
+                  {#each awayMatches as m, i}
                     {@const bar = goalBar(m, 'away')}
                     {@const barKey = `${a.id}_away`}
                     <div class="match-row">
@@ -339,8 +324,11 @@
                           {#if hoverBar?.key === barKey}
                             <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
                           {/if}
+                          {#if hoverBar?.key === barKey && i === 0}
+                            <span class="bar-hover-min" style="position:absolute;bottom:calc(100% + 4px);left:{hoverBar.pct}%;transform:translateX(-50%);z-index:10;">{hoverBar.min}'</span>
+                          {/if}
                           {#each bar.goals as g}
-                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" title="{g.label || g.min + '\''}"></span>
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
                           {/each}
                         </div>
                       </div>

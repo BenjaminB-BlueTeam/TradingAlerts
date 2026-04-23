@@ -112,7 +112,7 @@ export function goalBar(match, context) {
     const goals = events.map(g => {
       const scored = isHome ? g.home : !g.home;
       const displayMin = g.raw || String(g.min);
-      const label = scored ? `${displayMin}'` : `${displayMin}' \u2014 Encaiss\u00e9`;
+      const label = scored ? `${displayMin}'` : `(Encaiss\u00e9) - ${displayMin}'`;
       return {
         min: g.min,
         raw: displayMin,
@@ -132,9 +132,9 @@ export function goalBar(match, context) {
 
   const goals = [];
   for (let i = 0; i < scoredHT; i++) { const m = 10 + i * 12; goals.push({ min: m, raw: String(m), pct: (m / 90) * 100, scored: true, label: `${m}'` }); }
-  for (let i = 0; i < concededHT; i++) { const m = 15 + i * 12; goals.push({ min: m, raw: String(m), pct: (m / 90) * 100, scored: false, label: `${m}' \u2014 Encaiss\u00e9` }); }
+  for (let i = 0; i < concededHT; i++) { const m = 15 + i * 12; goals.push({ min: m, raw: String(m), pct: (m / 90) * 100, scored: false, label: `(Encaiss\u00e9) - ${m}'` }); }
   for (let i = 0; i < scored2MT; i++) { const m = 55 + i * 12; goals.push({ min: m, raw: String(m), pct: (m / 90) * 100, scored: true, label: `${m}'` }); }
-  for (let i = 0; i < conceded2MT; i++) { const m = 60 + i * 12; goals.push({ min: m, raw: String(m), pct: (m / 90) * 100, scored: false, label: `${m}' \u2014 Encaiss\u00e9` }); }
+  for (let i = 0; i < conceded2MT; i++) { const m = 60 + i * 12; goals.push({ min: m, raw: String(m), pct: (m / 90) * 100, scored: false, label: `(Encaiss\u00e9) - ${m}'` }); }
   goals.sort((a, b) => a.min - b.min);
 
   return { goals, total: totalGoals, result };

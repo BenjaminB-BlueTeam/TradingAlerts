@@ -1,14 +1,16 @@
 <script>
   import { onMount } from 'svelte';
   import { leagues, saveLeagues, apiConnected } from '$lib/stores/appStore.js';
-  import { statColor, fetchLeagues, loadAllStats, toggleExpandLeague } from '$lib/utils/leagueHelpers.js';
+  import { statColor, fetchLeagues, loadAllStats } from '$lib/utils/leagueHelpers.js';
+  import { supabase } from '$lib/api/supabase.js';
+  import { fhgColor } from '$lib/utils/formatters.js';
 
   let apiLeagues = $state([]);
   let loading = $state(true);
   let searchQuery = $state('');
   let expandedLeague = $state(null);
-  let leagueTable = $state(null);
-  let tableLoading = $state(false);
+  let fhgTeams = $state(null);   // Array<{team_name, fhg_pct, matches_count}> | null
+  let fhgLoading = $state(false);
   let loaded = $state(false);
 
   // Stats par ligue (season_id → stats)
@@ -110,16 +112,19 @@
   async function toggleExpand(seasonId) {
     if (expandedLeague === seasonId) {
       expandedLeague = null;
-      leagueTable = null;
+      fhgTeams = null;
       return;
     }
     expandedLeague = seasonId;
-    leagueTable = null;
-    tableLoading = true;
-    const result = await toggleExpandLeague(seasonId, null);
-    expandedLeague = result.expandedLeague;
-    leagueTable = result.leagueTable;
-    tableLoading = result.tableLoading;
+    fhgTeams = null;
+    fhgLoading = true;
+    const { data } = await supabase
+      .from('team_fhg_cache')
+      .select('team_name, fhg_pct, matches_count')
+      .eq('season_id', seasonId)
+      .order('fhg_pct', { ascending: false });
+    fhgTeams = data || [];
+    fhgLoading = false;
   }
 
   onMount(() => {
@@ -206,49 +211,33 @@
 
         {#if expandedLeague === league.id}
           <div class="league-item__table">
-            {#if tableLoading}
-              <div class="league-item__loading">⏳ Chargement du classement...</div>
-            {:else if leagueTable && leagueTable.length > 0}
-              <div class="table-wrapper">
-                <table class="data-table data-table--compact">
-                  <thead>
+            {#if fhgLoading}
+              <div class="league-item__loading">Chargement...</div>
+            {:else if fhgTeams && fhgTeams.length > 0}
+              <table class="data-table data-table--compact fhg-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Equipe</th>
+                    <th title="But marque en 0-45 min (stoppage compris)">FHG 0-45</th>
+                    <th>J</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each fhgTeams as t, i}
                     <tr>
-                      <th>#</th>
-                      <th>Equipe</th>
-                      <th>J</th>
-                      <th>G</th>
-                      <th>N</th>
-                      <th>P</th>
-                      <th>BP</th>
-                      <th>BC</th>
-                      <th>Diff</th>
-                      <th>Pts</th>
+                      <td class="fhg-table__rank">{i + 1}</td>
+                      <td class="league-table__team">{t.team_name || '—'}</td>
+                      <td class="fhg-table__pct">
+                        <strong style:color={fhgColor(t.fhg_pct)}>{t.fhg_pct ?? '—'}%</strong>
+                      </td>
+                      <td class="fhg-table__matches">{t.matches_count ?? '—'}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {#each leagueTable as team, i}
-                      {@const gf = team.seasonGoals ?? team.seasonGoals_overall ?? 0}
-                      {@const ga = team.seasonConceded ?? 0}
-                      <tr>
-                        <td>{team.position ?? i + 1}</td>
-                        <td class="league-table__team">{team.cleanName || team.name || '—'}</td>
-                        <td>{team.matchesPlayed ?? '—'}</td>
-                        <td>{team.seasonWins_overall ?? '—'}</td>
-                        <td>{team.seasonDraws_overall ?? '—'}</td>
-                        <td>{team.seasonLosses_overall ?? '—'}</td>
-                        <td>{gf}</td>
-                        <td>{ga}</td>
-                        <td class:league-table__diff--pos={gf - ga > 0} class:league-table__diff--neg={gf - ga < 0}>
-                          {gf - ga > 0 ? '+' : ''}{gf - ga}
-                        </td>
-                        <td class="league-table__pts"><strong>{team.points ?? '—'}</strong></td>
-                      </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              </div>
+                  {/each}
+                </tbody>
+              </table>
             {:else}
-              <div class="league-item__loading">Aucune donnee de classement disponible</div>
+              <div class="league-item__loading">Données non disponibles — actualisation automatique demain (7h UTC)</div>
             {/if}
           </div>
         {/if}
@@ -376,26 +365,42 @@
   }
   .data-table--compact {
     font-size: 12px;
+    width: 100%;
+    border-collapse: collapse;
   }
   .data-table--compact th,
   .data-table--compact td {
-    padding: 5px 8px;
+    padding: 5px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    text-align: left;
+  }
+  .data-table--compact th {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--color-text-muted);
   }
   .league-table__team {
     white-space: nowrap;
-    max-width: 160px;
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: 500;
+    max-width: 200px;
   }
-  .league-table__pts {
-    color: var(--color-accent-green);
+  .fhg-table__rank {
+    color: var(--color-text-muted);
+    width: 28px;
+    font-size: 11px;
   }
-  .league-table__diff--pos {
-    color: var(--color-accent-green);
+  .fhg-table__pct {
+    width: 70px;
+    font-size: 13px;
   }
-  .league-table__diff--neg {
-    color: var(--color-danger);
+  .fhg-table__matches {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    width: 36px;
   }
 
   @media (max-width: 640px) {

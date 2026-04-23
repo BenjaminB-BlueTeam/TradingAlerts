@@ -13,3 +13,6 @@
 
 [functions."daily-seed"]
   schedule = "0 6 * * *"
+
+[functions."compute-team-fhg"]
+  schedule = "0 7 * * *"

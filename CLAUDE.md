@@ -22,7 +22,7 @@ App **SvelteKit** de **trading sportif football**. Identifie les matchs avec for
 | Build | Vite 6 |
 | Déploiement | Netlify (adapter-netlify) + Netlify Functions |
 | Données | API FootyStats (`football-data-api.com`) via proxy Netlify sécurisé |
-| Persistance | Supabase (PostgreSQL) — alerts, trades, team_seasons, h2h_matches, seed_jobs |
+| Persistance | Supabase (PostgreSQL) — alerts, trades, team_seasons, h2h_matches, seed_jobs, team_fhg_cache |
 | Charts | Chart.js 4.4 (tree-shaké, imports sélectifs) |
 | Tests | Vitest (191 tests) |
 
@@ -50,6 +50,7 @@ netlify/functions/
   check-results.js      ← cron 1h — vérifie résultats matchs pending terminés (fenêtre 31-45 min)
   seed-data.js          ← seed Supabase (team_seasons, h2h_matches) (auth token requis)
   daily-seed.js         ← cron quotidien 6h UTC — seed matchs d'hier dans h2h_matches
+  compute-team-fhg.js  ← cron quotidien 7h UTC — calcule FHG% 0-45 min par equipe depuis h2h_matches, upsert dans team_fhg_cache
   lib/
     api.js              ← helpers partagés (footyRequest, supabaseQuery)
     analysis.cjs        ← logique FHG streak v2 + DC (server-side CJS)
@@ -141,6 +142,7 @@ src/
 | `h2h_matches` | Historique matchs H2H avec goal_events | ON | SELECT, INSERT, UPDATE | ALL |
 | `team_seasons` | Stats équipes par saison (3 ans, buts/min) | ON | SELECT | ALL |
 | `seed_jobs` | Suivi progression seed | ON | SELECT, INSERT, UPDATE | ALL |
+| `team_fhg_cache` | FHG% 0-45 min par equipe par saison (PK: season_id+team_id, mis a jour par compute-team-fhg cron) | ON | SELECT | ALL |
 
 ---
 
@@ -200,8 +202,8 @@ Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même f
 - **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B, filtres par jour, expand détaillé par équipe, barres timing buts, curseur interactif, badges Validé/Perdu/EN COURS, badge signal_type, exclusion
 - **Selection DC** (`/selection-dc`) — alertes DC, filtres par jour, expand H2H tableau centré, % victoire (win+nul)
 - **Historique** (`/historique`) — stats filtrées !user_excluded, Global/FHG/DC/fort/moyen, bloc "Mes trades vs Global", tableau par ligue, toggle what-if exclusions (par tag + Wilson CI), liste paginée (90j + "Charger plus")
-- **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs
-- **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner
+- **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs. Curseur minute dans la 1ère barre (via `data-tip` + CSS, pas de délai). Ballon encaissé : label "(Encaissé) - X'"
+- **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par FHG% 0-45 (depuis team_fhg_cache Supabase, affichage instantané)
 - **Classements ligues** (`/explore`) — par pays, stats, classements
 - **Paramètres** (`/settings`) — 5 sous-composants (ApiTest, TradeJournal, TradeStats, BankrollCalc, DangerZone)
 - **Config** (`/config`) — configuration algo (section Admin)

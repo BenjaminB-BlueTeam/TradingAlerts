@@ -469,7 +469,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 .alert-badge--live { background: rgba(239, 159, 39, 0.2); color: var(--color-signal-moyen); animation: pulse 2s infinite; }
 
 /* ---- GOAL BAR (shared across alerts + matches pages) ---- */
-.goal-bar { position: relative; height: 20px; min-width: 160px; background: linear-gradient(90deg, #2a7a52 0%, #2a7a52 50%, #1e6340 50%, #1e6340 100%); border-radius: 3px; }
+.goal-bar { position: relative; height: 20px; min-width: 160px; background: linear-gradient(90deg, #2a7a52 0%, #2a7a52 50%, #1e6340 50%, #1e6340 100%); border-radius: 3px; overflow: visible; }
 .goal-bar__marker { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.35); z-index: 1; pointer-events: none; }
 .goal-dot {
   position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 2; cursor: default;
@@ -478,8 +478,24 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
 }
 .goal-dot--conceded { opacity: 0.5; }
+.goal-dot[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.88);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 20;
+  pointer-events: none;
+}
 .goal-cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(0,0,0,0.75); transform: translateX(-50%); pointer-events: none; z-index: 3; }
-.bar-hover-min { font-size: 11px; font-weight: 700; color: var(--color-text-primary); background: rgba(255,255,255,0.1); padding: 1px 6px; border-radius: 4px; }
+.bar-hover-min { font-size: 11px; font-weight: 700; color: var(--color-text-primary); background: rgba(0,0,0,0.75); padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
 
 /* ---- TEAM DETAIL (shared expand styles) ---- */
 .team-detail { background: rgba(255,255,255,0.02); border-radius: 8px; padding: 10px; }
