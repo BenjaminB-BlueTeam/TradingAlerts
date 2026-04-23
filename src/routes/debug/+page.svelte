@@ -120,11 +120,11 @@
     seedProgress = seedProgress;
     try {
       const result = await seedLeague(leagueId, seedJobId || 0);
-      seedProgress[leagueId] = `${result.teams || 0} equipes, ${result.matches || 0} matchs`;
+      seedProgress[leagueId] = `${result.matches || 0} matchs`;
       if (result.errors?.length) {
-        seedProgress[leagueId] += ` (${result.errors.length} erreurs)`;
+        seedProgress[leagueId] += ` ⚠ ${result.errors[0]}`;
       }
-      if (window.showToast) window.showToast(`${leagueName} seede`, 'success');
+      if (window.showToast) window.showToast(`${leagueName} : ${result.matches || 0} matchs seedés`, result.matches > 0 ? 'success' : 'error');
     } catch (e) {
       seedProgress[leagueId] = `erreur: ${e.message}`;
       if (window.showToast) window.showToast(e.message, 'error');

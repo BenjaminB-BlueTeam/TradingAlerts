@@ -9,7 +9,7 @@ const FOOTYSTATS_BASE = 'https://api.football-data-api.com';
  * Requête vers l'API FootyStats via la clé serveur.
  * Utilisé par generate-alerts, check-results et seed-data.
  */
-async function footyRequest(endpoint, params = {}) {
+async function footyRequest(endpoint, params = {}, timeoutMs = 8000) {
   const apiKey = process.env.FOOTYSTATS_API_KEY;
   if (!apiKey) throw new Error('FOOTYSTATS_API_KEY non configurée');
   const url = new URL(`${FOOTYSTATS_BASE}/${endpoint}`);
@@ -17,7 +17,7 @@ async function footyRequest(endpoint, params = {}) {
   Object.entries(params).forEach(([k, v]) => {
     if (v != null) url.searchParams.set(k, String(v));
   });
-  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) throw new Error(`FootyStats ${endpoint}: HTTP ${res.status}`);
   return await res.json();
 }

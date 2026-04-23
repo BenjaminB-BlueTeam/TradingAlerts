@@ -99,7 +99,8 @@ async function seedLeague(seasonId) {
   // Récupère les matchs depuis FootyStats et retourne les rows formatées
   // L'insert Supabase est fait côté client pour éviter le timeout
   try {
-    const matchesData = await footyRequest('league-matches', { season_id: seasonId });
+    // Timeout étendu à 25s : league-matches peut renvoyer 300+ matchs
+    const matchesData = await footyRequest('league-matches', { season_id: seasonId }, 25000);
     const matches = matchesData?.data || [];
 
     const rows = matches.map(m => parseMatchRow(m, { seasonId }));
