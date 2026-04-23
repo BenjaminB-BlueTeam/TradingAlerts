@@ -39,8 +39,9 @@ function getDateStr(offsetDays) {
 
 async function getRecentMatches(teamId, context, limit = 10) {
   const col = context === 'home' ? 'home_team_id' : 'away_team_id';
+  const today = getDateStr(0);
   return await supabaseQuery('h2h_matches',
-    `${col}=eq.${teamId}&order=match_date.desc&limit=${limit}`
+    `${col}=eq.${teamId}&match_date=lt.${today}&order=match_date.desc&limit=${limit}`
   );
 }
 
