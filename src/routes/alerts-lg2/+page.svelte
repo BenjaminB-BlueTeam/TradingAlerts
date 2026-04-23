@@ -1,0 +1,493 @@
+<script>
+  import { onMount } from 'svelte';
+  import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
+  import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay } from '$lib/utils/formatters.js';
+  import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
+  import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
+
+  const LG2_SIGNALS = ['LG2_A', 'LG2_B', 'LG2_A+B'];
+
+  let alerts = $state([]);
+  let loading = $state(true);
+  let error = $state('');
+  let selectedDay = $state(null);
+  let expandedId = $state(null);
+  let teamMatchesCache = $state({});
+
+  const days = [
+    { label: 'Passés', offset: -3 },
+    { label: "Aujourd'hui", offset: 0 },
+    { label: 'Demain', offset: 1 },
+    { label: 'Après-demain', offset: 2 },
+  ];
+
+  let generating = $state(false);
+  let genMessage = $state('');
+  let deleting = $state(false);
+  let deleteMessage = $state('');
+
+  async function handleDeleteVisible() {
+    const ids = filteredAlerts.map(a => a.id);
+    if (ids.length === 0) return;
+    if (!confirm(`Supprimer ${ids.length} alerte${ids.length > 1 ? 's' : ''} visible${ids.length > 1 ? 's' : ''} ?`)) return;
+    deleting = true;
+    deleteMessage = '';
+    try {
+      const res = await fetch('/.netlify/functions/delete-alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        deleteMessage = `Erreur : ${data.error}`;
+      } else {
+        deleteMessage = `${data.deleted} alerte${data.deleted > 1 ? 's' : ''} supprimée${data.deleted > 1 ? 's' : ''}`;
+        await loadAlerts();
+      }
+    } catch (e) {
+      deleteMessage = `Erreur : ${e.message}`;
+    }
+    deleting = false;
+  }
+
+  let excludeModalOpen = $state(false);
+  let excludeModalAlert = $state(null);
+
+  function openExcludeModal(alert) {
+    excludeModalAlert = alert;
+    excludeModalOpen = true;
+  }
+
+  async function handleExcluded(e) {
+    const { tags, note } = e.detail;
+    try {
+      await excludeAlert(excludeModalAlert.match_id, tags, note);
+      await loadAlerts();
+    } catch (err) {
+      console.error('excludeAlert error:', err);
+    }
+  }
+
+  async function handleUnexclude(alert) {
+    try {
+      await unexcludeAlert(alert.match_id);
+      await loadAlerts();
+    } catch (err) {
+      console.error('unexcludeAlert error:', err);
+    }
+  }
+
+  async function handleGenerate() {
+    generating = true;
+    genMessage = '';
+    try {
+      const res = await fetch('/.netlify/functions/generate-alerts?type=LG2');
+      const data = await res.json();
+      if (data.error) {
+        genMessage = `Erreur : ${data.error}`;
+      } else if (data.alerts_created > 0) {
+        genMessage = `${data.alerts_created} alerte${data.alerts_created > 1 ? 's' : ''} LG2 créée${data.alerts_created > 1 ? 's' : ''}`;
+        await loadAlerts();
+      } else {
+        genMessage = `Aucune alerte LG2 — ${data.analyzed} matchs analysés, aucun ne correspond`;
+      }
+    } catch (e) {
+      genMessage = `Erreur : ${e.message}`;
+    }
+    generating = false;
+  }
+
+  async function loadAlerts() {
+    loading = true;
+    error = '';
+    const { data, error: dbError } = await supabase
+      .from('alerts')
+      .select('*')
+      .gte('match_date', getDateStr(-3))
+      .lte('match_date', getDateStr(2))
+      .in('signal_type', LG2_SIGNALS)
+      .order('match_date', { ascending: false })
+      .order('kickoff_unix', { ascending: true });
+    if (dbError) {
+      console.error('loadAlerts LG2 error:', dbError);
+      error = 'Impossible de charger les alertes LG2.';
+      alerts = [];
+    } else {
+      alerts = data || [];
+    }
+    loading = false;
+  }
+
+  let selectedLeague = $state('toutes');
+  let selectedSignal = $state('tous');
+  let availableLeagues = $derived([...new Set(alerts.map(a => a.league_name).filter(Boolean))].sort());
+  const CONF_ORDER = { fort_double: 0, fort: 1, moyen: 2 };
+
+  let filteredAlerts = $derived(
+    alerts
+      .filter(a => {
+        if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
+        if (selectedLeague !== 'toutes' && a.league_name !== selectedLeague) return false;
+        if (selectedSignal !== 'tous' && a.signal_type !== selectedSignal) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.match_date < b.match_date) return -1;
+        if (a.match_date > b.match_date) return 1;
+        const ca = CONF_ORDER[a.confidence] ?? 99;
+        const cb = CONF_ORDER[b.confidence] ?? 99;
+        if (ca !== cb) return ca - cb;
+        return (a.kickoff_unix || 0) - (b.kickoff_unix || 0);
+      })
+  );
+
+  async function loadTeamMatches(teamId, context) {
+    const key = `${teamId}_${context}`;
+    if (teamMatchesCache[key]) return teamMatchesCache[key];
+    const data = await _loadTeamMatches(teamId, context, supabase);
+    teamMatchesCache[key] = data;
+    teamMatchesCache = teamMatchesCache;
+    return data;
+  }
+
+  async function toggleExpand(alert) {
+    if (expandedId === alert.id) {
+      expandedId = null;
+      return;
+    }
+    await Promise.all([
+      loadTeamMatches(alert.home_team_id, 'home'),
+      loadTeamMatches(alert.away_team_id, 'away'),
+    ]);
+    expandedId = alert.id;
+  }
+
+  function getTeamMatches(teamId, context) {
+    return teamMatchesCache[`${teamId}_${context}`] || [];
+  }
+
+  function confidenceClass(c) {
+    return c === 'fort' || c === 'fort_double' ? 'alert-badge--fort' : 'alert-badge--moyen';
+  }
+
+  let hoverBar = $state(null);
+
+  function onBarMove(e, key) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, (e.clientX - rect.left) / rect.width * 100));
+    const min = Math.round(pct / 100 * 90);
+    hoverBar = { key, pct, min };
+  }
+
+  function onBarLeave() {
+    hoverBar = null;
+  }
+
+  onMount(() => { loadAlerts(); });
+</script>
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+  <div>
+    <h1 class="page-title">⏱️ Sélection LG2</h1>
+    <p class="page-subtitle">
+      {alerts.length} signal{alerts.length > 1 ? 's' : ''} LG2 (but après 80') — 3 derniers jours + à venir
+    </p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <button class="btn btn--secondary btn--sm" onclick={handleGenerate} disabled={generating}>
+      {generating ? '⏳...' : '🔄 Actualiser'}
+    </button>
+    {#if filteredAlerts.length > 0}
+      <button class="btn btn--danger btn--sm" onclick={handleDeleteVisible} disabled={deleting}>
+        {deleting ? '⏳...' : `Supprimer les ${filteredAlerts.length} visible${filteredAlerts.length > 1 ? 's' : ''}`}
+      </button>
+    {/if}
+  </div>
+</div>
+{#if genMessage}
+  <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--color-text-muted);">{genMessage}</div>
+{/if}
+{#if deleteMessage}
+  <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(226,75,74,0.08);color:var(--color-danger);">{deleteMessage}</div>
+{/if}
+
+<div class="alerts-filters">
+  <button class="alerts-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} onclick={() => selectedDay = null}>
+    Tous ({alerts.length})
+  </button>
+  {#each days as day}
+    {@const count = alerts.filter(a => a.match_date === getDateStr(day.offset)).length}
+    <button class="alerts-filter-btn" class:active={selectedDay === day.offset} aria-pressed={selectedDay === day.offset} onclick={() => selectedDay = (selectedDay === day.offset ? null : day.offset)}>
+      {day.label} ({count})
+    </button>
+  {/each}
+</div>
+
+<div class="alerts-sub-filters">
+  <div class="sub-filter-group">
+    <span class="sub-filter-label">Ligue</span>
+    <select class="alerts-filter-select" bind:value={selectedLeague}>
+      <option value="toutes">Toutes</option>
+      {#each availableLeagues as league}
+        {@const count = alerts.filter(a => a.league_name === league && (selectedDay === null || a.match_date === getDateStr(selectedDay))).length}
+        <option value={league}>{league} ({count})</option>
+      {/each}
+    </select>
+  </div>
+  <div class="sub-filter-group">
+    <span class="sub-filter-label">Signal</span>
+    <button class="alerts-filter-btn" class:active={selectedSignal === 'tous'} onclick={() => selectedSignal = 'tous'}>Tous</button>
+    {#each LG2_SIGNALS as sig}
+      {@const count = alerts.filter(a => a.signal_type === sig && (selectedDay === null || a.match_date === getDateStr(selectedDay))).length}
+      {#if count > 0}
+        <button class="alerts-filter-btn sig-btn sig-btn--{sig.replace('+','p')}" class:active={selectedSignal === sig}
+          onclick={() => selectedSignal = selectedSignal === sig ? 'tous' : sig}>
+          {sig} ({count})
+        </button>
+      {/if}
+    {/each}
+  </div>
+</div>
+
+{#if error}
+  <p class="error-msg">{error}</p>
+{/if}
+
+{#if loading}
+  <div class="empty-state" style="padding:40px;">
+    <div class="empty-state__icon">⏳</div>
+    <div class="empty-state__title">Chargement des alertes LG2...</div>
+  </div>
+{:else if filteredAlerts.length === 0}
+  <div class="empty-state" style="padding:40px;">
+    <div class="empty-state__icon">🔔</div>
+    <div class="empty-state__title">Aucune alerte LG2</div>
+    <div style="font-size:12px;color:var(--color-text-muted);margin-top:8px;">
+      Les alertes sont générées automatiquement toutes les 12h
+    </div>
+    <button class="btn btn--primary" style="margin-top:12px;" onclick={handleGenerate} disabled={generating}>
+      {generating ? '⏳ Analyse en cours...' : '⏱️ Lancer l\'analyse LG2 maintenant'}
+    </button>
+    {#if genMessage}
+      <div style="font-size:12px;margin-top:8px;color:var(--color-text-muted);">{genMessage}</div>
+    {/if}
+  </div>
+{:else}
+  <div class="alerts-list">
+    {#each filteredAlerts as a (a.id)}
+      <div class="alert-card"
+        class:alert-card--expanded={expandedId === a.id}
+        class:alert-card--validated={a.status === 'validated'}
+        class:alert-card--lost={a.status === 'lost'}
+        class:alert-card--live={a.status === 'pending' && isInPlay(a)}
+      >
+        <div class="alert-card__header" onclick={() => toggleExpand(a)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }} role="button" tabindex="0" aria-expanded={expandedId === a.id}>
+          <div class="alert-card__time">
+            <div class="alert-card__day">{formatDateDMY(a.match_date)}</div>
+            <div class="alert-card__hour">{formatTime(a.kickoff_unix)}</div>
+          </div>
+          <div class="alert-card__match">
+            <div class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</div>
+            <div class="alert-card__league">{a.league_name || '—'}</div>
+          </div>
+          <div class="alert-card__stats">
+            {#if a.fhg_factors?.streakHome !== undefined}
+              <div class="alert-pill">
+                <span class="alert-pill__label">Dom</span>
+                <span class="alert-pill__value">{a.fhg_factors.streakHome}</span>
+              </div>
+            {/if}
+            {#if a.fhg_factors?.streakAway !== undefined}
+              <div class="alert-pill">
+                <span class="alert-pill__label">Ext</span>
+                <span class="alert-pill__value">{a.fhg_factors.streakAway}</span>
+              </div>
+            {/if}
+            <div class="alert-pill">
+              <span class="alert-pill__label">H2H</span>
+              <span class="alert-pill__value">{a.h2h_count}</span>
+            </div>
+          </div>
+          <div class="alert-card__badges">
+            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
+            {#if a.signal_type}
+              <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
+            {/if}
+            {#if a.status === 'validated'}
+              <span class="alert-badge alert-badge--validated">✓ Validé</span>
+            {:else if a.status === 'lost'}
+              <span class="alert-badge alert-badge--lost">✗ Perdu</span>
+            {:else if isInPlay(a)}
+              <span class="alert-badge alert-badge--live">EN COURS</span>
+            {/if}
+            {#if a.user_excluded}
+              <span class="alert-badge alert-badge--exclu">EXCLUE</span>
+              <button class="btn btn--sm btn-reinstate" onclick={e => { e.stopPropagation(); handleUnexclude(a); }}>Réintégrer</button>
+            {:else if a.status === 'pending'}
+              <button class="btn btn--sm btn--danger" onclick={e => { e.stopPropagation(); openExcludeModal(a); }}>Exclure</button>
+            {/if}
+          </div>
+          <span class="alert-card__arrow">{expandedId === a.id ? '▼' : '▶'}</span>
+        </div>
+
+        {#if expandedId === a.id}
+          {@const homeMatches = getTeamMatches(a.home_team_id, 'home')}
+          {@const awayMatches = getTeamMatches(a.away_team_id, 'away')}
+          <div class="alert-expand">
+            <div class="team-detail">
+              <div class="team-detail__header">
+                <span class="team-detail__name">{a.home_team_name}</span>
+                <span class="team-detail__context">Domicile</span>
+              </div>
+              {#if homeMatches.length > 0}
+                <div class="team-matches">
+                  {#each homeMatches as m, i}
+                    {@const bar = goalBar(m, 'home')}
+                    {@const barKey = `${a.id}_home`}
+                    <div class="match-row">
+                      <span class="match-row__date">{formatDate(m.match_date)}</span>
+                      <span class="match-row__home match-row__bold">{m.home_team_name}</span>
+                      <span class="match-row__score match-row__score--{bar.result}">{m.home_goals}-{m.away_goals}</span>
+                      <span class="match-row__away">{m.away_team_name}</span>
+                      <div class="match-row__bar">
+                        <div class="goal-bar"
+                          onmousemove={(e) => onBarMove(e, barKey)}
+                          onmouseleave={onBarLeave}
+                        >
+                          <span class="goal-bar__marker" style="left:50%">HT</span>
+                          <span class="goal-bar__marker" style="left:89%">80'</span>
+                          <span class="goal-bar__marker" style="left:98%">FT</span>
+                          {#if hoverBar?.key === barKey}
+                            <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
+                          {/if}
+                          {#if hoverBar?.key === barKey && i === 0}
+                            <span class="bar-hover-min" style="position:absolute;bottom:calc(100% + 4px);left:{hoverBar.pct}%;transform:translateX(-50%);z-index:10;">{hoverBar.min}'</span>
+                          {/if}
+                          {#each bar.goals as g}
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} class:goal-dot--late={g.min >= 80} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
+                          {/each}
+                        </div>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              {:else}
+                <p style="color:var(--color-text-muted);text-align:center;padding:1rem;font-size:13px;">Aucun match joué cette saison</p>
+              {/if}
+            </div>
+
+            <div class="team-detail">
+              <div class="team-detail__header">
+                <span class="team-detail__name">{a.away_team_name}</span>
+                <span class="team-detail__context">Extérieur</span>
+              </div>
+              {#if awayMatches.length > 0}
+                <div class="team-matches">
+                  {#each awayMatches as m, i}
+                    {@const bar = goalBar(m, 'away')}
+                    {@const barKey = `${a.id}_away`}
+                    <div class="match-row">
+                      <span class="match-row__date">{formatDate(m.match_date)}</span>
+                      <span class="match-row__home">{m.home_team_name}</span>
+                      <span class="match-row__score match-row__score--{bar.result}">{m.home_goals}-{m.away_goals}</span>
+                      <span class="match-row__away match-row__bold">{m.away_team_name}</span>
+                      <div class="match-row__bar">
+                        <div class="goal-bar"
+                          onmousemove={(e) => onBarMove(e, barKey)}
+                          onmouseleave={onBarLeave}
+                        >
+                          <span class="goal-bar__marker" style="left:50%">HT</span>
+                          <span class="goal-bar__marker" style="left:89%">80'</span>
+                          <span class="goal-bar__marker" style="left:98%">FT</span>
+                          {#if hoverBar?.key === barKey}
+                            <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
+                          {/if}
+                          {#if hoverBar?.key === barKey && i === 0}
+                            <span class="bar-hover-min" style="position:absolute;bottom:calc(100% + 4px);left:{hoverBar.pct}%;transform:translateX(-50%);z-index:10;">{hoverBar.min}'</span>
+                          {/if}
+                          {#each bar.goals as g}
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} class:goal-dot--late={g.min >= 80} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
+                          {/each}
+                        </div>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              {:else}
+                <p style="color:var(--color-text-muted);text-align:center;padding:1rem;font-size:13px;">Aucun match joué cette saison</p>
+              {/if}
+            </div>
+          </div>
+        {/if}
+      </div>
+    {/each}
+  </div>
+{/if}
+
+<style>
+  .alerts-filters { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
+  .alerts-filter-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 5px 12px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; transition: all 0.15s; }
+  .alerts-filter-btn.active { background: var(--color-accent-blue); border-color: var(--color-accent-blue); color: white; }
+
+  .alerts-sub-filters { display: flex; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; padding: 8px 12px; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px; }
+  .sub-filter-group { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .sub-filter-label { font-size: 11px; color: var(--color-text-muted); font-weight: 500; white-space: nowrap; }
+  .alerts-filter-select { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 4px 8px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; max-width: 220px; }
+  /* Couleurs signal LG2 */
+  .sig-btn--LG2_A.active  { background: rgba(239,159,39,0.2); border-color: var(--color-warning-orange); color: var(--color-warning-orange); }
+  .sig-btn--LG2_B.active  { background: rgba(100,160,230,0.2); border-color: #7cb9f7; color: #7cb9f7; }
+  .sig-btn--LG2_ApB.active { background: rgba(226,75,74,0.25); border-color: var(--color-danger); color: #fff; }
+
+  .alerts-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .alert-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
+  .alert-card:hover { border-color: var(--color-accent-blue); }
+  .alert-card--expanded { border-color: var(--color-accent-blue); }
+  .alert-card--validated { border-color: var(--color-accent-green) !important; background: rgba(29,158,117,0.04); }
+  .alert-card--lost { border-color: var(--color-danger) !important; background: rgba(226,75,74,0.04); }
+  .alert-card--live { border-color: var(--color-signal-moyen) !important; background: rgba(239,159,39,0.04); }
+
+  .alert-card__header { display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; transition: background 0.15s; }
+  .alert-card__header:hover { background: rgba(255,255,255,0.02); }
+
+  .alert-card__time { min-width: 65px; text-align: center; }
+  .alert-card__day { font-size: 10px; color: var(--color-text-muted); }
+  .alert-card__hour { font-size: 14px; font-weight: 600; }
+  .alert-card__match { flex: 1; min-width: 0; }
+  .alert-card__teams { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .alert-card__league { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+  .alert-card__arrow { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
+
+  .alert-card__stats { display: flex; gap: 6px; flex-shrink: 0; }
+  .alert-pill { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.04); border-radius: 6px; padding: 3px 8px; min-width: 44px; }
+  .alert-pill__label { font-size: 9px; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted); }
+  .alert-pill__value { font-size: 13px; font-weight: 700; }
+
+  .alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+  .alert-badge--signal { background: rgba(61,142,247,0.15); color: var(--color-accent-blue); border: 1px solid rgba(61,142,247,0.3); }
+  .alert-badge--exclu { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #555; }
+  .btn-reinstate { border-color: var(--color-accent-blue); color: var(--color-accent-blue); background: rgba(61,142,247,0.1); }
+  .btn-reinstate:hover { background: var(--color-accent-blue); color: #fff; }
+
+  /* Expand */
+  .alert-expand { border-top: 1px solid var(--color-border); padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* Goal dot highlight pour les buts après 80' */
+  :global(.goal-dot--late) { box-shadow: 0 0 0 2px var(--color-warning-orange); }
+
+  @media (max-width: 1200px) {
+    .alert-expand { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 768px) {
+    .alert-card__header { flex-wrap: wrap; }
+    .alert-card__stats { width: 100%; }
+    .alert-card__badges { flex-wrap: wrap; }
+  }
+</style>
+
+<ExcludeAlertModal
+  alert={excludeModalAlert}
+  bind:open={excludeModalOpen}
+  on:excluded={handleExcluded}
+/>

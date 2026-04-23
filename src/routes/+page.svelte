@@ -57,7 +57,7 @@
   let dateLabel = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   function confidenceClass(c) {
-    return c === 'fort' ? 'alert-badge--fort' : 'alert-badge--moyen';
+    return (c === 'fort' || c === 'fort_double') ? 'alert-badge--fort' : 'alert-badge--moyen';
   }
 
   async function loadAlerts() {
@@ -151,6 +151,11 @@
           </div>
           <div class="dash-alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
+            {#if a.signal_type && a.signal_type !== 'DC'}
+              <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
+            {:else if a.signal_type === 'DC'}
+              <span class="alert-badge alert-badge--signal">DC</span>
+            {/if}
             {#if a.status === 'validated'}
               <span class="alert-badge alert-badge--validated">Valide</span>
             {:else if a.status === 'lost'}
@@ -200,6 +205,11 @@
           </div>
           <div class="dash-alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
+            {#if a.signal_type && a.signal_type !== 'DC'}
+              <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
+            {:else if a.signal_type === 'DC'}
+              <span class="alert-badge alert-badge--signal">DC</span>
+            {/if}
             {#if a.user_excluded}
               <span class="alert-badge alert-badge--exclu">EXCLUE</span>
               <button class="btn btn--sm btn-reinstate" onclick={() => handleUnexclude(a)}>Réintégrer</button>
@@ -263,6 +273,7 @@
   .btn-reinstate:hover { background: var(--color-accent-blue); color: #fff; }
 
   .alert-badge--exclu { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #555; }
+  .alert-badge--signal { background: rgba(61,142,247,0.15); color: var(--color-accent-blue); border: 1px solid rgba(61,142,247,0.3); font-size: 10px; }
 
   @media (max-width: 768px) {
     .metric-grid { grid-template-columns: repeat(2, 1fr); }

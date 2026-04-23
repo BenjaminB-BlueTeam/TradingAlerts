@@ -55,6 +55,8 @@ netlify/functions/
     api.js              ← helpers partagés (footyRequest, supabaseQuery)
     analysis.cjs        ← logique FHG streak v2 + DC (server-side CJS)
     analysis.test.js    ← tests unitaires streak/DC (162 tests)
+    lg2.cjs             ← logique LG2 streak (but >= 80') — server-side CJS
+    lg2.test.js         ← tests unitaires LG2 server (27 tests)
     parseMatch.js       ← parseMatchRow partagé (daily-seed + seed-data)
 src/
   app.css               ← styles globaux (variables CSS, badges, goal-bar, responsive)
@@ -65,6 +67,7 @@ src/
     +page.svelte        ← Dashboard KPIs + alertes du jour (Supabase)
     alerts/+page.svelte       ← Sélection FHG — alertes FHG depuis Supabase
     selection-dc/+page.svelte ← Sélection DC — alertes DC depuis Supabase
+    alerts-lg2/+page.svelte   ← Sélection LG2 — alertes LG2 depuis Supabase
     historique/+page.svelte   ← Historique alertes + stats performance (KPI, ligues, filtres)
     matches/+page.svelte      ← Matchs à venir (cards avec expand)
     leagues/+page.svelte      ← Ligues actives (toggle, stats)
@@ -100,6 +103,8 @@ src/
     core/
       scoring.js        ← algorithme FHG streak v2 + DC (client-side ESM, miroir de analysis.cjs)
       scoring.test.js   ← tests unitaires streak (41 tests)
+      lg2.js            ← algorithme LG2 streak (client-side ESM, miroir de lg2.cjs)
+      lg2.test.js       ← tests unitaires LG2 client (17 tests)
       h2h.js            ← analyse head-to-head
       h2h.test.js       ← tests unitaires h2h (21 tests)
       filters.js        ← isWindowActive (fenêtre 31-45 min)
@@ -190,21 +195,62 @@ STREAK_FORT=3, STREAK_MOYEN=2, CONFIRM_MIN_RATE=0.60, CONFIRM_WINDOW=5, CONFIRM_
 ### Duplication ESM/CJS intentionnelle
 `analysis.cjs` (server, CommonJS) et `scoring.js` (client, ESM) contiennent la même logique streak.
 Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même format.
+Idem pour LG2 : `lg2.cjs` + `lg2.js`.
+
+---
+
+## Algorithme LG2 — Late Goal 2e mi-temps (depuis 2026-04-23)
+
+Spec complète : `docs/superpowers/specs/2026-04-23-lg2-design.md`.
+
+### Principe (beaucoup plus simple que FHG)
+
+Pour chaque équipe, on compte un **streak consécutif** de matchs (côté dom ou ext selon son rôle dans le match à venir) avec **au moins un but après 80'** (temps additionnels inclus, peu importe qui marque).
+
+- **Signal A** : streak équipe DOM >= 3 (sur ses matchs à domicile récents)
+- **Signal B** : streak équipe EXT >= 3 (sur ses matchs à l'extérieur récents)
+- **Signal A+B** : les deux simultanés → `fort_double`
+
+### Confiance
+| Critère | Confidence |
+|---------|-----------|
+| Streak = 3 consécutifs | `moyen` |
+| Streak >= 4 consécutifs | `fort` |
+| A+B simultanés | `fort_double` |
+
+### Constantes partagées (lg2.cjs + lg2.js)
+```
+LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT=4
+```
+
+### Ce qui n'existe PAS pour LG2 (YAGNI)
+- Pas de scénarios C/D
+- Pas de confirmation indépendante (le streak suffit)
+- Pas de veto H2H
+- Pas de cache `team_lg2_cache` (calcul à la volée)
+
+### Intégration
+- `generate-alerts.js` : boucle LG2 ajoutée après FHG/DC. Aucun appel API en plus (réutilise homeMatches/awayMatches déjà chargés).
+- `check-results.js` : `evaluateLG2()` — validée si au moins un but >= 80', sinon perdue.
+- `algo_version = 'lg2_v1'` (distinct de `'v2'` pour FHG).
+- `fhg_factors` réutilisé pour stocker `{ streakHome, streakAway }` (pas de nouvelle colonne).
 
 ---
 
 ## Ce qui est implémenté
 
 - **Algo FHG streak v2** (2026-04-23) — `analysis.cjs` + `scoring.js` : Scénario A (streak consécutif >=3 → fort), Scénario B (count 3/5 non-consécutif → moyen), FHG_A+B → fort_double, veto H2H 1MT. Spec : `SPEC_STREAK_V2.md`
-- **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) : génère FHG_A/B/A+B + DC, algo_version='v2', table Supabase `alerts`
-- **Vérification auto résultats** — `check-results.js` (cron 1h) : FHG sur buts 31-45 min via goal_events, DC sur résultat final, statut -> validated/lost/expired (cleanup 48h)
+- **Algo LG2 streak** (2026-04-23) — `lg2.cjs` + `lg2.js` : streak consécutif de matchs avec but >= 80' par équipe (dom ou ext). LG2_A (home), LG2_B (away), LG2_A+B. Confidence = moyen (3) / fort (4+) / fort_double (A+B). Spec : `docs/superpowers/specs/2026-04-23-lg2-design.md`
+- **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) : génère FHG_A/B/A+B + DC + LG2_A/B/A+B, algo_version='v2' (FHG/DC) ou 'lg2_v1' (LG2), table Supabase `alerts`
+- **Vérification auto résultats** — `check-results.js` (cron 1h) : FHG sur buts 31-45 min, LG2 sur buts >= 80 min via goal_events, DC sur résultat final, statut -> validated/lost/expired (cleanup 48h)
 - **Daily seed auto** — `daily-seed.js` (cron 6h UTC) : seed matchs d'hier dans `h2h_matches`
 - **Calcul FHG% équipes** — `compute-team-fhg.js` (cron 7h UTC) : FHG% 0-45 par (season_id, team_id) depuis `h2h_matches`, upsert dans `team_fhg_cache`
 - **Exclusion manuelle** — bouton rouge "Exclure" (btn--danger) sur dashboard/alertes, ExcludeAlertModal (7 tags + note), réintégration possible, what-if stats dans /historique (Wilson CI 95% par tag)
 - **Dashboard** (`/`) — KPIs + alertes du jour/a venir, bouton rouge "Exclure" sur pending, badge EXCLUE
 - **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B/C/D, tri fort→moyen→date, filtres jour + ligue + signal (boutons colorés par type), expand détaillé par équipe, barres timing buts, curseur interactif (* 90), tooltip buts opaque, badges Validé/Perdu/EN COURS, badge signal_type, bouton rouge "Exclure"
 - **Selection DC** (`/selection-dc`) — alertes DC, tri fort→moyen→date, filtres jour + ligue, expand H2H tableau centré, % victoire (win+nul)
-- **Historique** (`/historique`) — stats filtrées !user_excluded, Global/FHG/DC/fort/moyen, bloc "Mes trades vs Global", tableau par ligue, toggle what-if exclusions (par tag + Wilson CI), liste paginée (90j + "Charger plus")
+- **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B, tri fort_double→fort→moyen→date, filtres jour + ligue + signal, expand par équipe avec barres timing buts (marqueur 80' visible, buts après 80' encadrés), pills Dom/Ext affichant la longueur du streak, badge signal_type, bouton rouge "Exclure"
+- **Historique** (`/historique`) — stats filtrées !user_excluded, Global/FHG/DC/LG2/fort/moyen, bloc "Mes trades vs Global", tableau par ligue, toggle what-if exclusions (par tag + Wilson CI), liste paginée (90j + "Charger plus")
 - **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs. Curseur minute dans la 1ère barre (data-tip + CSS, pas de délai, calcul * 90). Ballon encaissé : label "(Encaissé) - X'". Tooltip opaque (#1e2330 + border)
 - **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par FHG% 0-45 (depuis team_fhg_cache Supabase, affichage instantané)
 - **Classements ligues** (`/explore`) — par pays, stats, classements
@@ -216,7 +262,7 @@ Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même f
 - **Compteur API** — req restantes affiché dans la sidebar
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
 - **Supabase RLS active** — policies read-only anon, service_role pour les Netlify Functions
-- **Tests unitaires** — Vitest, 213 tests (analysis.cjs 162, scoring 44, h2h 16, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17)
+- **Tests unitaires** — Vitest, 257 tests (analysis.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, h2h 16, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17)
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`. Tooltip goal-dot opaque (#1e2330). bar-hover-min opaque.
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
 - **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5
@@ -226,7 +272,8 @@ Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même f
 
 ## Roadmap — prochaines étapes
 
-- [ ] Attendre ~20 alertes terminées (validated/lost) → lancer `scripts/calibrate-threshold.js`
+- [ ] Attendre ~20 alertes FHG terminées (validated/lost) → lancer `scripts/calibrate-threshold.js`
+- [ ] Attendre ~20 alertes LG2 terminées → calibrer les seuils LG2 (STREAK_MOYEN / STREAK_FORT) avec Wilson CI
 
 ---
 
@@ -240,7 +287,8 @@ Pas de fichier partagé : les bundlers Netlify/Vite ne supportent pas le même f
 6. Pas de cotes/stakes/profits dans l'app
 7. Pas de bouton "Analyse IA" — Benjamin fait sa propre analyse
 8. Clé anon sans fallback hardcodé
-9. ESM/CJS : scoring.js (frontend ESM) et analysis.cjs (backend CJS) dupliquent la logique streak — pas de fichier partagé (incompatibilité bundlers)
+9. ESM/CJS : scoring.js (frontend ESM) et analysis.cjs (backend CJS) dupliquent la logique streak — pas de fichier partagé (incompatibilité bundlers). Même règle pour lg2.js / lg2.cjs.
+10. LG2 = streak simple "match avec but >= 80'" (tout but compte), sans confirmation ni veto H2H — volontairement plus léger que FHG. `fhg_factors` jsonb réutilisé pour stocker les streaks LG2 (évite une migration).
 
 ---
 

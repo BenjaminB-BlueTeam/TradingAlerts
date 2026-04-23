@@ -49,6 +49,16 @@ function evaluateFHG(matchData) {
   return 'lost';
 }
 
+function evaluateLG2(matchData) {
+  const goalMinutes = parseGoalMinutes(matchData);
+  if (goalMinutes.length > 0) {
+    const hasGoalAfter80 = goalMinutes.some(m => m >= 80);
+    return hasGoalAfter80 ? 'validated' : 'lost';
+  }
+  console.warn(`[check-results] LG2 match ${matchData.id}: goal_timings unavailable, marking lost (conservative)`);
+  return 'lost';
+}
+
 function evaluateDC(matchData, dcBestSide) {
   const homeGoals = matchData.homeGoalCount || 0;
   const awayGoals = matchData.awayGoalCount || 0;
@@ -96,8 +106,11 @@ exports.handler = async () => {
         let newStatus;
 
         const FHG_TYPES = ['FHG', 'FHG_DOM', 'FHG_EXT', 'FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D'];
+        const LG2_TYPES = ['LG2_A', 'LG2_B', 'LG2_A+B'];
         if (FHG_TYPES.includes(signalType)) {
           newStatus = evaluateFHG(matchData);
+        } else if (LG2_TYPES.includes(signalType)) {
+          newStatus = evaluateLG2(matchData);
         } else if (signalType === 'DC') {
           newStatus = evaluateDC(matchData, alert.dc_best_side);
         } else {

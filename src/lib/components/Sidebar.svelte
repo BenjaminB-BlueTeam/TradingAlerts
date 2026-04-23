@@ -17,6 +17,7 @@
     { href: '/',              icon: '📊', label: 'Dashboard'          },
     { href: '/alerts',        icon: '⚡', label: 'Sélection FHG'      },
     { href: '/selection-dc',  icon: '🎯', label: 'Sélection DC'       },
+    { href: '/alerts-lg2',    icon: '⏱️', label: 'Sélection LG2'      },
     { href: '/historique',    icon: '📈', label: 'Historique'         },
     { href: '/matches',       icon: '⚽', label: 'Matchs à venir'     },
     { href: '/explore',       icon: '🌍', label: 'Classements ligues' },
@@ -98,7 +99,7 @@
       >
         <span class="sidebar__nav-icon">{item.icon}</span>
         <span class="sidebar__nav-label">{item.label}</span>
-        {#if (item.href === '/alerts' || item.href === '/selection-dc') && alertsBadgeCount > 0}
+        {#if (item.href === '/alerts' || item.href === '/selection-dc' || item.href === '/alerts-lg2') && alertsBadgeCount > 0}
           <span class="sidebar__badge">{alertsBadgeCount}</span>
         {/if}
       </a>

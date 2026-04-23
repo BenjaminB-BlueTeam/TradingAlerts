@@ -46,10 +46,14 @@
     { key: 'tous',      label: 'Tous'      },
     { key: 'fhg',       label: 'FHG'       },
     { key: 'dc',        label: 'DC'        },
+    { key: 'lg2',       label: 'LG2'       },
     { key: 'validated', label: 'Validé'    },
     { key: 'lost',      label: 'Perdu'     },
     { key: 'encours',   label: 'En cours'  },
   ];
+
+  const FHG_SIGNALS = ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'FHG', 'FHG_DOM', 'FHG_EXT'];
+  const LG2_SIGNALS = ['LG2_A', 'LG2_B', 'LG2_A+B'];
 
   const TAGS = [
     { id: 'streak_trop_court',    label: 'Streak trop court'    },
@@ -110,7 +114,7 @@
     ? Math.round((terminated.filter(a => a.status === 'validated').length / terminated.length) * 100)
     : null);
 
-  let fhgTerminated = $derived(terminated.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)));
+  let fhgTerminated = $derived(terminated.filter(a => FHG_SIGNALS.includes(a.signal_type)));
   let fhgPct = $derived(fhgTerminated.length
     ? Math.round((fhgTerminated.filter(a => a.status === 'validated').length / fhgTerminated.length) * 100)
     : null);
@@ -118,6 +122,11 @@
   let dcTerminated = $derived(terminated.filter(a => a.signal_type === 'DC'));
   let dcPct = $derived(dcTerminated.length
     ? Math.round((dcTerminated.filter(a => a.status === 'validated').length / dcTerminated.length) * 100)
+    : null);
+
+  let lg2Terminated = $derived(terminated.filter(a => LG2_SIGNALS.includes(a.signal_type)));
+  let lg2Pct = $derived(lg2Terminated.length
+    ? Math.round((lg2Terminated.filter(a => a.status === 'validated').length / lg2Terminated.length) * 100)
     : null);
 
   let fortTerminated = $derived(terminated.filter(a => a.confidence === 'fort' || a.confidence === 'fort_double'));
@@ -184,8 +193,9 @@
     : alerts.filter(a => !a.user_excluded));
 
   let filteredAlerts = $derived(listBase.filter(a => {
-    if (activeFilter === 'fhg')       return ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type);
+    if (activeFilter === 'fhg')       return FHG_SIGNALS.includes(a.signal_type);
     if (activeFilter === 'dc')        return a.signal_type === 'DC';
+    if (activeFilter === 'lg2')       return LG2_SIGNALS.includes(a.signal_type);
     if (activeFilter === 'validated') return a.status === 'validated';
     if (activeFilter === 'lost')      return a.status === 'lost';
     if (activeFilter === 'encours')   return a.status === 'pending' && isInPlay(a);
@@ -197,8 +207,9 @@
       ? alerts.filter(a => a.user_excluded)
       : alerts.filter(a => !a.user_excluded);
     if (key === 'tous')      return base.length;
-    if (key === 'fhg')       return base.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'FHG', 'FHG_DOM', 'FHG_EXT'].includes(a.signal_type)).length;
+    if (key === 'fhg')       return base.filter(a => FHG_SIGNALS.includes(a.signal_type)).length;
     if (key === 'dc')        return base.filter(a => a.signal_type === 'DC').length;
+    if (key === 'lg2')       return base.filter(a => LG2_SIGNALS.includes(a.signal_type)).length;
     if (key === 'validated') return base.filter(a => a.status === 'validated').length;
     if (key === 'lost')      return base.filter(a => a.status === 'lost').length;
     if (key === 'encours')   return base.filter(a => a.status === 'pending' && isInPlay(a)).length;
@@ -229,6 +240,7 @@
     if (signalType === 'FHG_A+B')  return 'type-badge--ab';
     if (signalType === 'FHG_A')    return 'type-badge--dom';
     if (signalType === 'FHG_B')    return 'type-badge--ext';
+    if (LG2_SIGNALS.includes(signalType)) return 'type-badge--lg2';
     return 'type-badge--fhg';
   }
 
@@ -308,6 +320,11 @@
           <div class="kpi-label">DC</div>
           <div class="kpi-value" style:color={pctColor(dcPct)}>{dcPct ?? '—'}%</div>
           <div class="kpi-sub">{dcTerminated.filter(a => a.status === 'validated').length} / {dcTerminated.length}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">LG2</div>
+          <div class="kpi-value" style:color={pctColor(lg2Pct)}>{lg2Pct ?? '—'}%</div>
+          <div class="kpi-sub">{lg2Terminated.filter(a => a.status === 'validated').length} / {lg2Terminated.length}</div>
         </div>
       </div>
 
@@ -549,6 +566,7 @@
   .type-badge--ext  { background: rgba(100,160,230,0.15); color: #7cb9f7; }
   .type-badge--ab   { background: rgba(29,158,117,0.2); color: var(--color-accent-green); }
   .type-badge--dc   { background: rgba(239,159,39,0.15); color: var(--color-signal-moyen); }
+  .type-badge--lg2  { background: rgba(226,75,74,0.15); color: var(--color-danger); }
 
   .res-label { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
   .res--validated { background: rgba(29,158,117,0.15); color: var(--color-accent-green); }
