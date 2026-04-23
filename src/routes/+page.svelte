@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
-  import { getDateStr, formatTime, isInPlay, fhgColor, defeatColor } from '$lib/utils/formatters.js';
+  import { getDateStr, formatDateDMY, formatTime, isInPlay, fhgColor, defeatColor } from '$lib/utils/formatters.js';
   import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
 
   let alerts = $state([]);
@@ -183,7 +183,7 @@
       {#each upcomingAlerts as a (a.id)}
         <div class="dash-alert-card">
           <div class="dash-alert-card__time">
-            <div class="dash-alert-card__day">{a.match_date}</div>
+            <div class="dash-alert-card__day">{formatDateDMY(a.match_date)}</div>
             <div class="dash-alert-card__hour">{formatTime(a.kickoff_unix)}</div>
           </div>
           <div class="dash-alert-card__match">

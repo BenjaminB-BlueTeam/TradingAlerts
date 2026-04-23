@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
-  import { getDateStr, formatDate, formatTime, isInPlay, fhgColor, defeatColor } from '$lib/utils/formatters.js';
+  import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay, fhgColor, defeatColor } from '$lib/utils/formatters.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
   import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
 
@@ -205,7 +205,7 @@
       >
         <div class="alert-card__header" onclick={() => toggleExpand(a)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }} role="button" tabindex="0" aria-expanded={expandedId === a.id}>
           <div class="alert-card__time">
-            <div class="alert-card__day">{a.match_date}</div>
+            <div class="alert-card__day">{formatDateDMY(a.match_date)}</div>
             <div class="alert-card__hour">{formatTime(a.kickoff_unix)}</div>
           </div>
           <div class="alert-card__match">

@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/api/supabase.js';
-  import { getDateStr, formatDate, formatTime, isInPlay, defeatColor, fhgColor } from '$lib/utils/formatters.js';
+  import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay, defeatColor, fhgColor } from '$lib/utils/formatters.js';
 
   let alerts = $state([]);
   let loading = $state(true);
@@ -175,7 +175,7 @@
       >
         <div class="dc-card__header" onclick={() => toggleExpand(a)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }} role="button" tabindex="0" aria-expanded={expandedId === a.id}>
           <div class="dc-card__time">
-            <div class="dc-card__day">{a.match_date}</div>
+            <div class="dc-card__day">{formatDateDMY(a.match_date)}</div>
             <div class="dc-card__hour">{formatTime(a.kickoff_unix)}</div>
           </div>
           <div class="dc-card__match">

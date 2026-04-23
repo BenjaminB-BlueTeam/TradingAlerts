@@ -14,6 +14,17 @@ export function getDateStr(offset) {
 }
 
 /**
+ * Formats a date string (YYYY-MM-DD) to JJ/MM/AA (e.g. "25/04/26").
+ * @param {string} dateStr
+ * @returns {string}
+ */
+export function formatDateDMY(dateStr) {
+  if (!dateStr) return '\u2014';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y.slice(2)}`;
+}
+
+/**
  * Formats a date string (YYYY-MM-DD) to French locale (e.g. "22 avr.").
  * @param {string} dateStr
  * @returns {string}
