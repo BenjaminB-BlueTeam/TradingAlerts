@@ -238,3 +238,41 @@ export async function unexcludeAlert(matchId) {
   }).eq('match_id', matchId);
   if (error) throw error;
 }
+
+// ============================================================
+// SÉLECTION MANUELLE DES ALERTES (Chantier B)
+// ============================================================
+
+/**
+ * Sélectionner manuellement une alerte (FHG/DC/LG2).
+ */
+export async function selectAlert(matchId, signalType, note = null) {
+  const { error } = await supabase.from('selected_alerts').insert({
+    match_id: matchId,
+    signal_type: signalType,
+    user_note: note || null,
+  });
+  if (error) throw error;
+}
+
+/**
+ * Désélectionner une alerte.
+ */
+export async function unselectAlert(matchId, signalType) {
+  const { error } = await supabase.from('selected_alerts').delete()
+    .eq('match_id', matchId)
+    .eq('signal_type', signalType);
+  if (error) throw error;
+}
+
+/**
+ * Liste toutes les alertes sélectionnées.
+ */
+export async function getSelectedAlerts() {
+  const { data, error } = await supabase
+    .from('selected_alerts')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) { console.error('getSelectedAlerts:', error); return [] }
+  return data || []
+}
