@@ -327,64 +327,130 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 
 ## 🤖 Stratégie d'orchestration multi-agents
 
-Ce projet utilise une **architecture à subagents spécialisés** pour optimiser coût et qualité.
+Ce projet utilise une **architecture à subagents spécialisés** organisée en deux niveaux :
 
-### Subagents disponibles
+- **Project agents** (`.claude/agents/`) — connaissent le stack TradingAlerts et les règles métier
+- **User agents** (`~/.claude/agents/`) — généralistes et applicables à tout projet
+
+### Project agents (TradingAlerts-aware)
 
 | Agent | Modèle | Rôle |
 |-------|--------|------|
 | `explorer` | Haiku 4.5 | Exploration read-only du repo |
 | `svelte-builder` | Sonnet 4.6 | Création/modification de composants Svelte 5 |
-| `supabase-migrator` | Sonnet 4.6 | Création de migrations SQL |
-| `test-writer` | Haiku 4.5 | Génération de tests Vitest |
-| `code-reviewer` | Opus 4.6 | Review approfondie avant commit |
+| `supabase-migrator` | Sonnet 4.6 | Création de migrations SQL avec conventions du projet |
+| `test-writer` | Haiku 4.5 | Génération de tests Vitest avec setup TradingAlerts |
+| `code-reviewer` | Opus 4.6 | Review approfondie avant commit (règles métier connues) |
 
 Définitions complètes dans `.claude/agents/`.
 
-### Règles d'orchestration
+### User agents (équipe de dev généraliste)
 
-L'agent principal **doit** déléguer :
+| Agent | Modèle | Rôle |
+|-------|--------|------|
+| `tech-lead` | Opus | Architecte / chef de projet — analyse, plan, risques |
+| `senior-developer` | Sonnet | Implémentation propre du code applicatif |
+| `test-engineer` | Sonnet | Tests unitaires + intégration génériques |
+| `code-reviewer-senior` | Opus | Review générique (autres projets que TA) |
+| `security-auditor` | Opus | Audit OWASP + BDD (RLS, Storage, Edge Functions, secrets) |
+| `debugger` | Sonnet | Investigation systématique de bugs (4 étapes) |
+| `refactor-specialist` | Sonnet | Refactoring sans casser le comportement |
 
-1. **Avant toute modification** → `explorer`
-2. **Pour créer/modifier un composant Svelte** → `svelte-builder`
-3. **Pour toucher au schéma BDD** → `supabase-migrator`
-4. **Après création d'une fonction de calcul** → `test-writer`
-5. **Avant chaque commit final** → `code-reviewer`
+Définitions complètes dans `~/.claude/agents/` (repo : `BenjaminB-BlueTeam/claude-personal-agents`).
 
-L'agent principal garde la main sur :
-- L'analyse stratégique du chantier
-- Le découpage en sous-tâches
-- L'arbitrage entre options
-- La synthèse finale et le commit
+### Précédence Project > User
+
+Quand un agent existe **à la fois en Project et en User** (cas de `code-reviewer`), **toujours privilégier la version Project** car elle connaît les règles métier TradingAlerts (DC bonus, H2H Clean Sheet, pas de demo mode, etc.).
 
 ---
 
-## 🛠️ Workflow type pour un chantier
+## ⚠️ IMPORTANT — Utilisation obligatoire des subagents
 
-1. **Agent principal (Opus)** lit le prompt du chantier, annonce le plan
-2. **Délégation `explorer`** pour comprendre l'existant
-3. **Agent principal** synthétise le plan détaillé, demande validation à Benjamin
-4. **Délégation `supabase-migrator`** si BDD impactée
-5. **Délégation `svelte-builder`** pour les composants
-6. **Délégation `test-writer`** pour les tests
-7. **Délégation `code-reviewer`** pour la review finale
-8. **Agent principal** propose le commit, attend validation
+**Pour TOUTE tâche dans ce projet, l'agent principal DOIT déléguer aux subagents disponibles plutôt que de coder directement.** Cette règle est non négociable.
 
-À chaque étape clé, Benjamin valide avant de continuer.
+### Règles de délégation systématique
 
-### Quand l'agent doit s'arrêter et demander
+| Type de tâche | Agent à invoquer | Niveau |
+|---------------|------------------|--------|
+| Analyse / planification d'un nouveau chantier | `tech-lead` | User |
+| Exploration du repo, compréhension de l'existant | `explorer` | Project |
+| Migration / schéma BDD Supabase | `supabase-migrator` | Project |
+| Composants Svelte / pages SvelteKit | `svelte-builder` | Project |
+| Implémentation de logique métier complexe (>50 lignes) | `senior-developer` | User |
+| Tests Vitest avec setup TradingAlerts | `test-writer` | Project |
+| Tests génériques / fonctions de calcul pures | `test-engineer` | User |
+| Review approfondie avant commit | `code-reviewer` | Project (TradingAlerts-aware) |
+| Bug résistant (3+ tentatives infructueuses) | `debugger` | User |
+| Audit sécurité (RLS, secrets, OWASP, BDD) | `security-auditor` | User |
+| Refactoring sans changement de comportement | `refactor-specialist` | User |
+
+### Quand l'agent principal peut coder directement
+
+L'agent principal peut faire le travail lui-même **uniquement** si **toutes** ces conditions sont réunies :
+- Tâche < 50 lignes de code
+- Impacte ≤ 2 fichiers
+- Pas de logique métier critique
+- Pas de modification BDD
+- Pas de nouveau composant UI
+
+Pour tout le reste, **délégation obligatoire**.
+
+### Workflow par défaut pour un chantier
+
+```
+1. tech-lead (User)            → analyse + plan détaillé
+   ↓ ⏸️ STOP — validation utilisateur obligatoire
+2. explorer (Project)          → cartographie de l'existant impacté
+   ↓
+3. supabase-migrator (Project) → migration SQL si BDD impactée
+   ↓
+4. svelte-builder (Project)    → composants UI / pages
+   ↓
+5. test-writer (Project)       → tests Vitest sur fonctions de calcul
+   ↓
+6. code-reviewer (Project)     → review approfondie (bloquants/à corriger/OK)
+   ↓ corrections si bloquants
+7. ⏸️ STOP — validation utilisateur final
+8. Commit + push
+```
+
+### Agents génériques User pour cas particuliers
+
+- `security-auditor` à invoquer **proactivement** sur les chantiers touchant à la BDD (Chantiers B, C, E, F) ou avant un déploiement public sensible
+- `debugger` à invoquer **dès le 3e essai infructueux** sur un bug — ne pas s'enfermer dans une boucle de patches
+- `refactor-specialist` à invoquer **avant** un gros chantier sur une zone existante qui mérite d'être nettoyée
+
+### Visibilité de l'orchestration
+
+À chaque délégation, l'agent principal **doit annoncer clairement** :
+- Quel agent il invoque (et pourquoi)
+- Le résultat synthétique au retour (ce que l'agent a produit)
+
+L'utilisateur doit pouvoir suivre la chaîne de délégations dans la conversation.
+
+### Anti-patterns interdits
+
+- ❌ L'agent principal qui code directement une migration SQL sans déléguer à `supabase-migrator`
+- ❌ Implémentation d'un composant Svelte > 50 lignes sans déléguer à `svelte-builder`
+- ❌ Commit final sans review par `code-reviewer`
+- ❌ Patch d'un bug sans investigation `debugger` après 3 tentatives échouées
+- ❌ Utilisation des agents Built-in (`Explore`, `Plan`, `general-purpose`) au lieu des agents spécialisés Project/User
+- ❌ Sauter l'étape `tech-lead` sur un chantier > 1 fichier impacté
+
+### Quand l'agent principal doit s'arrêter et demander
 
 - Ambiguïté sur le schéma BDD
 - Conflit avec une règle métier critique
-- Nouvelle dépendance npm
+- Nouvelle dépendance npm à introduire
 - Modification destructive
 - Doute sur l'UX d'un composant complexe
+- Plan du `tech-lead` qui dévie de la spec utilisateur
 
 **Jamais** inventer un comportement métier qui contredit les règles critiques.
 
 ---
 
-## Roadmap workflow manuel (à valider)
+## 🗺️ Roadmap workflow manuel (à valider)
 
 > Complément à la roadmap existante ci-dessus. À réconcilier avec Benjamin.
 
