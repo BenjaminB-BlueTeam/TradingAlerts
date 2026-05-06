@@ -1,4 +1,6 @@
 <script>
+  import ScopeToggle from '$lib/components/historique/ScopeToggle.svelte';
+
   let {
     filters = $bindable(),
     availableTeams = [],
@@ -108,6 +110,11 @@
 </script>
 
 <div class="filters-bar">
+  <!-- SCOPE -->
+  <div class="filter-row">
+    <ScopeToggle bind:scope={filters.scope} />
+  </div>
+
   <!-- PÉRIODE -->
   <div class="filter-row">
     <span class="filter-label">Période</span>

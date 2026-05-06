@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase } from '$lib/api/supabase.js';
   import { applyFilters, aggregateByTeam, strategyOf } from '$lib/utils/historyFilters.js';
+  import { selectedKeys } from '$lib/stores/selectionStore.js';
 
   import FiltersBar from '$lib/components/historique/FiltersBar.svelte';
   import ChartEvolution from '$lib/components/historique/ChartEvolution.svelte';
@@ -34,6 +35,7 @@
     league: null,
     status: 'terminees',
     evolutionGranularity: 'jour',
+    scope: 'global',
   });
 
   // ---------- Chargement ----------
@@ -67,12 +69,16 @@
   let excludedAlerts = $derived(allAlerts.filter(a => a.user_excluded));
 
   let baseList = $derived(viewMode === 'excluded' ? excludedAlerts : activeAlerts);
-  let filteredAlerts = $derived(applyFilters(baseList, filters));
+  let filteredAlerts = $derived(
+    applyFilters(baseList, { ...filters, selectedKeys: $selectedKeys })
+  );
 
   // Pour les graphiques : on veut VOIR les terminées même si filters.status='tous'
   // Donc on filtre sauf pour le statut, puis on ne garde que validated/lost dans les charts.
   let filtersForCharts = $derived({ ...filters, status: 'terminees' });
-  let alertsForCharts = $derived(applyFilters(baseList, filtersForCharts));
+  let alertsForCharts = $derived(
+    applyFilters(baseList, { ...filtersForCharts, selectedKeys: $selectedKeys })
+  );
 
   // Global pct (terminées actives, mêmes filtres sauf status)
   let globalPct = $derived((() => {
@@ -96,6 +102,9 @@
     <h1 class="page-title" style="margin-bottom:0;">📈 Historique</h1>
     <p class="page-subtitle" style="margin:4px 0 0;">
       {filteredAlerts.length} alerte{filteredAlerts.length > 1 ? 's' : ''} affichée{filteredAlerts.length > 1 ? 's' : ''}
+      {#if filters.scope === 'mine' && filteredAlerts.length === 0}
+        — sélectionne des alertes depuis /alerts, /selection-dc ou /alerts-lg2
+      {/if}
       {#if globalPct !== null}
         · taux global <strong style:color={globalPct >= 65 ? 'var(--color-accent-green)' : globalPct >= 50 ? 'var(--color-signal-moyen)' : 'var(--color-danger)'}>{globalPct}%</strong>
         ({validatedCount}/{terminated.length})
