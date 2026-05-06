@@ -322,3 +322,79 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - Commit directement sur `main` pour les features solo
 - Toujours pusher `CLAUDE.md` a jour apres une session de travail
 - Push + merge autonome autorise si Benjamin le demande explicitement
+
+---
+
+## 🤖 Stratégie d'orchestration multi-agents
+
+Ce projet utilise une **architecture à subagents spécialisés** pour optimiser coût et qualité.
+
+### Subagents disponibles
+
+| Agent | Modèle | Rôle |
+|-------|--------|------|
+| `explorer` | Haiku 4.5 | Exploration read-only du repo |
+| `svelte-builder` | Sonnet 4.6 | Création/modification de composants Svelte 5 |
+| `supabase-migrator` | Sonnet 4.6 | Création de migrations SQL |
+| `test-writer` | Haiku 4.5 | Génération de tests Vitest |
+| `code-reviewer` | Opus 4.6 | Review approfondie avant commit |
+
+Définitions complètes dans `.claude/agents/`.
+
+### Règles d'orchestration
+
+L'agent principal **doit** déléguer :
+
+1. **Avant toute modification** → `explorer`
+2. **Pour créer/modifier un composant Svelte** → `svelte-builder`
+3. **Pour toucher au schéma BDD** → `supabase-migrator`
+4. **Après création d'une fonction de calcul** → `test-writer`
+5. **Avant chaque commit final** → `code-reviewer`
+
+L'agent principal garde la main sur :
+- L'analyse stratégique du chantier
+- Le découpage en sous-tâches
+- L'arbitrage entre options
+- La synthèse finale et le commit
+
+---
+
+## 🛠️ Workflow type pour un chantier
+
+1. **Agent principal (Opus)** lit le prompt du chantier, annonce le plan
+2. **Délégation `explorer`** pour comprendre l'existant
+3. **Agent principal** synthétise le plan détaillé, demande validation à Benjamin
+4. **Délégation `supabase-migrator`** si BDD impactée
+5. **Délégation `svelte-builder`** pour les composants
+6. **Délégation `test-writer`** pour les tests
+7. **Délégation `code-reviewer`** pour la review finale
+8. **Agent principal** propose le commit, attend validation
+
+À chaque étape clé, Benjamin valide avant de continuer.
+
+### Quand l'agent doit s'arrêter et demander
+
+- Ambiguïté sur le schéma BDD
+- Conflit avec une règle métier critique
+- Nouvelle dépendance npm
+- Modification destructive
+- Doute sur l'UX d'un composant complexe
+
+**Jamais** inventer un comportement métier qui contredit les règles critiques.
+
+---
+
+## Roadmap workflow manuel (à valider)
+
+> Complément à la roadmap existante ci-dessus. À réconcilier avec Benjamin.
+
+| # | Chantier | Statut |
+|---|----------|--------|
+| B | Sélection manuelle des alertes | À faire |
+| C | Page "Mes matchs" | À faire |
+| D | Page "Résultats" + filtres équipe/ligue | À faire |
+| E | Blacklist équipes | À faire |
+| A | Notifications externes | À faire |
+| F | Calibration empirique | À faire |
+
+**Ordre suggéré : B → C → D → E → A → F**

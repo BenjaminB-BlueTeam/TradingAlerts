@@ -15,7 +15,8 @@ Thumbs.db
 *.swp
 
 # Claude Code
-.claude/
+.claude/*
+!.claude/agents/
 
 # Superpowers brainstorm sessions
 .superpowers/
