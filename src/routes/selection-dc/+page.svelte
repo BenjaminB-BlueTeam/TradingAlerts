@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase } from '$lib/api/supabase.js';
   import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay, defeatColor, fhgColor } from '$lib/utils/formatters.js';
+  import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
 
   let alerts = $state([]);
   let loading = $state(true);
@@ -108,6 +109,7 @@
   let genMessage = $state('');
   let deleting = $state(false);
   let deleteMessage = $state('');
+  let cascadeMessage = $state('');
 
   async function handleDeleteVisible() {
     const ids = filteredAlerts.map(a => a.id);
@@ -177,6 +179,9 @@
 </div>
 {#if genMessage}
   <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--color-text-muted);">{genMessage}</div>
+{/if}
+{#if cascadeMessage}
+  <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(239,159,39,0.08);color:var(--color-warning-orange);">{cascadeMessage}</div>
 {/if}
 {#if deleteMessage}
   <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(226,75,74,0.08);color:var(--color-danger);">{deleteMessage}</div>
@@ -272,6 +277,7 @@
             {:else if isInPlay(a)}
               <span class="dc-badge dc-badge--live">EN COURS</span>
             {/if}
+            <SelectAlertButton alert={a} oncascade={(d) => cascadeMessage = d.message} />
           </div>
           <span class="dc-card__arrow">{expandedId === a.id ? '▼' : '▶'}</span>
         </div>
