@@ -3,6 +3,8 @@
    Filtrage AND strict + agrégations pour les 4 graphiques.
    ================================================ */
 
+import { applyScopeFilter } from './selectionFilters.js';
+
 export const FHG_SIGNALS = ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'FHG', 'FHG_DOM', 'FHG_EXT'];
 export const LG2_SIGNALS = ['LG2_A', 'LG2_B', 'LG2_A+B'];
 
@@ -16,7 +18,7 @@ export function strategyOf(alert) {
 
 /**
  * Applique tous les filtres AND strict.
- * filters = { dateFrom, dateTo, strategy, confidence, team, league, status }
+ * filters = { dateFrom, dateTo, strategy, confidence, team, league, status, scope, selectedKeys }
  */
 export function applyFilters(alerts, filters) {
   if (!Array.isArray(alerts)) return [];
@@ -25,9 +27,15 @@ export function applyFilters(alerts, filters) {
     strategy = 'tous', confidence = 'tous',
     team = null, league = null,
     status = 'terminees',
+    scope = 'global',
+    selectedKeys = null,
   } = filters || {};
 
-  return alerts.filter(a => {
+  // Etape 1 : filtre scope (pre-filter rapide via Set)
+  const scoped = applyScopeFilter(alerts, selectedKeys, scope);
+
+  // Etape 2 : filtres existants (inchanges)
+  return scoped.filter(a => {
     if (dateFrom && a.match_date < dateFrom) return false;
     if (dateTo   && a.match_date > dateTo)   return false;
     if (strategy !== 'tous' && strategyOf(a) !== strategy.toUpperCase()) return false;
