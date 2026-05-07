@@ -132,16 +132,23 @@
   }
 
   let selectedLeague = $state('toutes');
-  let selectedSignal = $state('tous');
+  let selectedConfidence = $state('tout');
   let availableLeagues = $derived([...new Set(alerts.map(a => a.league_name).filter(Boolean))].sort());
   const CONF_ORDER = { fort_double: 0, fort: 1, moyen: 2 };
+
+  function matchesConfidence(alert) {
+    if (selectedConfidence === 'tout') return true;
+    if (selectedConfidence === 'fort') return alert.confidence === 'fort' || alert.confidence === 'fort_double';
+    if (selectedConfidence === 'moyen') return alert.confidence === 'moyen';
+    return true;
+  }
 
   let filteredAlerts = $derived(
     alerts
       .filter(a => {
         if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
         if (selectedLeague !== 'toutes' && a.league_name !== selectedLeague) return false;
-        if (selectedSignal !== 'tous' && a.signal_type !== selectedSignal) return false;
+        if (!matchesConfidence(a)) return false;
         return true;
       })
       .sort((a, b) => {
@@ -251,16 +258,15 @@
     </select>
   </div>
   <div class="sub-filter-group">
-    <span class="sub-filter-label">Signal</span>
-    <button class="alerts-filter-btn" class:active={selectedSignal === 'tous'} onclick={() => selectedSignal = 'tous'}>Tous</button>
-    {#each ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D'] as sig}
-      {@const count = alerts.filter(a => a.signal_type === sig && (selectedDay === null || a.match_date === getDateStr(selectedDay))).length}
-      {#if count > 0}
-        <button class="alerts-filter-btn sig-btn sig-btn--{sig.replace('+','p')}" class:active={selectedSignal === sig}
-          onclick={() => selectedSignal = selectedSignal === sig ? 'tous' : sig}>
-          {sig} ({count})
-        </button>
-      {/if}
+    <span class="sub-filter-label">Confiance</span>
+    {#each ['tout', 'fort', 'moyen'] as conf}
+      <button
+        class="alerts-filter-btn"
+        class:active={selectedConfidence === conf}
+        onclick={() => selectedConfidence = conf}
+      >
+        {conf === 'tout' ? 'Tout' : conf === 'fort' ? 'Fort' : 'Moyen'}
+      </button>
     {/each}
   </div>
 </div>
@@ -444,13 +450,6 @@
   .sub-filter-group { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
   .sub-filter-label { font-size: 11px; color: var(--color-text-muted); font-weight: 500; white-space: nowrap; }
   .alerts-filter-select { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 4px 8px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; max-width: 220px; }
-  /* Couleurs signal buttons */
-  .sig-btn--FHG_A.active  { background: rgba(29,158,117,0.25); border-color: var(--color-accent-green); color: var(--color-accent-green); }
-  .sig-btn--FHG_B.active  { background: rgba(100,160,230,0.2); border-color: #7cb9f7; color: #7cb9f7; }
-  .sig-btn--FHG_ApB.active { background: rgba(29,158,117,0.35); border-color: var(--color-accent-green); color: #fff; }
-  .sig-btn--FHG_C.active  { background: rgba(127,119,221,0.2); border-color: var(--color-badge-violet); color: var(--color-badge-violet); }
-  .sig-btn--FHG_D.active  { background: rgba(239,159,39,0.2); border-color: var(--color-warning-orange); color: var(--color-warning-orange); }
-
   .alerts-list { display: flex; flex-direction: column; gap: 8px; }
 
   .alert-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
