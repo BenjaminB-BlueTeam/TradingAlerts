@@ -244,7 +244,7 @@
       class:metric-card--warn={generateColorClass === 'orange'}
       class:metric-card--error={generateColorClass === 'red'}
     >
-      <div class="metric-card__label">Generate alerts</div>
+      <div class="metric-card__label">Génération alertes</div>
       {#if cronsLoading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">chargement…</div>
@@ -257,7 +257,7 @@
         >
           {hoursLabel(lastGenerateTs)}
         </div>
-        <div class="metric-card__sub">dernier run</div>
+        <div class="metric-card__sub">depuis le dernier run</div>
       {/if}
     </div>
 
@@ -267,7 +267,7 @@
       class:metric-card--warn={checkColorClass === 'orange'}
       class:metric-card--error={checkColorClass === 'red'}
     >
-      <div class="metric-card__label">Check results</div>
+      <div class="metric-card__label">Vérif. résultats</div>
       {#if cronsLoading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">chargement…</div>
@@ -280,7 +280,7 @@
         >
           {hoursLabel(lastCheckTs)}
         </div>
-        <div class="metric-card__sub">dernier résultat vérifié</div>
+        <div class="metric-card__sub">depuis la dernière vérif.</div>
       {/if}
     </div>
 
@@ -289,7 +289,7 @@
       class:metric-card--ok={pendingOldColorClass === 'green'}
       class:metric-card--error={pendingOldColorClass === 'red'}
     >
-      <div class="metric-card__label">Pending > 48h</div>
+      <div class="metric-card__label">Alertes bloquées</div>
       {#if cronsLoading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">chargement…</div>
@@ -301,7 +301,7 @@
         >
           {pendingOld ?? '!'}
         </div>
-        <div class="metric-card__sub">{pendingOld === 0 ? 'OK' : 'alertes bloquées'}</div>
+        <div class="metric-card__sub">{pendingOld === 0 ? 'aucune en attente > 48h' : `pending sans résultat > 48h`}</div>
       {/if}
     </div>
 
@@ -311,24 +311,24 @@
   <div class="metric-grid metric-grid--3">
 
     <a href="/alerts?day=0" class="metric-card metric-card--link">
-      <div class="metric-card__label">FHG Fort</div>
+      <div class="metric-card__label">FHG Fort — aujourd'hui</div>
       {#if loading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">&nbsp;</div>
       {:else}
         <div class="metric-card__value green">{fhgFortToday.length}</div>
-        <div class="metric-card__sub">{fhgAlerts.length} FHG aujourd'hui</div>
+        <div class="metric-card__sub">sur {fhgAlerts.length} alerte{fhgAlerts.length > 1 ? 's' : ''} FHG</div>
       {/if}
     </a>
 
     <a href="/alerts-lg2?day=0" class="metric-card metric-card--link">
-      <div class="metric-card__label">LG2 Fort</div>
+      <div class="metric-card__label">LG2 Fort — aujourd'hui</div>
       {#if loading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">&nbsp;</div>
       {:else}
         <div class="metric-card__value blue">{lg2FortToday.length}</div>
-        <div class="metric-card__sub">{lg2Alerts.length} LG2 aujourd'hui</div>
+        <div class="metric-card__sub">sur {lg2Alerts.length} alerte{lg2Alerts.length > 1 ? 's' : ''} LG2</div>
       {/if}
     </a>
 
