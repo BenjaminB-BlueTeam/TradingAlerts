@@ -22,9 +22,9 @@ App **SvelteKit** de **trading sportif football**. Identifie les matchs avec for
 | Build | Vite 6 |
 | Déploiement | Netlify (adapter-netlify) + Netlify Functions |
 | Données | API FootyStats (`football-data-api.com`) via proxy Netlify sécurisé |
-| Persistance | Supabase (PostgreSQL) — alerts, trades, team_seasons, h2h_matches, seed_jobs, team_fhg_cache |
+| Persistance | Supabase (PostgreSQL) — alerts, trades, team_seasons, h2h_matches, seed_jobs, team_fhg_cache, teams, selected_alerts, alert_trades |
 | Charts | Chart.js 4.4 (tree-shaké, imports sélectifs) |
-| Tests | Vitest (191 tests) |
+| Tests | Vitest (331 tests) |
 
 ### Variables d'environnement
 
@@ -48,11 +48,15 @@ netlify/functions/
   footystats.js         ← proxy sécurisé API FootyStats (whitelist endpoints, CORS restreint)
   generate-alerts.js    ← cron 12h — génère alertes FHG/LG2 pour J, J+1, J+2
   check-results.js      ← cron 1h — vérifie résultats matchs pending terminés (fenêtre 31-45 min)
+  delete-alerts.js      ← suppression d'alertes par IDs (auth requise)
   seed-data.js          ← seed Supabase (team_seasons, h2h_matches) (auth token requis)
   daily-seed.js         ← cron quotidien 6h UTC — seed matchs d'hier dans h2h_matches
   compute-team-fhg.js  ← cron quotidien 7h UTC — calcule FHG% 0-45 min (goal_events) par (season_id, team_id), upsert team_fhg_cache
   lib/
     api.js              ← helpers partagés (footyRequest, supabaseQuery)
+    auth.cjs            ← requireAuth (FUNCTIONS_AUTH_TOKEN + bypass scheduled)
+    auth.test.js        ← tests unitaires auth
+    cors.cjs            ← corsHeaders (CORS restreint + dev localhost)
     analysis.cjs        ← logique FHG streak v2 (server-side CJS)
     analysis.test.js    ← tests unitaires streak (162 tests)
     lg2.cjs             ← logique LG2 streak (but >= 80') — server-side CJS
@@ -61,60 +65,66 @@ netlify/functions/
 src/
   app.css               ← styles globaux (variables CSS, badges, goal-bar, responsive)
   app.html              ← template HTML
+  hooks.server.js       ← headers sécurité HTTP (CSP, HSTS, X-Frame-Options, etc.)
   routes/
-    +layout.svelte      ← layout global (Sidebar, Toast, init)
+    +layout.svelte      ← layout global (Sidebar, Toast, init, guard auth)
     +layout.js          ← ssr: false, prerender: false
-    +page.svelte        ← Dashboard KPIs + alertes du jour (Supabase)
+    +page.svelte        ← Dashboard 12 KPIs en 4 sections (Supabase)
+    login/+page.svelte        ← formulaire email/password Supabase Auth
     alerts/+page.svelte       ← Sélection FHG — alertes FHG depuis Supabase
     alerts-lg2/+page.svelte   ← Sélection LG2 — alertes LG2 depuis Supabase
-    historique/+page.svelte   ← Historique alertes + stats performance (KPI, ligues, filtres)
+    mes-matchs/+page.svelte   ← Mes matchs sélectionnés + saisie positions (cote/mise) + résultat manuel
+    historique/+page.svelte   ← Historique alertes + stats performance + "Bet Analytix"
     matches/+page.svelte      ← Matchs à venir (cards avec expand)
     leagues/+page.svelte      ← Ligues actives (toggle, stats)
     explore/+page.svelte      ← Explorer toutes les ligues (par pays, stats, classement)
     config/+page.svelte       ← Configuration algo (section Admin)
-    settings/+page.svelte     ← Paramètres, journal trades, bankroll
     debug/+page.svelte        ← Debug (test API/Supabase, seed, testeur API brut)
   lib/
     api/
       footystats.js     ← appels API via proxy, cache TTL, normalizeLeagues
       cache.js          ← cache localStorage TTL par endpoint
       cache.test.js     ← tests unitaires cache (20 tests)
-      supabase.js       ← client Supabase + CRUD trades + helpers debug
+      functions.js      ← appels aux Netlify Functions (generate, check, seed, delete)
+      supabase.js       ← client Supabase + CRUD alert_trades + helpers auth
+      supabase.auth.test.js ← tests unitaires supabase auth helpers
       seedClient.js     ← client seed (orchestre seed ligue par ligue)
     components/
-      Sidebar.svelte    ← navigation (section principale + section Admin)
-      MatchCard.svelte  ← carte match (résumé + détail dépliable)
-      GoalTimeline.svelte← barre timing buts H2H
-      Toast.svelte      ← notifications toast
-      Modal.svelte      ← modale globale
-      charts.js         ← graphiques Chart.js (tree-shaké) + helpers line/stacked/horizontal
+      Sidebar.svelte        ← navigation (section principale + section Admin)
+      MatchCard.svelte      ← carte match (résumé + détail dépliable)
+      GoalTimeline.svelte   ← barre timing buts H2H
+      Toast.svelte          ← notifications toast
+      Modal.svelte          ← modale globale
+      SelectAlertButton.svelte ← bouton toggle sélection alerte (selectionStore)
+      ExcludeAlertModal.svelte ← modale exclusion manuelle (7 tags + note)
+      charts.js             ← graphiques Chart.js (tree-shaké) + helpers line/stacked/horizontal
       historique/
-        FiltersBar.svelte         ← bloc filtres multi-critères
+        FiltersBar.svelte         ← bloc filtres multi-critères + toggle scope (Global/Mes positions)
+        ScopeToggle.svelte        ← toggle Global vs Mes positions
+        SectionGlobal.svelte      ← section stats globales (graphiques + tableau)
+        SectionMesPositions.svelte← section mes positions (alert_trades + P&L)
         ChartEvolution.svelte     ← courbes taux dans le temps (hybride 1 ou 3 courbes)
         ChartStackedStrategy.svelte ← barres empilées validés/perdus par stratégie
         ChartTopTeams.svelte      ← top 10 équipes par taux
         ChartTopLeagues.svelte    ← top 10 ligues par taux
         MatchesTable.svelte       ← tableau dense triable + expand goal-bar
-        TradesVsGlobal.svelte     ← bloc "Mes trades vs Global"
+        TradesVsGlobal.svelte     ← bloc "Mes trades vs Global" (collapsible)
         WhatIfExclusions.svelte   ← bloc what-if exclusions avec Wilson CI
-      settings/
-        ApiTest.svelte    ← test connexion API
-        TradeJournal.svelte← journal des trades
-        TradeStats.svelte ← stats personnelles
-        BankrollCalc.svelte← calcul bankroll
-        DangerZone.svelte ← zone danger (reset)
     stores/
       appStore.js       ← stores Svelte (config, leagues, prefs, persistence localStorage)
+      selectionStore.js ← sélections FHG/LG2 (localStorage, Set de clés matchId:signalType)
+      selectionStore.test.js ← tests unitaires selectionStore
       tradeStore.js     ← CRUD trades (Supabase + localStorage)
       tradeStore.test.js← tests unitaires tradeStore (14 tests)
       tradeStats.js     ← calcul stats trades (fonction pure)
+      tradeStats.test.js← tests unitaires tradeStats
     core/
       scoring.js        ← algorithme FHG streak v2 (client-side ESM, miroir de analysis.cjs)
-      scoring.test.js   ← tests unitaires streak (41 tests)
+      scoring.test.js   ← tests unitaires streak (44 tests)
       lg2.js            ← algorithme LG2 streak (client-side ESM, miroir de lg2.cjs)
       lg2.test.js       ← tests unitaires LG2 client (17 tests)
       h2h.js            ← analyse head-to-head
-      h2h.test.js       ← tests unitaires h2h (21 tests)
+      h2h.test.js       ← tests unitaires h2h
       filters.js        ← isWindowActive (fenêtre 31-45 min)
     utils/
       formatters.js     ← fonctions partagées (formatDate, formatTime, isInPlay, etc.)
@@ -124,7 +134,17 @@ src/
       leagueHelpers.js  ← fonctions partagées leagues/explore (stats, expand, couleurs)
       historyFilters.js ← filtrage AND strict + 4 agrégations pour /historique
       historyFilters.test.js ← tests unitaires filtres + agrégations (30 tests)
+      selectionFilters.js    ← filtres pour /mes-matchs (tri, sections actif/terminé)
+      selectionFilters.test.js ← tests unitaires selectionFilters
     data.js             ← initApp (test connexion API)
+static/
+  manifest.json         ← PWA manifest (nom, icônes, display standalone)
+  sw.js                 ← Service Worker (cache statique, offline shell)
+  icon-192.png          ← icône PWA 192×192
+  icon-512.png          ← icône PWA 512×512
+scripts/
+  run-seed.mjs          ← orchestre seed complet autonome (~240 saisons)
+  calibrate-threshold.js← calibration seuils FHG (Wilson CI 95%)
 ```
 
 ---
@@ -150,14 +170,17 @@ src/
 
 ## Tables Supabase
 
-| Table | Rôle | RLS | Policies anon | Policies service_role |
-|-------|------|-----|---------------|----------------------|
-| `alerts` | Alertes FHG/LG2 (status: pending/validated/lost/expired) | ON | SELECT | ALL |
-| `trades` | Journal des trades | ON | ALL | ALL |
-| `h2h_matches` | Historique matchs H2H avec goal_events | ON | SELECT, INSERT, UPDATE | ALL |
-| `team_seasons` | Stats équipes par saison (3 ans, buts/min) | ON | SELECT | ALL |
-| `seed_jobs` | Suivi progression seed | ON | SELECT, INSERT, UPDATE | ALL |
-| `team_fhg_cache` | FHG% 0-45 min par equipe par saison (PK: season_id+team_id, mis a jour par compute-team-fhg cron) | ON | SELECT | ALL |
+| Table | Rôle | RLS | Policies authenticated | Policies anon | Policies service_role |
+|-------|------|-----|----------------------|---------------|----------------------|
+| `alerts` | Alertes FHG/LG2 (status: pending/validated/lost/expired) | ON | SELECT + UPDATE | UPDATE (résultat manuel /mes-matchs) | ALL |
+| `trades` | Journal des trades (legacy) | ON | ALL | — | ALL |
+| `h2h_matches` | Historique matchs H2H avec goal_events (65k+ lignes) | ON | SELECT | — | ALL |
+| `team_seasons` | Stats équipes par saison (legacy, non peuplée) | ON | SELECT | — | ALL |
+| `seed_jobs` | Suivi progression seed | ON | SELECT, INSERT, UPDATE | — | ALL |
+| `team_fhg_cache` | FHG% 0-45 min par equipe par saison (PK: season_id+team_id) | ON | SELECT | — | ALL |
+| `teams` | 1077 équipes (team_id unique + name), autocomplete /matches | ON | — | SELECT | ALL |
+| `selected_alerts` | Sélections manuelles FHG/LG2 par Benjamin | ON | SELECT, INSERT, DELETE | — | ALL |
+| `alert_trades` | Positions trading (cote + mise), plusieurs par match | ON | ALL | ALL | ALL |
 
 ---
 
@@ -251,7 +274,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - Pas de cache `team_lg2_cache` (calcul à la volée)
 
 ### Intégration
-- `generate-alerts.js` : boucle LG2 ajoutée après FHG/DC. Aucun appel API en plus (réutilise homeMatches/awayMatches déjà chargés).
+- `generate-alerts.js` : boucle LG2 ajoutée après FHG. Aucun appel API en plus (réutilise homeMatches/awayMatches déjà chargés).
 - `check-results.js` : `evaluateLG2()` — validée si au moins un but >= 80', sinon perdue.
 - `algo_version = 'lg2_v1'` (distinct de `'v2'` pour FHG).
 - `fhg_factors` réutilisé pour stocker `{ streakHome, streakAway }` (pas de nouvelle colonne).
@@ -260,29 +283,33 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 
 ## Ce qui est implémenté
 
-- **Algo FHG streak v2** (2026-04-23) — `analysis.cjs` + `scoring.js` : Scénario A (streak >=3 → fort), B (streak adversaire >=3 → moyen), A+B → fort, C (streak=2 + confirmation 3/3 → moyen, fallback), D (double activité 31-45 → moyen, fallback). Veto H2H 1MT. Spec : `SPEC_STREAK_V2.md`
+- **Algo FHG streak v2** (2026-04-23) — `analysis.cjs` + `scoring.js` : Scénario A (streak >=3 → fort), B (count adversaire 3/5 → moyen), A+B → fort, C (streak=2 + confirmation 3/3 → moyen, fallback), D (double activité 31-45 → moyen, fallback). Veto H2H 1MT. `fort_double` mergé dans `fort` (migration 2026-05-07). Spec : `SPEC_STREAK_V2.md`
 - **Algo LG2 streak** (2026-04-23) — `lg2.cjs` + `lg2.js` : streak consécutif de matchs avec but >= 80' par équipe (dom ou ext). LG2_A (home), LG2_B (away), LG2_A+B. Confidence = moyen (3) / fort (4+). Spec : `docs/superpowers/specs/2026-04-23-lg2-design.md`
 - **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) : génère FHG_A/B/A+B + LG2_A/B/A+B, algo_version='v2' (FHG) ou 'lg2_v1' (LG2), table Supabase `alerts`
 - **Vérification auto résultats** — `check-results.js` (cron 1h) : FHG sur buts 31-45 min, LG2 sur buts >= 80 min via goal_events, statut -> validated/lost/expired (cleanup 48h)
 - **Daily seed auto** — `daily-seed.js` (cron 6h UTC) : seed matchs d'hier dans `h2h_matches`
 - **Calcul FHG% équipes** — `compute-team-fhg.js` (cron 7h UTC) : FHG% 0-45 par (season_id, team_id) depuis `h2h_matches`, upsert dans `team_fhg_cache`
 - **Exclusion manuelle** — bouton rouge "Exclure" (btn--danger) sur dashboard/alertes, ExcludeAlertModal (7 tags + note), réintégration possible, what-if stats dans /historique (Wilson CI 95% par tag)
-- **Dashboard** (`/`) — 9 KPIs en 3 sections : "Santé infra" (API FootyStats, Ligues, Seed H2H) + "Santé crons" (Generate Alerts last run, Check Results last run, Pending > 48h) + "Alertes du jour" (FHG Fort, LG2 Fort, Taux validées 7j). Layout centré max-width 960px.
-- **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B, tri fort→moyen→date, filtres jour (boutons) + ligue (dropdown) + confiance (boutons toggle multi-sélection : Tout/Fort/Moyen). Badges Fort/Moyen. league_name renseignée via leagueMap (league-list). Expand détaillé, barres timing buts, Validé/Perdu/EN COURS, bouton Exclure.
-- **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B, tri fort→moyen→date, filtres jour + ligue + confiance (boutons toggle multi-sélection). Badges Fort/Moyen. Expand par équipe, barres timing buts, pills Dom/Ext streak, bouton Exclure.
-- **Historique** (`/historique`) — dashboard analytique refondu (2026-04-23) : FiltersBar multi-critères (période + presets + stratégie FHG/LG2 + confidence + équipe + ligue + statut, AND strict), grille 2x2 de graphiques Chart.js (évolution hybride, stacked par stratégie, top 10 équipes, top 10 ligues), tableau dense triable avec expand goal-bar par match, blocs "Mes trades vs Global" (collapsible) et "What-if exclusions" (Wilson CI). Infinite scroll 50 lignes par batch. Spec : `docs/superpowers/specs/2026-04-23-historique-redesign-design.md`
-- **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs. Curseur minute dans la 1ère barre (data-tip + CSS, pas de délai, calcul * 90). Ballon encaissé : label "(Encaissé) - X'". Tooltip opaque (#1e2330 + border)
-- **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par FHG% 0-45 (depuis team_fhg_cache Supabase, affichage instantané)
+- **Auth Supabase** — email/password solo, sign ups désactivés, guard SvelteKit dans +layout.svelte, page `/login`, redirect automatique si non authentifié
+- **Headers sécurité** — `src/hooks.server.js` injecte CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP sur toutes les réponses SSR
+- **PWA installable** — `static/manifest.json` + `static/sw.js` (service worker cache offline) + icônes 192×512px
+- **Dashboard** (`/`) — 12 KPIs en 4 sections : "Santé infra" (API FootyStats, Ligues actives, Historique H2H) + "Santé crons" (Génération FHG last run, Génération LG2 last run, Alertes > 48h) + "Alertes du jour" (FHG Fort, LG2 Fort, Performance 7j) + "Mes performances" (Renta semaine, Renta mois, Matchs joués). Layout centré max-width 960px.
+- **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B/C/D, tri fort→moyen→date, filtres jour (boutons) + ligue (dropdown) + confiance (Tout/Fort/Moyen). Badges Fort/Moyen (sans badge signal_type). league_name via leagueMap. Expand détaillé, barres timing buts, Validé/Perdu/EN COURS, bouton Exclure, SelectAlertButton.
+- **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B, tri fort→moyen→date, filtres jour + ligue + confiance. Badges Fort/Moyen. Expand par équipe, barres timing buts (marqueur 80'), pills Dom/Ext streak, bouton Exclure, SelectAlertButton.
+- **Mes matchs** (`/mes-matchs`) — alertes sélectionnées via selectionStore, sections Actif (A venir/Aujourd'hui) + Terminés (collapsible). Saisie inline de positions (cote + mise) → insert dans `alert_trades`. Boutons résultat manuel Gagné/Perdu (`updateAlertStatus`). Chips réactifs par match après insert.
+- **Historique** (`/historique`) — FiltersBar multi-critères + ScopeToggle (Global / Mes positions). Section Global : grille 2x2 Chart.js (évolution, stacked stratégie, top équipes, top ligues) + tableau dense triable (infinite scroll 50/batch) + blocs "Mes trades vs Global" et "What-if exclusions" (Wilson CI). Section Mes positions : table `alert_trades` + P&L réel. Spec : `docs/superpowers/specs/2026-04-23-historique-redesign-design.md`
+- **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs. Curseur minute interactif. Tooltip opaque.
+- **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par FHG% 0-45 (depuis team_fhg_cache Supabase)
 - **Classements ligues** (`/explore`) — par pays, stats, classements
-- **Paramètres** (`/settings`) — 5 sous-composants (ApiTest, TradeJournal, TradeStats, BankrollCalc, DangerZone)
 - **Config** (`/config`) — configuration algo (section Admin)
-- **Debug** (`/debug`) — test API/Supabase, boutons génération alertes FHG/LG2, seed complet, rattrapage matchs, token auth, testeur API brut. Panel CRON : liste des 4 crons avec schedule, description, temps avant prochain run, bouton "Lancer maintenant"
-- **Proxy Netlify sécurisé** — whitelist endpoints, CORS restreint
+- **Debug** (`/debug`) — test API/Supabase, boutons génération alertes FHG/LG2, seed complet, rattrapage matchs, token auth, testeur API brut. Panel CRON : 4 crons avec schedule, description, temps avant prochain run, bouton "Lancer maintenant"
+- **Proxy Netlify sécurisé** — whitelist endpoints, CORS restreint via `lib/cors.cjs`
+- **Auth Netlify Functions** — `lib/auth.cjs` : `requireAuth(event)` vérifie `FUNCTIONS_AUTH_TOKEN`, bypass automatique pour les crons Netlify Scheduled
 - **Cache localStorage TTL** — éviction auto par endpoint
 - **Compteur API** — req restantes affiché dans la sidebar
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
-- **Supabase RLS active** — policies read-only anon, service_role pour les Netlify Functions
-- **Tests unitaires** — Vitest, ~270 tests (analysis.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, h2h 16, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17, historyFilters ~28, selectionStore ~14)
+- **Supabase RLS durcie** (2026-05-07) — policies `authenticated` pour le frontend (plus `anon`), `service_role` pour les Netlify Functions. `anon` UPDATE sur `alerts` conservé pour résultat manuel /mes-matchs.
+- **Tests unitaires** — Vitest, 331 tests (analysis.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17, historyFilters 30, selectionFilters + selectionStore + supabase.auth)
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`. Tooltip goal-dot opaque (#1e2330). bar-hover-min opaque.
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
 - **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5
@@ -294,6 +321,9 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 
 - [ ] Attendre ~20 alertes FHG terminées (validated/lost) → lancer `scripts/calibrate-threshold.js`
 - [ ] Attendre ~20 alertes LG2 terminées → calibrer les seuils LG2 (STREAK_MOYEN / STREAK_FORT) avec Wilson CI
+- [ ] Chantier D : Page "Résultats" + filtres équipe/ligue
+- [ ] Chantier E : Blacklist équipes
+- [ ] Chantier A : Notifications externes
 
 ---
 
@@ -304,7 +334,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 3. Vérification FHG à la MT (pas à la volée — VAR)
 4. Terminologie : Validé / Perdu
 5. Pas de mode démo — données réelles uniquement
-6. **Cotes et P&L** : utilisés uniquement dans `/settings` (TradeJournal, BankrollCalc, TradeStats) pour tracer mes positions réelles et calculer mon P&L a posteriori. Plusieurs positions possibles sur un même match (mises échelonnées à différentes cotes). **Aucune cote n'est utilisée par l'algo** (génération d'alertes, filtrage, validation).
+6. **Cotes et P&L** : utilisés dans `/mes-matchs` (saisie inline cote + mise → `alert_trades`) et `/historique` (section "Mes positions"). Plusieurs positions possibles sur un même match (mises échelonnées à différentes cotes). **Aucune cote n'est utilisée par l'algo** (génération d'alertes, filtrage, validation).
 7. Pas de bouton "Analyse IA" — Benjamin fait sa propre analyse
 8. Clé anon sans fallback hardcodé
 9. ESM/CJS : scoring.js (frontend ESM) et analysis.cjs (backend CJS) dupliquent la logique streak — pas de fichier partagé (incompatibilité bundlers). Même règle pour lg2.js / lg2.cjs.
@@ -326,6 +356,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Tests** : `npm test` (vitest) avant de pusher les changements sur la logique metier
 - **Utilitaires partages** : utiliser `$lib/utils/formatters.js` et `$lib/utils/teamData.js` au lieu de dupliquer
 - **Helpers serverless** : utiliser `netlify/functions/lib/api.js` pour `footyRequest`/`supabaseQuery`
+- **Type mismatch `match_id`** : `alerts.match_id` est `bigint` (retourné `number` par Supabase) tandis que `alert_trades.match_id` est `TEXT` (retourné `string`). Toujours normaliser via `String(...)` (ou template literal) des deux côtés avant comparaison ou jointure côté client. La comparaison `===` stricte échoue silencieusement et fait disparaître les trades.
 
 ## Conventions git
 
@@ -460,17 +491,15 @@ L'utilisateur doit pouvoir suivre la chaîne de délégations dans la conversati
 
 ---
 
-## 🗺️ Roadmap workflow manuel (à valider)
-
-> Complément à la roadmap existante ci-dessus. À réconcilier avec Benjamin.
+## 🗺️ Roadmap workflow manuel
 
 | # | Chantier | Statut |
 |---|----------|--------|
-| B | Sélection manuelle des alertes | À faire |
-| C | Page "Mes matchs" | À faire |
+| B | Sélection manuelle des alertes + saisie positions (cote/mise) + résultat manuel | ✅ DONE (2026-05-07) |
+| C | Page "Mes matchs" (sections actif/terminé + chips trades) | ✅ DONE (2026-05-07) |
 | D | Page "Résultats" + filtres équipe/ligue | À faire |
 | E | Blacklist équipes | À faire |
 | A | Notifications externes | À faire |
 | F | Calibration empirique | À faire |
 
-**Ordre suggéré : B → C → D → E → A → F**
+**Ordre suggéré : D → E → A → F**

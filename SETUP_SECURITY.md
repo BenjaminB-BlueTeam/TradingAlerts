@@ -96,5 +96,5 @@ curl.exe -I https://tradingfootalerts.netlify.app
 # Content-Security-Policy: ...
 ```
 
-- `/debug` doit retourner 404 en prod (accessible uniquement en dev local)
-- Les boutons "Lancer maintenant" dans `/debug` (dev local) doivent fonctionner avec le token configuré dans `.env.local`
+- `/debug` est protégé par l'auth Supabase (redirect `/login` si non connecté) — accessible en prod uniquement après connexion
+- Les boutons "Lancer maintenant" dans `/debug` doivent fonctionner avec le token configuré dans `.env.local` (ou `VITE_FUNCTIONS_AUTH_TOKEN` en prod)

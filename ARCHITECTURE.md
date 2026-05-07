@@ -23,8 +23,11 @@
   |     Sanity check : appel league-list, log WARNING si count < 40 ou > 60
   |
   +-- compute-team-fhg.js (cron 7h UTC)
-        Calcule FHG% 0-45 min par (season_id, team_id) depuis h2h_matches
-        Upsert dans team_fhg_cache
+  |     Calcule FHG% 0-45 min par (season_id, team_id) depuis h2h_matches
+  |     Upsert dans team_fhg_cache
+  |
+  +-- delete-alerts.js (on-demand, auth requise)
+        Suppression d'alertes par IDs depuis le frontend (debug/admin)
 ```
 
 ## Supabase — Tables et RLS
@@ -33,14 +36,15 @@ Toutes les tables ont RLS active. `service_role` bypass RLS par defaut.
 
 | Table | Colonnes cles | authenticated | anon | Ecrivain principal |
 |-------|--------------|--------------|------|-------------------|
-| `alerts` | match_id, signal_type, confidence, status, algo_version, user_excluded | SELECT + UPDATE | — | generate-alerts.js, check-results.js |
+| `alerts` | match_id, signal_type, confidence, status, algo_version, user_excluded | SELECT + UPDATE | UPDATE (résultat manuel) | generate-alerts.js, check-results.js |
 | `trades` | match_id, mise, resultat | ALL | — | Frontend |
 | `h2h_matches` | match_id, home/away_team_id, goal_events, match_date (65k lignes) | SELECT | — | daily-seed.js, seed-data.js |
 | `teams` | team_id (unique), name (1077 equipes) | — | SELECT | seed-data.js (league-teams) |
 | `team_seasons` | team_id, season_id, stats (non peuplee, legacy) | SELECT | — | — |
 | `seed_jobs` | job_id, status, progress | SELECT + INSERT + UPDATE | — | seed-data.js |
 | `team_fhg_cache` | season_id, team_id, fhg_pct (PK composite) | SELECT | — | compute-team-fhg.js |
-| `selected_alerts` | match_id, signal_type | ALL | — | Frontend (SelectAlertButton) |
+| `selected_alerts` | match_id, signal_type | SELECT + INSERT + DELETE | — | Frontend (SelectAlertButton) |
+| `alert_trades` | match_id, signal_type, cote, mise, created_at | ALL | ALL | Frontend (/mes-matchs) |
 | `leagues`, `api_cache`, `alerts_v1_backup` | Tables legacy | — | — | service_role only |
 
 ## Algorithme FHG streak v2
@@ -182,4 +186,13 @@ Bouton SelectAlertButton sur /alerts et /alerts-lg2.
 Le frontend n'accede jamais directement a FootyStats. Tout passe par `/.netlify/functions/footystats` qui :
 - Ajoute la cle API (serveur uniquement)
 - Whitelist 10 endpoints autorises
-- CORS restreint a tradingfootalerts.netlify.app
+- CORS restreint a tradingfootalerts.netlify.app (via `lib/cors.cjs`)
+
+## PWA
+
+`static/manifest.json` declare l'app comme installable (display: standalone, theme_color, icons 192/512px).
+`static/sw.js` (Service Worker) met en cache l'app shell pour un demarrage offline.
+
+## Strategie DC
+
+[ARCHIVÉ 2026-05-07] La strategie DC a ete retiree de l'app. Les colonnes `dc_*` et les alertes existantes sont conservees en BDD sans modification du schema. Le code `analyzeDCFromH2H` n'est plus appele.

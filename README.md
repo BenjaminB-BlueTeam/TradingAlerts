@@ -52,15 +52,16 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 - Pills Dom/Ext affichant la longueur du streak
 
 ### Mes matchs (`/mes-matchs`)
-- Alertes selectionnees manuellement dans FHG et LG2
-- Sections : A venir / Aujourd'hui / Passes
+- Alertes selectionnees manuellement dans FHG et LG2 (via SelectAlertButton)
+- Sections : Actif (A venir / Aujourd'hui) + Termines (collapsible)
+- Saisie inline cote + mise → insert dans `alert_trades` (chips reactifs)
+- Boutons resultat manuel Gagne/Perdu par alerte
 - Tri par date et confiance (fort > moyen)
 
 ### Historique (`/historique`)
-- FiltersBar multi-criteres : periode, strategie FHG/LG2, confiance, equipe, ligue, statut
-- Grille 2x2 Chart.js : evolution hybride, stacked par strategie, top 10 equipes, top 10 ligues
-- Tableau dense triable avec expand goal-bar, infinite scroll
-- Blocs "Mes trades vs Global" et "What-if exclusions" (Wilson CI 95%)
+- FiltersBar multi-criteres + ScopeToggle (Global / Mes positions)
+- Section Global : grille 2x2 Chart.js (evolution, stacked strategie, top equipes, top ligues), tableau dense triable (infinite scroll), blocs "Mes trades vs Global" et "What-if exclusions" (Wilson CI 95%)
+- Section Mes positions : table `alert_trades` + P&L reel par match
 
 ### Matchs a venir (`/matches`)
 - Matchs par date avec filtres ligue + recherche equipe (autocomplete)
@@ -70,7 +71,6 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 ### Autres pages
 - **Classements ligues** (`/explore`) — par pays, stats, classements
 - **Ligues actives** (`/leagues`) — 50 ligues, toggle actif/inactif, FHG% equipes
-- **Parametres** (`/settings`) — journal trades, bankroll
 - **Configuration** (`/config`) — config algo (Admin)
 - **Debug** (`/debug`) — tests API/Supabase, seed, panel crons (auth requise en prod)
 
@@ -114,7 +114,7 @@ Streak consecutif de matchs avec au moins un but apres la 80e minute, par equipe
 [Browser SPA — Svelte 5 runes]
     |
     +-- /.netlify/functions/footystats  --> [FootyStats API] (proxy, whitelist, CORS restreint)
-    +-- Supabase JS client (anon, RLS)  --> [Supabase PostgreSQL]
+    +-- Supabase JS client (authenticated, RLS) --> [Supabase PostgreSQL]
     |
 [Netlify Scheduled Functions (service_role)]
     +-- generate-alerts.js   (cron 12h) --> FootyStats + Supabase (FHG + LG2)
@@ -134,7 +134,8 @@ Streak consecutif de matchs avec au moins un but apres la 80e minute, par equipe
 | `seed_jobs` | Suivi progression seed | SELECT + INSERT + UPDATE | — |
 | `team_fhg_cache` | FHG% 0-45 min par (season_id, team_id) | SELECT | — |
 | `teams` | 1077 equipes (nom + team_id), autocomplete /matches | SELECT | SELECT |
-| `selected_alerts` | Selections manuelles FHG/LG2 | ALL | — |
+| `selected_alerts` | Selections manuelles FHG/LG2 | SELECT + INSERT + DELETE | — |
+| `alert_trades` | Positions trading (cote + mise), plusieurs par match, P&L reel | ALL | ALL |
 | `leagues`, `api_cache`, `alerts_v1_backup` | Tables legacy | — | — |
 
 ---
