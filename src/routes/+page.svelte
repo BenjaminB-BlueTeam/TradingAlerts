@@ -310,25 +310,25 @@
   <div class="section-label">Alertes du jour</div>
   <div class="metric-grid metric-grid--3">
 
-    <a href="/alerts?day=0&confidence=fort" class="metric-card metric-card--link">
-      <div class="metric-card__label">FHG Fort — aujourd'hui</div>
+    <a href="/alerts?day=0" class="metric-card metric-card--link">
+      <div class="metric-card__label">FHG Fort</div>
       {#if loading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">&nbsp;</div>
       {:else}
         <div class="metric-card__value green">{fhgFortToday.length}</div>
-        <div class="metric-card__sub">{fhgAlerts.length} FHG total</div>
+        <div class="metric-card__sub">{fhgAlerts.length} FHG aujourd'hui</div>
       {/if}
     </a>
 
-    <a href="/alerts-lg2?day=0&confidence=fort" class="metric-card metric-card--link">
-      <div class="metric-card__label">LG2 Fort — aujourd'hui</div>
+    <a href="/alerts-lg2?day=0" class="metric-card metric-card--link">
+      <div class="metric-card__label">LG2 Fort</div>
       {#if loading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">&nbsp;</div>
       {:else}
         <div class="metric-card__value blue">{lg2FortToday.length}</div>
-        <div class="metric-card__sub">{lg2Alerts.length} LG2 total</div>
+        <div class="metric-card__sub">{lg2Alerts.length} LG2 aujourd'hui</div>
       {/if}
     </a>
 
