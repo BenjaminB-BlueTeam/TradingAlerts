@@ -304,7 +304,8 @@
     {#if teamMatches.length === 0}
       <div class="team-panel__empty">Aucun match en base pour ce contexte</div>
     {:else}
-      <div class="team-panel__list">
+      <div class="team-detail">
+        <div class="team-matches">
         {#each teamMatches as m, i (m.id ?? m.match_id)}
           {@const info = teamMatchOpponent(m, selectedTeam.id)}
           {@const bar = goalBar(m, teamContext)}
@@ -340,6 +341,7 @@
             </div>
           </div>
         {/each}
+        </div>
       </div>
     {/if}
   </div>
@@ -580,7 +582,9 @@
   }
   .team-panel__count { font-size: 11px; color: var(--color-text-muted); }
   .team-panel__empty { padding: 16px 14px; font-size: 12px; color: var(--color-text-muted); }
-  .team-panel__list { max-height: 320px; overflow-y: auto; max-width: 580px; padding: 0 10px; }
+  .team-panel .team-detail { max-width: 620px; margin-top: 10px; }
+  .team-panel .match-row__home,
+  .team-panel .match-row__away { width: 120px; }
 
   /* Recherche équipe */
   .team-search-wrapper {
