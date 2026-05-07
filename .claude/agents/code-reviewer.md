@@ -44,11 +44,11 @@ Examiner le code modifié récemment et identifier :
 
 Vérifier qu'aucune nouvelle logique ne contredit ces règles :
 
-1. **DC ne se joue jamais seul** → toujours conditionné à FHG validé
+1. **Pas de DC** : la stratégie Double Chance a été retirée définitivement (2026-05-07) — aucune réintroduction
 2. **H2H Clean Sheet = exclusion totale** (3+ matchs sans but 1MT contre adversaire)
 3. **"1MT 50%+" = bonus, pas filtre**
 4. **Pas de ML** (pas de TensorFlow, ONNX, poids appris)
-5. **Sélection manuelle** : stats globales filtrent sur `selected_alerts`
+5. **Sélection manuelle** : SelectAlertButton + /mes-matchs — l'app propose, l'humain dispose
 
 ### 🚫 Données réelles uniquement (Décision projet #5)
 - [ ] Aucun mode demo, aucun fallback fictif introduit

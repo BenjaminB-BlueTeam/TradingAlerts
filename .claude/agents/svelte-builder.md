@@ -64,11 +64,11 @@ Si tu ne trouves pas un de ces composants, demande à `explorer` avant d'en cré
 ### Contexte stratégique métier (CRITIQUE)
 Tu ne dois **JAMAIS** introduire de logique qui contredit ces règles :
 
-1. **DC (Double Chance) ne se joue jamais seul** — uniquement en bonus après validation FHG
-2. **H2H Clean Sheet = exclusion totale** d'un match (jamais une simple pénalité de score)
-3. **"1MT 50%+" = bonus, pas filtre** : indicateur de renforcement, pas critère d'exclusion
-4. **Pas de ML** : on reste sur des stats interprétables et explicables
-5. **Sélection manuelle** (à partir du Chantier B) : l'app propose, l'humain dispose
+1. **H2H Clean Sheet = exclusion totale** d'un match (jamais une simple pénalité de score)
+2. **"1MT 50%+" = bonus, pas filtre** : indicateur de renforcement, pas critère d'exclusion
+3. **Pas de ML** : on reste sur des stats interprétables et explicables
+4. **Sélection manuelle** : l'app propose, l'humain dispose (SelectAlertButton + /mes-matchs)
+5. **Pas de DC** : la stratégie Double Chance a été retirée définitivement (2026-05-07)
 
 Si une demande semble contredire ces règles, **stop et demande clarification**.
 
