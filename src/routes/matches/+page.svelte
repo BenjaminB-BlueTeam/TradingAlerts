@@ -581,6 +581,7 @@
   .team-panel__count { font-size: 11px; color: var(--color-text-muted); }
   .team-panel__empty { padding: 16px 14px; font-size: 12px; color: var(--color-text-muted); }
   .team-panel__list { max-height: 320px; overflow-y: auto; }
+  .team-panel__list .match-row__bar { max-width: 260px; }
 
   /* Recherche équipe */
   .team-search-wrapper {
