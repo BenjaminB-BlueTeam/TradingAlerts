@@ -46,7 +46,8 @@
 
   function isActive(href) {
     if (href === '/') return $page.url.pathname === '/';
-    return $page.url.pathname.startsWith(href);
+    const p = $page.url.pathname;
+    return p === href || p.startsWith(href + '/');
   }
 
   let apiDotClass = $derived($apiConnected ? 'connected' : 'error');
