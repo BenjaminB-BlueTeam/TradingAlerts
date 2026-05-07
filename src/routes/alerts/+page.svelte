@@ -12,7 +12,7 @@
   let alerts = $state([]);
   let loading = $state(true);
   let error = $state('');
-  let selectedDay = $state(null); // null = tous
+  let selectedDay = $state(0);
   let expandedId = $state(null);
   let teamMatchesCache = $state({});
 
@@ -131,7 +131,7 @@
   }
 
   let selectedLeague = $state('toutes');
-  let selectedConfs = $state(new Set());
+  let selectedConfs = $state(new Set(['fort']));
   let selectedExclusion = $state('actives');
   let availableLeagues = $derived([...new Set(alerts.map(a => a.league_name).filter(Boolean))].sort());
   const CONF_ORDER = { fort: 0, moyen: 1 };
