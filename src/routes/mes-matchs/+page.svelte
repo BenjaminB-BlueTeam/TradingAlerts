@@ -211,9 +211,12 @@
     loadAlertsForSelections();
   });
 
-  // Rattrapage : alertes des 7 derniers jours NON dans selectedKeys
+  // Rattrapage : alertes des 7 derniers jours SANS trade enregistré (sélectionnées ou non)
   let catchupFiltered = $derived(
-    catchupAlerts.filter(a => !$selectedKeys.has(keyOf(a.match_id, a.signal_type)))
+    catchupAlerts.filter(a => {
+      const key = a.match_id + ':' + a.signal_type;
+      return !tradesMap.has(key);
+    })
   );
 
   // ---- UI helpers ----
