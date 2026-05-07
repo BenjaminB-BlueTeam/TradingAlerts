@@ -125,6 +125,9 @@
       return;
     }
 
+    // Normalisation match_id : alerts.match_id est bigint (number),
+    // alert_trades.match_id et selected_alerts.match_id sont TEXT (string).
+    // On force tout en string pour que Map/Set fonctionnent.
     const alertMap = new Map();
     for (const a of (alertsRes.data || [])) {
       alertMap.set(`${a.match_id}__${a.signal_type}`, a);
@@ -171,10 +174,11 @@
     tradesMonthValid = validMonth;
     tradesMonthLost = lostMonth;
 
-    // Matchs distincts sélectionnés dans le mois courant
-    const selectedMatchIds = new Set((selectedRes.data || []).map(s => s.match_id));
+    // Matchs distincts sélectionnés dans le mois courant.
+    // String() obligatoire : selected_alerts.match_id est TEXT, alerts.match_id est bigint.
+    const selectedMatchIds = new Set((selectedRes.data || []).map(s => String(s.match_id)));
     const alertsInMonth = new Set(
-      (alertsRes.data || []).map(a => a.match_id)
+      (alertsRes.data || []).map(a => String(a.match_id))
     );
     let distinctMonthMatches = 0;
     for (const mid of selectedMatchIds) {
