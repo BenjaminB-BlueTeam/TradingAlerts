@@ -77,3 +77,37 @@ export function defeatColor(pct) {
   if (pct <= 30) return 'var(--color-signal-moyen)';
   return 'var(--color-danger)';
 }
+
+/**
+ * Adds n days to a date string (YYYY-MM-DD format).
+ * Handles month/year rollover correctly.
+ * @param {string} dateStr - Date in YYYY-MM-DD format
+ * @param {number} n - Number of days to add (can be negative)
+ * @returns {string} Date in YYYY-MM-DD format
+ */
+export function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
+/**
+ * Returns a navigation-friendly label for a date.
+ * Special cases: today → "Aujourd'hui", yesterday → "Hier", tomorrow → "Demain"
+ * Other dates → abbreviated weekday + date (e.g. "Lun. 07/05")
+ * @param {string} dateStr - Date in YYYY-MM-DD format
+ * @returns {string}
+ */
+export function dateLabelNav(dateStr) {
+  const today = getDateStr(0);
+  const yesterday = getDateStr(-1);
+  const tomorrow = getDateStr(1);
+  if (dateStr === today) return "Aujourd'hui";
+  if (dateStr === yesterday) return 'Hier';
+  if (dateStr === tomorrow) return 'Demain';
+  const d = new Date(dateStr + 'T12:00:00');
+  const weekday = d.toLocaleDateString('fr-FR', { weekday: 'short' });
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1, 3)}. ${day}/${month}`;
+}

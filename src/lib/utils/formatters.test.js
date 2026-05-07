@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getDateStr, formatDate, formatTime, isInPlay, fhgColor, defeatColor } from './formatters.js';
+import { getDateStr, formatDate, formatTime, isInPlay, fhgColor, defeatColor, addDays, dateLabelNav } from './formatters.js';
 
 describe('getDateStr', () => {
   it('returns today in YYYY-MM-DD format when offset is 0', () => {
@@ -122,5 +122,65 @@ describe('defeatColor', () => {
   it('returns danger color for pct > 30', () => {
     expect(defeatColor(31)).toBe('var(--color-danger)');
     expect(defeatColor(100)).toBe('var(--color-danger)');
+  });
+});
+
+describe('addDays', () => {
+  it('adds 1 day', () => {
+    expect(addDays('2026-05-07', 1)).toBe('2026-05-08');
+  });
+
+  it('subtracts 1 day', () => {
+    expect(addDays('2026-05-07', -1)).toBe('2026-05-06');
+  });
+
+  it('handles month rollover forward', () => {
+    expect(addDays('2026-05-31', 1)).toBe('2026-06-01');
+  });
+
+  it('handles month rollover backward', () => {
+    expect(addDays('2026-06-01', -1)).toBe('2026-05-31');
+  });
+
+  it('returns YYYY-MM-DD format', () => {
+    expect(addDays('2026-05-07', 5)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('adds 0 days (no-op)', () => {
+    expect(addDays('2026-05-07', 0)).toBe('2026-05-07');
+  });
+});
+
+describe('dateLabelNav', () => {
+  it("returns Aujourd'hui for today", () => {
+    const today = new Date().toISOString().split('T')[0];
+    expect(dateLabelNav(today)).toBe("Aujourd'hui");
+  });
+
+  it('returns Hier for yesterday', () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const yesterdayStr = d.toISOString().split('T')[0];
+    expect(dateLabelNav(yesterdayStr)).toBe('Hier');
+  });
+
+  it('returns Demain for tomorrow', () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    const tomorrowStr = d.toISOString().split('T')[0];
+    expect(dateLabelNav(tomorrowStr)).toBe('Demain');
+  });
+
+  it('returns abbreviated weekday format for other dates', () => {
+    // 2026-01-01 is a Thursday
+    const result = dateLabelNav('2026-01-01');
+    // Should match pattern: Cap letter + 1-2 letters + . + space + DD/MM
+    expect(result).toMatch(/^[A-ZÀ-Ÿ][a-zà-ÿ]{1,2}\. \d{2}\/\d{2}$/);
+  });
+
+  it('formats date correctly in weekday label', () => {
+    // 2026-01-01 is a Thursday
+    const result = dateLabelNav('2026-01-01');
+    expect(result).toContain('01');
   });
 });
