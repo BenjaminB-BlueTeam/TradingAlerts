@@ -140,13 +140,9 @@
   let searchError = $state('');
   let searchDebounce;
 
-  // Panneau équipe — matchs saison en cours
-  let teamContext = $state('home');
-
-  let teamMatches = $derived.by(() => {
-    if (!selectedTeam) return [];
-    return getTeamMatches(selectedTeam.id, teamContext);
-  });
+  // Panneau équipe — matchs saison en cours (domicile + extérieur toujours affichés)
+  let homeMatches = $derived(selectedTeam ? getTeamMatches(selectedTeam.id, 'home') : []);
+  let awayMatches = $derived(selectedTeam ? getTeamMatches(selectedTeam.id, 'away') : []);
 
   $effect(() => {
     if (!selectedTeam) return;
@@ -161,11 +157,6 @@
       ? (isHome ? `${match.home_goals}-${match.away_goals}` : `${match.away_goals}-${match.home_goals}`)
       : '—';
     return { isHome, opponent, score };
-  }
-
-  function hasGoal3145(match, isHome) {
-    const events = Array.isArray(match.goal_events) ? match.goal_events : [];
-    return events.some(e => e.min >= 31 && e.min <= 45 && e.home === isHome);
   }
 
   // La dropdown s'affiche dès qu'il y a des suggestions et que la query n'a pas
@@ -291,59 +282,78 @@
 {/if}
 
 {#if selectedTeam}
-  <div class="team-panel">
-    <div class="team-panel__header">
-      <span class="team-panel__name">{selectedTeam.name}</span>
-      <div class="team-panel__ctx-btns">
-        <button class="ctx-btn" class:ctx-btn--active={teamContext === 'home'} onclick={() => teamContext = 'home'}>Domicile</button>
-        <button class="ctx-btn" class:ctx-btn--active={teamContext === 'away'} onclick={() => teamContext = 'away'}>Extérieur</button>
+  <div class="team-expand">
+    <div class="team-detail">
+      <div class="team-detail__header">
+        <span class="team-detail__name">{selectedTeam.name}</span>
+        <span class="team-detail__context">Domicile</span>
+        <div class="team-detail__summary"><span><strong>{homeMatches.length}</strong> matchs</span></div>
       </div>
-      <span class="team-panel__count">{teamMatches.length} match{teamMatches.length !== 1 ? 's' : ''}</span>
-    </div>
-
-    {#if teamMatches.length === 0}
-      <div class="team-panel__empty">Aucun match en base pour ce contexte</div>
-    {:else}
-      <div class="team-detail">
+      {#if homeMatches.length > 0}
         <div class="team-matches">
-        {#each teamMatches as m, i (m.id ?? m.match_id)}
-          {@const info = teamMatchOpponent(m, selectedTeam.id)}
-          {@const bar = goalBar(m, teamContext)}
-          {@const barKey = `panel_${selectedTeam.id}_${teamContext}_${i}`}
-          <div class="match-row">
-            <span class="match-row__date">{m.match_date ? m.match_date.slice(8,10)+'/'+m.match_date.slice(5,7) : '—'}</span>
-            {#if info.isHome}
+          {#each homeMatches as m, i (m.id ?? m.match_id)}
+            {@const bar = goalBar(m, 'home')}
+            {@const barKey = `panel_${selectedTeam.id}_home_${i}`}
+            <div class="match-row">
+              <span class="match-row__date">{m.match_date ? m.match_date.slice(8,10)+'/'+m.match_date.slice(5,7) : '—'}</span>
               <span class="match-row__home match-row__bold">{m.home_team_name}</span>
-              <span class="match-row__score match-row__score--{bar.result}">{info.score}</span>
-              <span class="match-row__away">{info.opponent}</span>
-            {:else}
-              <span class="match-row__home">{info.opponent}</span>
-              <span class="match-row__score match-row__score--{bar.result}">{info.score}</span>
-              <span class="match-row__away match-row__bold">{m.away_team_name}</span>
-            {/if}
-            <div class="match-row__bar">
-              <div class="goal-bar"
-                onmousemove={(e) => onBarMove(e, barKey)}
-                onmouseleave={onBarLeave}
-              >
-                <span class="goal-bar__marker" style="left:50%">HT</span>
-                <span class="goal-bar__marker" style="left:98%">FT</span>
-                {#if hoverBar?.key === barKey}
-                  <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
-                {/if}
-                {#if hoverBar?.key === barKey && i === 0}
-                  <span class="bar-hover-min" style="position:absolute;bottom:calc(100% + 4px);left:{hoverBar.pct}%;transform:translateX(-50%);z-index:10;">{hoverBar.min}'</span>
-                {/if}
-                {#each bar.goals as g}
-                  <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
-                {/each}
+              <span class="match-row__score match-row__score--{bar.result}">{m.home_goals}-{m.away_goals}</span>
+              <span class="match-row__away">{m.away_team_name}</span>
+              <div class="match-row__bar">
+                <div class="goal-bar" onmousemove={(e) => onBarMove(e, barKey)} onmouseleave={onBarLeave}>
+                  <span class="goal-bar__marker" style="left:50%">HT</span>
+                  <span class="goal-bar__marker" style="left:98%">FT</span>
+                  {#if hoverBar?.key === barKey}
+                    <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
+                  {/if}
+                  {#each bar.goals as g}
+                    <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
+                  {/each}
+                </div>
               </div>
             </div>
-          </div>
-        {/each}
+          {/each}
         </div>
+      {:else}
+        <p class="team-detail__empty">Aucun match joue cette saison</p>
+      {/if}
+    </div>
+
+    <div class="team-detail">
+      <div class="team-detail__header">
+        <span class="team-detail__name">{selectedTeam.name}</span>
+        <span class="team-detail__context">Extérieur</span>
+        <div class="team-detail__summary"><span><strong>{awayMatches.length}</strong> matchs</span></div>
       </div>
-    {/if}
+      {#if awayMatches.length > 0}
+        <div class="team-matches">
+          {#each awayMatches as m, i (m.id ?? m.match_id)}
+            {@const bar = goalBar(m, 'away')}
+            {@const barKey = `panel_${selectedTeam.id}_away_${i}`}
+            <div class="match-row">
+              <span class="match-row__date">{m.match_date ? m.match_date.slice(8,10)+'/'+m.match_date.slice(5,7) : '—'}</span>
+              <span class="match-row__home">{m.home_team_name}</span>
+              <span class="match-row__score match-row__score--{bar.result}">{m.home_goals}-{m.away_goals}</span>
+              <span class="match-row__away match-row__bold">{m.away_team_name}</span>
+              <div class="match-row__bar">
+                <div class="goal-bar" onmousemove={(e) => onBarMove(e, barKey)} onmouseleave={onBarLeave}>
+                  <span class="goal-bar__marker" style="left:50%">HT</span>
+                  <span class="goal-bar__marker" style="left:98%">FT</span>
+                  {#if hoverBar?.key === barKey}
+                    <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
+                  {/if}
+                  {#each bar.goals as g}
+                    <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
+                  {/each}
+                </div>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="team-detail__empty">Aucun match joue cette saison</p>
+      {/if}
+    </div>
   </div>
 {/if}
 
@@ -541,50 +551,18 @@
     .match-card__header { flex-wrap: wrap; }
   }
 
-  /* Panneau équipe */
-  .team-panel {
-    background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    margin-bottom: 12px;
-    overflow: hidden;
+  /* Panneau équipe — grille 2 colonnes */
+  .team-expand {
+    border-top: 1px solid var(--color-border);
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
   }
-  .team-panel__header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--color-border);
-    flex-wrap: wrap;
+  @media (max-width: 1100px) {
+    .team-expand { grid-template-columns: 1fr; }
   }
-  .team-panel__name {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--color-text-primary);
-    flex: 1;
-  }
-  .team-panel__ctx-btns { display: flex; gap: 4px; }
-  .ctx-btn {
-    background: none;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 10px;
-    transition: all var(--transition-fast);
-  }
-  .ctx-btn--active {
-    background: rgba(29,158,117,0.15);
-    border-color: rgba(29,158,117,0.5);
-    color: var(--color-accent-green);
-  }
-  .team-panel__count { font-size: 11px; color: var(--color-text-muted); }
-  .team-panel__empty { padding: 16px 14px; font-size: 12px; color: var(--color-text-muted); }
-  .team-panel .team-detail { max-width: 620px; margin-top: 10px; }
-  .team-panel .match-row__home,
-  .team-panel .match-row__away { width: 120px; }
 
   /* Recherche équipe */
   .team-search-wrapper {
