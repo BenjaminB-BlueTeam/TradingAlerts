@@ -178,7 +178,9 @@
     // String() obligatoire : selected_alerts.match_id est TEXT, alerts.match_id est bigint.
     const selectedMatchIds = new Set((selectedRes.data || []).map(s => String(s.match_id)));
     const alertsInMonth = new Set(
-      (alertsRes.data || []).map(a => String(a.match_id))
+      (alertsRes.data || [])
+        .filter(a => a.status === 'validated' || a.status === 'lost')
+        .map(a => String(a.match_id))
     );
     let distinctMonthMatches = 0;
     for (const mid of selectedMatchIds) {
