@@ -6,6 +6,7 @@
   import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
   import { selectedKeys, isSelected, unselect } from '$lib/stores/selectionStore.js';
+  import { apiConnected, leagues } from '$lib/stores/appStore.js';
 
   let alerts = $state([]);
   let loading = $state(true);
@@ -58,8 +59,19 @@
   let lostToday = $derived(todayAlerts.filter(a => a.status === 'lost'));
   let pendingToday = $derived(todayAlerts.filter(a => a.status === 'pending'));
   let liveToday = $derived(pendingToday.filter(a => isInPlay(a)));
-  let fortToday = $derived(todayAlerts.filter(a => a.confidence === 'fort'));
-  let moyenToday = $derived(todayAlerts.filter(a => a.confidence === 'moyen'));
+  // Ligues actives
+  let activeLeaguesCount = $derived($leagues.filter(l => l.active).length);
+  let totalLeagues = $derived($leagues.length);
+
+  // FHG Fort aujourd'hui (fort + fort_double), non exclus
+  let fhgFortToday = $derived(fhgAlerts.filter(a =>
+    a.confidence === 'fort' || a.confidence === 'fort_double'
+  ));
+
+  // LG2 Fort aujourd'hui (fort + fort_double), non exclus
+  let lg2FortToday = $derived(lg2Alerts.filter(a =>
+    a.confidence === 'fort' || a.confidence === 'fort_double'
+  ));
 
   // Alertes a venir (demain + apres-demain)
   let upcomingAlerts = $derived(alerts.filter(a => a.match_date > todayStr));
@@ -105,26 +117,44 @@
 
 <!-- METRIC GRID -->
 <div class="metric-grid">
-  <div class="metric-card">
-    <div class="metric-card__label">Alertes FHG</div>
-    <div class="metric-card__value green">{fhgAlerts.length}</div>
-    <div class="metric-card__sub">dont {fortToday.length} fort{fortToday.length > 1 ? 's' : ''}</div>
+
+  <!-- API Status -->
+  <div class="metric-card metric-card--api" class:metric-card--ok={$apiConnected} class:metric-card--error={!$apiConnected}>
+    <div class="metric-card__label">API FootyStats</div>
+    <div class="metric-card__value" class:green={$apiConnected} class:red={!$apiConnected}>
+      {$apiConnected ? 'OK' : 'KO'}
+    </div>
+    <div class="metric-card__sub">{$apiConnected ? 'Connectée' : 'Déconnectée'}</div>
   </div>
+
+  <!-- Ligues actives -->
   <div class="metric-card">
-    <div class="metric-card__label">Alertes LG2</div>
-    <div class="metric-card__value blue">{lg2Alerts.length}</div>
-    <div class="metric-card__sub">aujourd'hui</div>
+    <div class="metric-card__label">Ligues actives</div>
+    <div class="metric-card__value blue">{activeLeaguesCount}</div>
+    <div class="metric-card__sub">sur {totalLeagues}</div>
   </div>
+
+  <!-- FHG Fort -->
   <div class="metric-card">
-    <div class="metric-card__label">Valides</div>
-    <div class="metric-card__value green">{validatedToday.length}</div>
-    <div class="metric-card__sub">aujourd'hui</div>
+    <div class="metric-card__label">FHG Fort — aujourd'hui</div>
+    <div class="metric-card__value green">{fhgFortToday.length}</div>
+    <div class="metric-card__sub">{fhgAlerts.length} FHG total</div>
   </div>
+
+  <!-- LG2 Fort -->
+  <div class="metric-card">
+    <div class="metric-card__label">LG2 Fort — aujourd'hui</div>
+    <div class="metric-card__value blue">{lg2FortToday.length}</div>
+    <div class="metric-card__sub">{lg2Alerts.length} LG2 total</div>
+  </div>
+
+  <!-- En attente -->
   <div class="metric-card">
     <div class="metric-card__label">En attente</div>
     <div class="metric-card__value" class:orange={pendingToday.length > 0}>{pendingToday.length}</div>
     <div class="metric-card__sub">{liveToday.length} en cours</div>
   </div>
+
 </div>
 
 
@@ -243,14 +273,17 @@
   .dashboard-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
   .dashboard-header__date { font-size: 13px; color: var(--color-text-muted); margin-top: 2px; text-transform: capitalize; }
 
-  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .metric-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
   .metric-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg, 10px); padding: 16px; text-align: center; }
   .metric-card__label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 4px; }
   .metric-card__value { font-size: 28px; font-weight: 700; }
   .metric-card__value.green { color: var(--color-accent-green); }
   .metric-card__value.blue { color: var(--color-accent-blue); }
   .metric-card__value.orange { color: var(--color-signal-moyen); }
+  .metric-card__value.red { color: var(--color-danger); }
   .metric-card__sub { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+  .metric-card--ok { border-color: rgba(29,158,117,0.3); }
+  .metric-card--error { border-color: rgba(226,75,74,0.3); }
 
   .section-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-primary); margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--color-border); }
 
@@ -282,6 +315,7 @@
 
   @media (max-width: 768px) {
     .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .metric-card--api { grid-column: span 2; }
     .dash-alert-card { flex-wrap: wrap; }
     .dash-alert-card__pills { width: 100%; }
   }
