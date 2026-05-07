@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/api/supabase.js';
-  import { fetchAlertTrades, insertAlertTrade, deleteAlertTrade } from '$lib/api/supabase.js';
+  import { fetchAlertTrades, insertAlertTrade, deleteAlertTrade, updateAlertStatus } from '$lib/api/supabase.js';
   import { selectedKeys, keyOf } from '$lib/stores/selectionStore.js';
   import { getDateStr, formatDateDMY, formatTime, isInPlay } from '$lib/utils/formatters.js';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
@@ -14,10 +14,11 @@
   let terminatedOpen = $state(false);
 
   // Per-card inline form state: keyed by alertId
-  let formCote = $state({});   // { [alertId]: string }
-  let formMise = $state({});   // { [alertId]: string }
-  let formError = $state({});  // { [alertId]: string }
-  let formBusy = $state({});   // { [alertId]: boolean }
+  let formCote = $state({});     // { [alertId]: string }
+  let formMise = $state({});     // { [alertId]: string }
+  let formError = $state({});    // { [alertId]: string }
+  let formBusy = $state({});     // { [alertId]: boolean }
+  let resultBusy = $state({});   // { [alertId]: boolean }
 
   // ---- Helpers: signal classification ----
   function isFHG(signal_type) { return signal_type?.startsWith('FHG'); }
@@ -143,6 +144,17 @@
   async function removeTrade(tradeId) {
     await deleteAlertTrade(tradeId);
     allTrades = allTrades.filter(t => t.id !== tradeId);
+  }
+
+  async function setResult(alert, status) {
+    const id = alert.id;
+    resultBusy[id] = true;
+    const ok = await updateAlertStatus(id, status);
+    resultBusy[id] = false;
+    if (ok) {
+      // Mise à jour locale immédiate — tous les calculs P&L et stats se recalculent
+      allAlerts = allAlerts.map(a => a.id === id ? { ...a, status } : a);
+    }
   }
 
   // ---- Data loading ----
@@ -410,6 +422,27 @@
           {/each}
         </div>
       {/if}
+
+      <!-- Résultat manuel -->
+      <div class="result-row">
+        <button
+          class="btn btn--sm btn--result btn--result-win"
+          class:btn--result-active={a.status === 'validated'}
+          onclick={() => setResult(a, a.status === 'validated' ? 'pending' : 'validated')}
+          disabled={resultBusy[cardId]}
+          title="Marquer comme gagné (cliquer à nouveau pour annuler)"
+        >✓ Gagné</button>
+        <button
+          class="btn btn--sm btn--result btn--result-loss"
+          class:btn--result-active={a.status === 'lost'}
+          onclick={() => setResult(a, a.status === 'lost' ? 'pending' : 'lost')}
+          disabled={resultBusy[cardId]}
+          title="Marquer comme perdu (cliquer à nouveau pour annuler)"
+        >✗ Perdu</button>
+        {#if resultBusy[cardId]}
+          <span class="result-saving">Enregistrement…</span>
+        {/if}
+      </div>
 
       <!-- Inline add form -->
       <div class="trade-add-row">
@@ -775,6 +808,47 @@
   }
   .trade-total--neg {
     color: var(--color-danger);
+  }
+
+  /* ---- Résultat manuel ---- */
+  .result-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn--result {
+    border: 1px solid var(--color-border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--color-text-muted);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .btn--result-win:hover:not(:disabled) {
+    background: rgba(29, 158, 117, 0.15);
+    color: var(--color-accent-green);
+    border-color: rgba(29, 158, 117, 0.4);
+  }
+  .btn--result-win.btn--result-active {
+    background: rgba(29, 158, 117, 0.2);
+    color: var(--color-accent-green);
+    border-color: var(--color-accent-green);
+  }
+
+  .btn--result-loss:hover:not(:disabled) {
+    background: rgba(226, 75, 74, 0.15);
+    color: var(--color-danger);
+    border-color: rgba(226, 75, 74, 0.4);
+  }
+  .btn--result-loss.btn--result-active {
+    background: rgba(226, 75, 74, 0.2);
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+  }
+
+  .result-saving {
+    font-size: 11px;
+    color: var(--color-text-muted);
   }
 
   /* ---- Responsive ---- */

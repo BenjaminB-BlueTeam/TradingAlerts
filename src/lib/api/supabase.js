@@ -238,6 +238,16 @@ export async function unexcludeAlert(matchId) {
 }
 
 // ============================================================
+// RÉSULTAT MANUEL (override statut alerte)
+// ============================================================
+
+export async function updateAlertStatus(id, status) {
+  const { error } = await supabase.from('alerts').update({ status }).eq('id', id);
+  if (error) { console.error('updateAlertStatus:', error); return false; }
+  return true;
+}
+
+// ============================================================
 // SÉLECTION MANUELLE DES ALERTES (Chantier B)
 // ============================================================
 
