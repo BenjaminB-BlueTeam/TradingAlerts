@@ -55,22 +55,20 @@
 
   // ---- Derived sections ----
   let sections = $derived.by(() => {
-    const fhgActive = visibleAlerts.filter(a => isFHG(a.signal_type) && isActive(a));
-    const lg2Active = visibleAlerts.filter(a => isLG2(a.signal_type) && isActive(a));
-    const terminated = visibleAlerts.filter(a => isTerminated(a));
+    // Past matches (date < today) are considered played/done regardless of status
+    const fhgActive = visibleAlerts.filter(a => isFHG(a.signal_type) && isActive(a) && a.match_date >= today);
+    const lg2Active = visibleAlerts.filter(a => isLG2(a.signal_type) && isActive(a) && a.match_date >= today);
+    const terminated = visibleAlerts.filter(a => isTerminated(a) || a.match_date < today);
 
     const fhgToday = sortActive(fhgActive.filter(a => a.match_date === today));
     const fhgComing = sortActive(fhgActive.filter(a => a.match_date > today));
-    // include past active (match passed but still pending/live, e.g. stuck) in coming-like bucket
-    const fhgPastActive = sortActive(fhgActive.filter(a => a.match_date < today));
 
     const lg2Today = sortActive(lg2Active.filter(a => a.match_date === today));
     const lg2Coming = sortActive(lg2Active.filter(a => a.match_date > today));
-    const lg2PastActive = sortActive(lg2Active.filter(a => a.match_date < today));
 
     return {
-      fhgToday, fhgComing, fhgPastActive,
-      lg2Today, lg2Coming, lg2PastActive,
+      fhgToday, fhgComing,
+      lg2Today, lg2Coming,
       fhgCount: fhgActive.length,
       lg2Count: lg2Active.length,
       terminated: sortTerminated(terminated),
@@ -280,15 +278,6 @@
             {/each}
           </div>
         {/if}
-
-        {#if sections.fhgPastActive.length > 0}
-          <div class="subsection-label" class:subsection-label--mt={sections.fhgToday.length + sections.fhgComing.length > 0}>En attente (passés)</div>
-          <div class="alerts-list">
-            {#each sections.fhgPastActive as a (a.id)}
-              {@render alertCard(a)}
-            {/each}
-          </div>
-        {/if}
       </section>
     {/if}
 
@@ -315,15 +304,6 @@
           <div class="subsection-label" class:subsection-label--mt={sections.lg2Today.length > 0}>A venir</div>
           <div class="alerts-list">
             {#each sections.lg2Coming as a (a.id)}
-              {@render alertCard(a)}
-            {/each}
-          </div>
-        {/if}
-
-        {#if sections.lg2PastActive.length > 0}
-          <div class="subsection-label" class:subsection-label--mt={sections.lg2Today.length + sections.lg2Coming.length > 0}>En attente (passés)</div>
-          <div class="alerts-list">
-            {#each sections.lg2PastActive as a (a.id)}
               {@render alertCard(a)}
             {/each}
           </div>
