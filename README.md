@@ -112,20 +112,23 @@ Streak consecutif de matchs avec au moins un but apres la 80e minute, par equipe
 [Netlify Scheduled Functions (service_role)]
     +-- generate-alerts.js   (cron 12h) --> FootyStats + Supabase (FHG + LG2)
     +-- check-results.js     (cron 1h)  --> FootyStats + Supabase (valide/perdu)
-    +-- daily-seed.js        (cron 6h)  --> FootyStats + Supabase (matchs d'hier)
+    +-- daily-seed.js        (cron 6h)  --> FootyStats + Supabase (rolling J-3→J-1)
     +-- compute-team-fhg.js  (cron 7h)  --> Supabase team_fhg_cache
 ```
 
-### Tables Supabase (RLS actif)
+### Tables Supabase (RLS actif sur toutes)
 
-| Table | Role | anon |
-|-------|------|------|
-| `alerts` | Alertes FHG/LG2 (pending/validated/lost/expired) | SELECT |
-| `trades` | Journal des trades | ALL |
-| `h2h_matches` | Historique matchs avec goal_events | SELECT |
-| `team_seasons` | Stats equipes par saison | SELECT |
-| `seed_jobs` | Suivi progression seed | SELECT |
-| `team_fhg_cache` | FHG% 0-45 min par (season_id, team_id) | SELECT |
+| Table | Role | authenticated | anon |
+|-------|------|--------------|------|
+| `alerts` | Alertes FHG/LG2 (pending/validated/lost/expired) | SELECT + UPDATE | — |
+| `trades` | Journal des trades | ALL | — |
+| `h2h_matches` | 65k+ matchs avec goal_events (seed + daily) | SELECT | — |
+| `team_seasons` | Stats equipes par saison (legacy, non peuplee) | SELECT | — |
+| `seed_jobs` | Suivi progression seed | SELECT + INSERT + UPDATE | — |
+| `team_fhg_cache` | FHG% 0-45 min par (season_id, team_id) | SELECT | — |
+| `teams` | 1077 equipes (nom + team_id), autocomplete /matches | SELECT | SELECT |
+| `selected_alerts` | Selections manuelles FHG/LG2 | ALL | — |
+| `leagues`, `api_cache`, `alerts_v1_backup` | Tables legacy | — | — |
 
 ---
 
@@ -160,6 +163,15 @@ npm run test:watch
 | `FUNCTIONS_AUTH_TOKEN` | Serveur | Token auth pour generate/check en prod |
 | `VITE_FUNCTIONS_AUTH_TOKEN` | Frontend | Meme valeur, envoye par debug page |
 
+### Seed initial
+
+```bash
+node scripts/run-seed.mjs
+```
+Orchestre 240 saisons (51 ligues x 5 ans) via Netlify Function server-side. ~10 min. Peuple `h2h_matches` (65k matchs) et `teams` (1077 equipes).
+
+Le seed quotidien (`daily-seed.js`, 6h UTC) rafraichit en fenetre glissante J-3→J-1 pour attraper les matchs reprogrammes.
+
 ### Structure cle
 
 ```
@@ -167,6 +179,11 @@ netlify/functions/
   lib/api.js           # helpers partages (footyRequest, supabaseQuery)
   lib/analysis.cjs     # logique FHG streak v2 (server-side CJS)
   lib/lg2.cjs          # logique LG2 streak (server-side CJS)
+  lib/auth.cjs         # requireAuth (FUNCTIONS_AUTH_TOKEN + bypass scheduled)
+  lib/parseMatch.js    # parseMatchRow partage (seed-data + daily-seed)
+scripts/
+  run-seed.mjs         # orchestre seed complet autonome (start_full + boucle seed_league)
+  calibrate-threshold.js # calibration seuils FHG (Wilson CI 95%)
 src/lib/
   core/scoring.js      # logique FHG streak v2 (client-side ESM, miroir analysis.cjs)
   core/lg2.js          # logique LG2 streak (client-side ESM, miroir lg2.cjs)

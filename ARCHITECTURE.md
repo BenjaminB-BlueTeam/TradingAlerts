@@ -17,9 +17,9 @@
   |     Met a jour status -> validated / lost / expired (>48h)
   |
   +-- daily-seed.js (cron 6h UTC)
-  |     Recupere les matchs d'hier via todays-matches
-  |     Upsert dans h2h_matches avec scores + goal_events
-  |     Mode backfill : ?from=...&to=... (requiert SEED_AUTH_TOKEN)
+  |     Fenetre glissante J-3→J-1 via todays-matches (attrape matchs reprogrammes)
+  |     Upsert dans h2h_matches avec scores + goal_events (idempotent, on_conflict=match_id)
+  |     Mode backfill : ?from=...&to=... (requiert FUNCTIONS_AUTH_TOKEN)
   |
   +-- compute-team-fhg.js (cron 7h UTC)
         Calcule FHG% 0-45 min par (season_id, team_id) depuis h2h_matches
@@ -30,14 +30,17 @@
 
 Toutes les tables ont RLS active. `service_role` bypass RLS par defaut.
 
-| Table | Colonnes cles | anon | Ecrivain principal |
-|-------|--------------|------|-------------------|
-| `alerts` | match_id, signal_type, confidence, status, algo_version, user_excluded, user_exclusion_tags | SELECT | generate-alerts.js, check-results.js |
-| `trades` | match_id, mise, resultat | ALL | Frontend (utilisateur) |
-| `h2h_matches` | match_id, home/away_team_id, goal_events, match_date | SELECT + INSERT + UPDATE | daily-seed.js, seed-data.js |
-| `team_seasons` | team_id, season_id, stats | SELECT | seed-data.js |
-| `seed_jobs` | job_id, status, progress | SELECT + INSERT + UPDATE | seed-data.js |
-| `team_fhg_cache` | season_id, team_id, fhg_pct (PK composite) | SELECT | compute-team-fhg.js |
+| Table | Colonnes cles | authenticated | anon | Ecrivain principal |
+|-------|--------------|--------------|------|-------------------|
+| `alerts` | match_id, signal_type, confidence, status, algo_version, user_excluded | SELECT + UPDATE | — | generate-alerts.js, check-results.js |
+| `trades` | match_id, mise, resultat | ALL | — | Frontend |
+| `h2h_matches` | match_id, home/away_team_id, goal_events, match_date (65k lignes) | SELECT | — | daily-seed.js, seed-data.js |
+| `teams` | team_id (unique), name (1077 equipes) | — | SELECT | seed-data.js (league-teams) |
+| `team_seasons` | team_id, season_id, stats (non peuplee, legacy) | SELECT | — | — |
+| `seed_jobs` | job_id, status, progress | SELECT + INSERT + UPDATE | — | seed-data.js |
+| `team_fhg_cache` | season_id, team_id, fhg_pct (PK composite) | SELECT | — | compute-team-fhg.js |
+| `selected_alerts` | match_id, signal_type | ALL | — | Frontend (SelectAlertButton) |
+| `leagues`, `api_cache`, `alerts_v1_backup` | Tables legacy | — | — | service_role only |
 
 ## Algorithme FHG streak v2
 
@@ -161,6 +164,17 @@ Bouton SelectAlertButton sur /alerts et /alerts-lg2.
 - Tableau par confiance (fort_double, fort, moyen)
 - Cross-tab signal_type x confiance
 - Wilson CI 95% + recommandations automatiques
+
+## Seed initial
+
+`scripts/run-seed.mjs` orchestre le seed complet de facon autonome :
+1. `start_full` → recupere 51 ligues + season_ids (5 saisons par ligue = 240 saisons)
+2. Boucle sur chaque `season_id` → appelle `seed_league` qui insere server-side :
+   - `h2h_matches` via `league-matches` (batches 200, on_conflict=match_id)
+   - `teams` via `league-teams` (upsert, on_conflict=team_id)
+3. Resultat : ~65k matchs, ~1100 equipes
+
+`seed-data.js` requiert `SEED_AUTH_TOKEN`. Toutes les autres fonctions requierent `FUNCTIONS_AUTH_TOKEN` (bypass automatique pour les crons via detection `next_run` dans le body).
 
 ## Proxy API
 
