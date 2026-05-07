@@ -1,7 +1,7 @@
 <script>
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { apiConnected, alertesActives, pauseSession, savePrefs, apiRequestsRemaining } from '$lib/stores/appStore.js';
+  import { apiConnected, alertesActives, savePrefs, apiRequestsRemaining } from '$lib/stores/appStore.js';
   import { cacheClear } from '$lib/api/cache.js';
   import { signOut } from '$lib/api/supabase.js';
 
@@ -38,10 +38,6 @@
     goto(href);
     savePrefs({ currentPage: href === '/' ? 'dashboard' : href.slice(1) });
     sidebarOpen = false;
-  }
-
-  function togglePause() {
-    pauseSession.update(p => !p);
   }
 
   async function handleLogout() {
@@ -150,13 +146,6 @@
       <div class="api-dot {apiDotClass}"></div>
       <span>{apiLabel}</span>
     </div>
-    <button
-      class="btn btn--secondary btn--pause btn--full"
-      onclick={togglePause}
-      style={$pauseSession ? 'opacity:0.7' : ''}
-    >
-      {$pauseSession ? '▶ REPRENDRE SESSION' : '⏸ PAUSE SESSION'}
-    </button>
     <button class="btn btn--danger btn--sm btn--full logout-btn" onclick={handleLogout}>
       Déconnexion
     </button>
