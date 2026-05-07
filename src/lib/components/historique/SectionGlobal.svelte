@@ -389,7 +389,7 @@
   .section-header {
     width: 100%;
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: 10px;
     padding: 10px 14px;
     cursor: pointer;
@@ -419,6 +419,7 @@
     transform: rotate(90deg);
     transition: transform var(--transition-fast);
     display: inline-block;
+    align-self: center;
   }
   .chevron--open {
     transform: rotate(-90deg);
