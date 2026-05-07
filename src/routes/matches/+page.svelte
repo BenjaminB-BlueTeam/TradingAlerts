@@ -305,17 +305,39 @@
       <div class="team-panel__empty">Aucun match en base pour ce contexte</div>
     {:else}
       <div class="team-panel__list">
-        {#each teamMatches as m (m.id ?? m.match_id)}
+        {#each teamMatches as m, i (m.id ?? m.match_id)}
           {@const info = teamMatchOpponent(m, selectedTeam.id)}
-          {@const goal = hasGoal3145(m, info.isHome)}
-          {@const dateStr = m.match_date
-            ? m.match_date.slice(8, 10) + '/' + m.match_date.slice(5, 7)
-            : '—'}
-          <div class="team-panel__row" class:team-panel__row--goal={goal}>
-            <span class="team-panel__date">{dateStr}</span>
-            <span class="team-panel__opponent">{info.opponent || '—'}</span>
-            <span class="team-panel__score">{info.score}</span>
-            <span class="team-panel__goal-dot" title={goal ? 'But 31-45' : 'Pas de but 31-45'}>{goal ? '●' : '—'}</span>
+          {@const bar = goalBar(m, teamContext)}
+          {@const barKey = `panel_${selectedTeam.id}_${teamContext}_${i}`}
+          <div class="match-row">
+            <span class="match-row__date">{m.match_date ? m.match_date.slice(8,10)+'/'+m.match_date.slice(5,7) : '—'}</span>
+            {#if info.isHome}
+              <span class="match-row__home match-row__bold">{m.home_team_name}</span>
+              <span class="match-row__score match-row__score--{bar.result}">{info.score}</span>
+              <span class="match-row__away">{info.opponent}</span>
+            {:else}
+              <span class="match-row__home">{info.opponent}</span>
+              <span class="match-row__score match-row__score--{bar.result}">{info.score}</span>
+              <span class="match-row__away match-row__bold">{m.away_team_name}</span>
+            {/if}
+            <div class="match-row__bar">
+              <div class="goal-bar"
+                onmousemove={(e) => onBarMove(e, barKey)}
+                onmouseleave={onBarLeave}
+              >
+                <span class="goal-bar__marker" style="left:50%">HT</span>
+                <span class="goal-bar__marker" style="left:98%">FT</span>
+                {#if hoverBar?.key === barKey}
+                  <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
+                {/if}
+                {#if hoverBar?.key === barKey && i === 0}
+                  <span class="bar-hover-min" style="position:absolute;bottom:calc(100% + 4px);left:{hoverBar.pct}%;transform:translateX(-50%);z-index:10;">{hoverBar.min}'</span>
+                {/if}
+                {#each bar.goals as g}
+                  <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
+                {/each}
+              </div>
+            </div>
           </div>
         {/each}
       </div>
@@ -559,23 +581,6 @@
   .team-panel__count { font-size: 11px; color: var(--color-text-muted); }
   .team-panel__empty { padding: 16px 14px; font-size: 12px; color: var(--color-text-muted); }
   .team-panel__list { max-height: 320px; overflow-y: auto; }
-  .team-panel__row {
-    display: grid;
-    grid-template-columns: 48px 1fr 60px 24px;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    font-size: 12px;
-    transition: background var(--transition-fast);
-  }
-  .team-panel__row:last-child { border-bottom: none; }
-  .team-panel__row:hover { background: rgba(255,255,255,0.03); }
-  .team-panel__row--goal { background: rgba(29,158,117,0.04); }
-  .team-panel__date { color: var(--color-text-muted); font-size: 11px; white-space: nowrap; }
-  .team-panel__opponent { color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .team-panel__score { color: var(--color-text-secondary); font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
-  .team-panel__goal-dot { text-align: center; color: var(--color-accent-green); font-size: 10px; }
 
   /* Recherche équipe */
   .team-search-wrapper {
