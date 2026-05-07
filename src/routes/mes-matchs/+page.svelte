@@ -361,7 +361,6 @@
         <div class="alert-card__league">{a.league_name || '—'}</div>
       </div>
       <div class="alert-card__badges">
-        <span class="alert-badge signal-type-badge">{a.signal_type}</span>
         <span class="alert-badge {confidenceClass(a.confidence)}">{confidenceLabel(a.confidence)}</span>
         {#if badge}
           <span class="alert-badge {badge.cls}">{badge.label}</span>
