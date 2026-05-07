@@ -101,7 +101,6 @@
                 <div class="explore-league-card__name">{league.name}</div>
                 <div class="explore-league-card__meta">
                   {#if league.year}Saison {league.year}{/if}
-                  {#if stats} · {stats.matchesPlayed}/{stats.totalMatches} matchs{/if}
                 </div>
               </div>
 
