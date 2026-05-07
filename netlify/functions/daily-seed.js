@@ -123,6 +123,22 @@ exports.handler = async (event) => {
     }
   }
 
+  // Sanity check : nombre de ligues retournées par FootyStats
+  try {
+    const leaguesData = await footyRequest('league-list', { chosen_leagues_only: true });
+    const leaguesList = leaguesData?.data || leaguesData || [];
+    const leaguesCount = Array.isArray(leaguesList) ? leaguesList.length : 0;
+    results.leagues_count = leaguesCount;
+    if (leaguesCount < 40 || leaguesCount > 60) {
+      console.warn(`[daily-seed] SANITY WARNING — ligues actives FootyStats: ${leaguesCount} (attendu ~50)`);
+    } else {
+      console.log(`[daily-seed] SANITY OK — ligues actives FootyStats: ${leaguesCount}`);
+    }
+  } catch (e) {
+    console.error(`[daily-seed] SANITY ERROR leagues: ${e.message}`);
+    results.leagues_count = null;
+  }
+
   console.log(`[daily-seed] END — ${results.dates} days, fetched=${results.fetched}, completed=${results.completed}, upserted=${results.upserted}, errors=${results.errors.length}`);
   return {
     statusCode: 200,
