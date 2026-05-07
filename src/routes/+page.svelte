@@ -19,9 +19,9 @@
   let taux7jLoading = $state(true);
 
   // Santé crons
-  let lastGenerateTs = $state(null);   // MAX(created_at) de alerts
-  let lastCheckTs = $state(null);      // MAX(verified_at) de alerts validated/lost
-  let pendingOld = $state(null);       // count pending + match_date < J-2
+  let lastFhgTs = $state(null);    // MAX(created_at) alertes FHG (algo_version='v2')
+  let lastLg2Ts = $state(null);    // MAX(created_at) alertes LG2 (algo_version='lg2_v1')
+  let pendingOld = $state(null);   // count pending + match_date < J-2
   let cronsLoading = $state(true);
 
   let fhgAlerts = $derived(
@@ -72,20 +72,15 @@
     return `${d}j`;
   }
 
-  let generateColorClass = $derived.by(() => {
-    const h = hoursAgo(lastGenerateTs);
+  function cronColorClass(isoTs) {
+    const h = hoursAgo(isoTs);
     if (h === null) return 'red';
     if (h < 13) return 'green';
     if (h < 25) return 'orange';
     return 'red';
-  });
-  let checkColorClass = $derived.by(() => {
-    const h = hoursAgo(lastCheckTs);
-    if (h === null) return 'red';
-    if (h < 2) return 'green';
-    if (h < 4) return 'orange';
-    return 'red';
-  });
+  }
+  let fhgColorClass = $derived(cronColorClass(lastFhgTs));
+  let lg2ColorClass = $derived(cronColorClass(lastLg2Ts));
   let pendingOldColorClass = $derived(pendingOld === 0 ? 'green' : pendingOld === null ? 'red' : 'red');
 
   let now = new Date();
@@ -160,14 +155,14 @@
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 2);
     const cutoffStr = cutoff.toISOString().split('T')[0];
 
-    const [genRes, checkRes, pendingRes] = await Promise.all([
-      supabase.from('alerts').select('created_at').order('created_at', { ascending: false }).limit(1),
-      supabase.from('alerts').select('verified_at').in('status', ['validated', 'lost']).order('verified_at', { ascending: false }).limit(1),
+    const [fhgRes, lg2Res, pendingRes] = await Promise.all([
+      supabase.from('alerts').select('created_at').eq('algo_version', 'v2').order('created_at', { ascending: false }).limit(1),
+      supabase.from('alerts').select('created_at').eq('algo_version', 'lg2_v1').order('created_at', { ascending: false }).limit(1),
       supabase.from('alerts').select('id', { count: 'exact', head: true }).eq('status', 'pending').lt('match_date', cutoffStr),
     ]);
 
-    if (!genRes.error && genRes.data?.length > 0) lastGenerateTs = genRes.data[0].created_at;
-    if (!checkRes.error && checkRes.data?.length > 0) lastCheckTs = checkRes.data[0].verified_at;
+    if (!fhgRes.error && fhgRes.data?.length > 0) lastFhgTs = fhgRes.data[0].created_at;
+    if (!lg2Res.error && lg2Res.data?.length > 0) lastLg2Ts = lg2Res.data[0].created_at;
     if (!pendingRes.error) pendingOld = pendingRes.count ?? 0;
 
     cronsLoading = false;
@@ -225,10 +220,10 @@
           class:orange={seedColorClass === 'orange'}
           class:red={seedColorClass === 'red'}
         >
-          {seedDateLabel}
+          {seedCount.toLocaleString('fr-FR')}
         </div>
         <div class="metric-card__sub">
-          {seedCount.toLocaleString('fr-FR')} matchs seedés{seedLastTime ? ` · ${seedLastTime}` : ''}
+          matchs analysés par l'algo · dernier seed : {seedDateLabel}{seedLastTime ? ` à ${seedLastTime}` : ''}
         </div>
       {/if}
     </div>
@@ -240,47 +235,47 @@
 
     <div
       class="metric-card"
-      class:metric-card--ok={generateColorClass === 'green'}
-      class:metric-card--warn={generateColorClass === 'orange'}
-      class:metric-card--error={generateColorClass === 'red'}
+      class:metric-card--ok={fhgColorClass === 'green'}
+      class:metric-card--warn={fhgColorClass === 'orange'}
+      class:metric-card--error={fhgColorClass === 'red'}
     >
-      <div class="metric-card__label">Génération alertes</div>
+      <div class="metric-card__label">Génération FHG</div>
       {#if cronsLoading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">chargement…</div>
       {:else}
         <div
           class="metric-card__value"
-          class:green={generateColorClass === 'green'}
-          class:orange={generateColorClass === 'orange'}
-          class:red={generateColorClass === 'red'}
+          class:green={fhgColorClass === 'green'}
+          class:orange={fhgColorClass === 'orange'}
+          class:red={fhgColorClass === 'red'}
         >
-          {hoursLabel(lastGenerateTs)}
+          {hoursLabel(lastFhgTs)}
         </div>
-        <div class="metric-card__sub">dernier run · cron 12h</div>
+        <div class="metric-card__sub">dernière alerte FHG créée · cron 12h</div>
       {/if}
     </div>
 
     <div
       class="metric-card"
-      class:metric-card--ok={checkColorClass === 'green'}
-      class:metric-card--warn={checkColorClass === 'orange'}
-      class:metric-card--error={checkColorClass === 'red'}
+      class:metric-card--ok={lg2ColorClass === 'green'}
+      class:metric-card--warn={lg2ColorClass === 'orange'}
+      class:metric-card--error={lg2ColorClass === 'red'}
     >
-      <div class="metric-card__label">Vérif. résultats</div>
+      <div class="metric-card__label">Génération LG2</div>
       {#if cronsLoading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">chargement…</div>
       {:else}
         <div
           class="metric-card__value"
-          class:green={checkColorClass === 'green'}
-          class:orange={checkColorClass === 'orange'}
-          class:red={checkColorClass === 'red'}
+          class:green={lg2ColorClass === 'green'}
+          class:orange={lg2ColorClass === 'orange'}
+          class:red={lg2ColorClass === 'red'}
         >
-          {hoursLabel(lastCheckTs)}
+          {hoursLabel(lastLg2Ts)}
         </div>
-        <div class="metric-card__sub">dernier check statuts · cron 1h</div>
+        <div class="metric-card__sub">dernière alerte LG2 créée · cron 12h</div>
       {/if}
     </div>
 
