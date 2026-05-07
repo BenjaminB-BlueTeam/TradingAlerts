@@ -1,101 +1,67 @@
 <script>
   import { onMount } from 'svelte';
-  import { get } from 'svelte/store';
-  import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
-  import { getDateStr, formatDateDMY, formatTime, isInPlay, fhgColor } from '$lib/utils/formatters.js';
-  import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
-  import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
-  import { selectedKeys, isSelected, unselect } from '$lib/stores/selectionStore.js';
+  import { supabase } from '$lib/api/supabase.js';
+  import { getDateStr } from '$lib/utils/formatters.js';
   import { apiConnected, leagues } from '$lib/stores/appStore.js';
 
   let alerts = $state([]);
   let loading = $state(true);
   let error = $state('');
 
-  // Exclusion modale
-  let excludeModalOpen = $state(false);
-  let excludeModalAlert = $state(null);
-  let excludeError = $state('');
+  let seedLastDate = $state(null);
+  let seedCount = $state(0);
+  let seedLoading = $state(true);
+  let seedError = $state('');
 
+  let fhgAlerts = $derived(
+    alerts.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B'].includes(a.signal_type) && !a.user_excluded)
+  );
 
-  function openExcludeModal(alert) {
-    excludeModalAlert = alert;
-    excludeModalOpen = true;
-  }
+  let lg2Alerts = $derived(
+    alerts.filter(a => ['LG2_A', 'LG2_B', 'LG2_A+B'].includes(a.signal_type) && !a.user_excluded)
+  );
 
-  async function handleExcluded(e) {
-    const { tags, note } = e.detail;
-    try {
-      // Cas 4a : désélectionner toutes les variantes du match avant exclusion
-      const set = get(selectedKeys);
-      const allSignals = ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'LG2_A', 'LG2_B', 'LG2_A+B'];
-      for (const sig of allSignals) {
-        if (isSelected(set, excludeModalAlert.match_id, sig)) {
-          await unselect(excludeModalAlert.match_id, sig);
-        }
-      }
-      await excludeAlert(excludeModalAlert.match_id, tags, note);
-      await loadAlerts();
-    } catch (err) {
-      excludeError = 'Erreur lors de l\'exclusion : ' + (err.message || err);
-    }
-  }
+  let fhgFortToday = $derived(
+    fhgAlerts.filter(a => a.confidence === 'fort' || a.confidence === 'fort_double')
+  );
 
-  async function handleUnexclude(alert) {
-    try {
-      await unexcludeAlert(alert.match_id);
-      await loadAlerts();
-    } catch (err) {
-      excludeError = 'Erreur lors de la réintégration : ' + (err.message || err);
-    }
-  }
+  let lg2FortToday = $derived(
+    lg2Alerts.filter(a => a.confidence === 'fort' || a.confidence === 'fort_double')
+  );
 
-  // Stats calculees
-  let todayStr = $derived(getDateStr(0));
-  let todayAlerts = $derived(alerts.filter(a => a.match_date === todayStr));
-  let fhgAlerts = $derived(todayAlerts.filter(a => ['FHG_A','FHG_B','FHG_A+B','FHG_C','FHG_D'].includes(a.signal_type) && !a.user_excluded));
-  let lg2Alerts = $derived(todayAlerts.filter(a => ['LG2_A','LG2_B','LG2_A+B'].includes(a.signal_type) && !a.user_excluded));
-  let validatedToday = $derived(todayAlerts.filter(a => a.status === 'validated'));
-  let lostToday = $derived(todayAlerts.filter(a => a.status === 'lost'));
-  let pendingToday = $derived(todayAlerts.filter(a => a.status === 'pending'));
-  let liveToday = $derived(pendingToday.filter(a => isInPlay(a)));
-  // Ligues actives
   let activeLeaguesCount = $derived($leagues.filter(l => l.active).length);
   let totalLeagues = $derived($leagues.length);
 
-  // FHG Fort aujourd'hui (fort + fort_double), non exclus
-  let fhgFortToday = $derived(fhgAlerts.filter(a =>
-    a.confidence === 'fort' || a.confidence === 'fort_double'
-  ));
+  let seedColorClass = $derived.by(() => {
+    if (!seedLastDate) return 'red';
+    const d1 = new Date();
+    d1.setDate(d1.getDate() - 1);
+    const yesterday = d1.toISOString().split('T')[0];
+    const d2 = new Date();
+    d2.setDate(d2.getDate() - 2);
+    const dayBefore = d2.toISOString().split('T')[0];
+    if (seedLastDate >= yesterday) return 'green';
+    if (seedLastDate >= dayBefore) return 'orange';
+    return 'red';
+  });
 
-  // LG2 Fort aujourd'hui (fort + fort_double), non exclus
-  let lg2FortToday = $derived(lg2Alerts.filter(a =>
-    a.confidence === 'fort' || a.confidence === 'fort_double'
-  ));
+  let seedDateLabel = $derived.by(() => {
+    if (!seedLastDate) return '--';
+    const [, m, day] = seedLastDate.split('-');
+    return `${day}/${m}`;
+  });
 
-  // Alertes a venir (demain + apres-demain)
-  let upcomingAlerts = $derived(alerts.filter(a => a.match_date > todayStr));
-
-  // Date
   let now = new Date();
   let dateLabel = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-
-  function confidenceClass(c) {
-    return (c === 'fort' || c === 'fort_double') ? 'alert-badge--fort' : 'alert-badge--moyen';
-  }
 
   async function loadAlerts() {
     loading = true;
     error = '';
     const { data, error: dbError } = await supabase
       .from('alerts')
-      .select('*')
-      .gte('match_date', getDateStr(0))
-      .lte('match_date', getDateStr(2))
-      .order('match_date', { ascending: true })
-      .order('kickoff_unix', { ascending: true });
+      .select('signal_type, confidence, user_excluded, match_date')
+      .eq('match_date', getDateStr(0));
     if (dbError) {
-      console.error('Dashboard loadAlerts error:', dbError);
       error = 'Impossible de charger les alertes.';
       alerts = [];
     } else {
@@ -104,10 +70,30 @@
     loading = false;
   }
 
-  onMount(() => { loadAlerts(); });
+  async function loadSeedStatus() {
+    seedLoading = true;
+    seedError = '';
+    const { count, data, error: dbError } = await supabase
+      .from('h2h_matches')
+      .select('match_date', { count: 'exact' })
+      .order('match_date', { ascending: false })
+      .limit(1);
+    if (dbError) {
+      seedError = 'Erreur seed';
+      seedLoading = false;
+      return;
+    }
+    seedCount = count ?? 0;
+    seedLastDate = data && data.length > 0 ? data[0].match_date : null;
+    seedLoading = false;
+  }
+
+  onMount(() => {
+    loadAlerts();
+    loadSeedStatus();
+  });
 </script>
 
-<!-- DASHBOARD HEADER -->
 <div class="dashboard-header">
   <div class="dashboard-header__left">
     <h1 class="page-title" style="margin-bottom:0;">Dashboard</h1>
@@ -115,11 +101,9 @@
   </div>
 </div>
 
-<!-- METRIC GRID -->
 <div class="metric-grid">
 
-  <!-- API Status -->
-  <div class="metric-card metric-card--api" class:metric-card--ok={$apiConnected} class:metric-card--error={!$apiConnected}>
+  <div class="metric-card" class:metric-card--ok={$apiConnected} class:metric-card--error={!$apiConnected}>
     <div class="metric-card__label">API FootyStats</div>
     <div class="metric-card__value" class:green={$apiConnected} class:red={!$apiConnected}>
       {$apiConnected ? 'OK' : 'KO'}
@@ -127,146 +111,64 @@
     <div class="metric-card__sub">{$apiConnected ? 'Connectée' : 'Déconnectée'}</div>
   </div>
 
-  <!-- Ligues actives -->
   <div class="metric-card">
-    <div class="metric-card__label">Ligues actives</div>
-    <div class="metric-card__value blue">{activeLeaguesCount}</div>
-    <div class="metric-card__sub">sur {totalLeagues}</div>
+    <div class="metric-card__label">Ligues FootyStats</div>
+    <div class="metric-card__value blue">{totalLeagues}</div>
+    <div class="metric-card__sub">{activeLeaguesCount} actives (filtre)</div>
   </div>
 
-  <!-- FHG Fort -->
   <div class="metric-card">
     <div class="metric-card__label">FHG Fort — aujourd'hui</div>
-    <div class="metric-card__value green">{fhgFortToday.length}</div>
-    <div class="metric-card__sub">{fhgAlerts.length} FHG total</div>
+    {#if loading}
+      <div class="metric-card__value muted">—</div>
+      <div class="metric-card__sub">&nbsp;</div>
+    {:else}
+      <div class="metric-card__value green">{fhgFortToday.length}</div>
+      <div class="metric-card__sub">{fhgAlerts.length} FHG total</div>
+    {/if}
   </div>
 
-  <!-- LG2 Fort -->
   <div class="metric-card">
     <div class="metric-card__label">LG2 Fort — aujourd'hui</div>
-    <div class="metric-card__value blue">{lg2FortToday.length}</div>
-    <div class="metric-card__sub">{lg2Alerts.length} LG2 total</div>
+    {#if loading}
+      <div class="metric-card__value muted">—</div>
+      <div class="metric-card__sub">&nbsp;</div>
+    {:else}
+      <div class="metric-card__value blue">{lg2FortToday.length}</div>
+      <div class="metric-card__sub">{lg2Alerts.length} LG2 total</div>
+    {/if}
   </div>
 
-  <!-- En attente -->
-  <div class="metric-card">
-    <div class="metric-card__label">En attente</div>
-    <div class="metric-card__value" class:orange={pendingToday.length > 0}>{pendingToday.length}</div>
-    <div class="metric-card__sub">{liveToday.length} en cours</div>
+  <div
+    class="metric-card"
+    class:metric-card--ok={seedColorClass === 'green'}
+    class:metric-card--warn={seedColorClass === 'orange'}
+    class:metric-card--error={seedColorClass === 'red'}
+  >
+    <div class="metric-card__label">Seed matchs</div>
+    {#if seedLoading}
+      <div class="metric-card__value muted">—</div>
+      <div class="metric-card__sub">chargement…</div>
+    {:else if seedError}
+      <div class="metric-card__value red">!</div>
+      <div class="metric-card__sub">{seedError}</div>
+    {:else}
+      <div
+        class="metric-card__value"
+        class:green={seedColorClass === 'green'}
+        class:orange={seedColorClass === 'orange'}
+        class:red={seedColorClass === 'red'}
+      >
+        {seedDateLabel}
+      </div>
+      <div class="metric-card__sub">{seedCount.toLocaleString('fr-FR')} matchs</div>
+    {/if}
   </div>
 
 </div>
 
-
-{#if loading}
-  <div class="page-loading">
-    <div class="spinner"></div>
-    <p style="color:var(--color-text-muted);">Chargement des alertes...</p>
-  </div>
-{:else if error}
+{#if error}
   <p class="error-msg">{error}</p>
-{:else}
-
-  <!-- ALERTES DU JOUR -->
-  {#if todayAlerts.length > 0}
-    <div class="section-title">Aujourd'hui — {todayAlerts.length} alerte{todayAlerts.length > 1 ? 's' : ''}</div>
-    <div class="dash-alerts-list">
-      {#each todayAlerts as a (a.id)}
-        <div class="dash-alert-card"
-          class:dash-alert-card--validated={a.status === 'validated'}
-          class:dash-alert-card--lost={a.status === 'lost'}
-          class:dash-alert-card--live={a.status === 'pending' && isInPlay(a)}
-        >
-          <div class="dash-alert-card__time">
-            <div class="dash-alert-card__hour">{formatTime(a.kickoff_unix)}</div>
-          </div>
-          <div class="dash-alert-card__match">
-            <div class="dash-alert-card__teams">{a.home_team_name} - {a.away_team_name}</div>
-            <div class="dash-alert-card__league">{a.league_name || '—'}</div>
-          </div>
-          <div class="dash-alert-card__pills">
-            {#if a.fhg_pct}
-              <span class="dash-pill" style:color={fhgColor(a.fhg_pct)}>FHG {a.fhg_pct}%</span>
-            {/if}
-          </div>
-          <div class="dash-alert-card__badges">
-            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
-            {#if a.signal_type}
-              <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
-            {/if}
-            {#if a.status === 'validated'}
-              <span class="alert-badge alert-badge--validated">Valide</span>
-            {:else if a.status === 'lost'}
-              <span class="alert-badge alert-badge--lost">Perdu</span>
-            {:else if isInPlay(a)}
-              <span class="alert-badge alert-badge--live">EN COURS</span>
-            {/if}
-            <SelectAlertButton alert={a}  />
-            {#if a.user_excluded}
-              <span class="alert-badge alert-badge--exclu">EXCLUE</span>
-              <button class="btn btn--sm btn-reinstate" onclick={() => handleUnexclude(a)}>Réintégrer</button>
-            {:else if a.status === 'pending'}
-              <button class="btn btn--sm btn--danger" onclick={() => openExcludeModal(a)}>Exclure</button>
-            {/if}
-          </div>
-        </div>
-      {/each}
-    </div>
-  {:else}
-    <div class="empty-state">
-      <div class="empty-state__icon">📊</div>
-      <div class="empty-state__title">Aucune alerte aujourd'hui</div>
-      <div class="empty-state__desc">Les alertes sont generees automatiquement toutes les 12h</div>
-    </div>
-  {/if}
-
-  <!-- ALERTES A VENIR -->
-  {#if upcomingAlerts.length > 0}
-    <div class="section-title" style="margin-top:24px;">A venir — {upcomingAlerts.length} alerte{upcomingAlerts.length > 1 ? 's' : ''}</div>
-    <div class="dash-alerts-list">
-      {#each upcomingAlerts as a (a.id)}
-        <div class="dash-alert-card">
-          <div class="dash-alert-card__time">
-            <div class="dash-alert-card__day">{formatDateDMY(a.match_date)}</div>
-            <div class="dash-alert-card__hour">{formatTime(a.kickoff_unix)}</div>
-          </div>
-          <div class="dash-alert-card__match">
-            <div class="dash-alert-card__teams">{a.home_team_name} - {a.away_team_name}</div>
-            <div class="dash-alert-card__league">{a.league_name || '—'}</div>
-          </div>
-          <div class="dash-alert-card__pills">
-            {#if a.fhg_pct}
-              <span class="dash-pill" style:color={fhgColor(a.fhg_pct)}>FHG {a.fhg_pct}%</span>
-            {/if}
-          </div>
-          <div class="dash-alert-card__badges">
-            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
-            {#if a.signal_type}
-              <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
-            {/if}
-            <SelectAlertButton alert={a}  />
-            {#if a.user_excluded}
-              <span class="alert-badge alert-badge--exclu">EXCLUE</span>
-              <button class="btn btn--sm btn-reinstate" onclick={() => handleUnexclude(a)}>Réintégrer</button>
-            {:else}
-              <button class="btn btn--sm btn--danger" onclick={() => openExcludeModal(a)}>Exclure</button>
-            {/if}
-          </div>
-        </div>
-      {/each}
-    </div>
-  {/if}
-
-{/if}
-
-<ExcludeAlertModal
-  alert={excludeModalAlert}
-  bind:open={excludeModalOpen}
-  on:excluded={handleExcluded}
-/>
-
-{#if excludeError}
-  <p style="color:#e53e3e;font-size:12px;margin-top:8px;">{excludeError}</p>
 {/if}
 
 <style>
@@ -274,49 +176,23 @@
   .dashboard-header__date { font-size: 13px; color: var(--color-text-muted); margin-top: 2px; text-transform: capitalize; }
 
   .metric-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
-  .metric-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg, 10px); padding: 16px; text-align: center; }
+  .metric-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-card); padding: 16px; text-align: center; }
   .metric-card__label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 4px; }
   .metric-card__value { font-size: 28px; font-weight: 700; }
   .metric-card__value.green { color: var(--color-accent-green); }
   .metric-card__value.blue { color: var(--color-accent-blue); }
   .metric-card__value.orange { color: var(--color-signal-moyen); }
   .metric-card__value.red { color: var(--color-danger); }
-  .metric-card__sub { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+  .metric-card__value.muted { color: var(--color-text-muted); }
+  .metric-card__sub { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; min-height: 16px; }
   .metric-card--ok { border-color: rgba(29,158,117,0.3); }
+  .metric-card--warn { border-color: rgba(239,159,39,0.3); }
   .metric-card--error { border-color: rgba(226,75,74,0.3); }
 
-  .section-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-primary); margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--color-border); }
-
-  .dash-alerts-list { display: flex; flex-direction: column; gap: 6px; }
-
-  .dash-alert-card { display: flex; align-items: center; gap: 12px; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 14px; transition: border-color 0.2s; }
-  .dash-alert-card:hover { border-color: var(--color-accent-blue); }
-  .dash-alert-card--validated { border-color: var(--color-accent-green) !important; background: rgba(29,158,117,0.04); }
-  .dash-alert-card--lost { border-color: var(--color-danger) !important; background: rgba(226,75,74,0.04); }
-  .dash-alert-card--live { border-color: var(--color-signal-moyen) !important; background: rgba(239,159,39,0.04); }
-
-  .dash-alert-card__time { min-width: 50px; text-align: center; flex-shrink: 0; }
-  .dash-alert-card__day { font-size: 10px; color: var(--color-text-muted); }
-  .dash-alert-card__hour { font-size: 14px; font-weight: 600; }
-  .dash-alert-card__match { flex: 1; min-width: 0; }
-  .dash-alert-card__teams { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .dash-alert-card__league { font-size: 11px; color: var(--color-text-muted); margin-top: 1px; }
-
-  .dash-alert-card__pills { display: flex; gap: 6px; flex-shrink: 0; }
-  .dash-pill { font-size: 12px; font-weight: 700; background: rgba(255,255,255,0.04); border-radius: 5px; padding: 2px 8px; }
-
-  .dash-alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
-
-  .btn-reinstate { border-color: var(--color-accent-blue); color: var(--color-accent-blue); background: rgba(61,142,247,0.1); }
-  .btn-reinstate:hover { background: var(--color-accent-blue); color: #fff; }
-
-  .alert-badge--exclu { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #555; }
-  .alert-badge--signal { background: rgba(61,142,247,0.15); color: var(--color-accent-blue); border: 1px solid rgba(61,142,247,0.3); font-size: 10px; }
+  .error-msg { color: var(--color-danger); font-size: 13px; margin-top: 8px; }
 
   @media (max-width: 768px) {
     .metric-grid { grid-template-columns: repeat(2, 1fr); }
-    .metric-card--api { grid-column: span 2; }
-    .dash-alert-card { flex-wrap: wrap; }
-    .dash-alert-card__pills { width: 100%; }
+    .metric-grid .metric-card:first-child { grid-column: span 2; }
   }
 </style>
