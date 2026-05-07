@@ -51,7 +51,6 @@
       {#if alert}
         <p class="modal-match">
           {alert.home_team_name} - {alert.away_team_name}
-          <span class="modal-badge">{alert.signal_type || 'FHG'}</span>
         </p>
       {/if}
 

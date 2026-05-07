@@ -17,7 +17,7 @@
     { key: 'teams',        label: 'Match',  sortable: false, mobile: true },
     { key: 'score',        label: 'Score',  sortable: false, mobile: true },
     { key: 'ht',           label: 'HT',     sortable: false, mobile: false },
-    { key: 'signal_type',  label: 'Signal', sortable: true, mobile: false },
+
     { key: 'confidence',   label: 'Conf',   sortable: true, mobile: false },
     { key: 'status',       label: 'Résultat', sortable: true, mobile: true },
   ];
@@ -173,9 +173,7 @@
             <td class="col--teams"><span class="teams">{a.home_team_name} <span class="vs">vs</span> {a.away_team_name}</span></td>
             <td class="col--score score-{a.status}">{scoreText(a)}</td>
             <td class="col--ht mobile-hide">{htText(a)}</td>
-            <td class="col--signal_type mobile-hide">
-              <span class="badge {signalBadgeClass(a.signal_type)}">{a.signal_type || '—'}</span>
-            </td>
+
             <td class="col--confidence mobile-hide">
               <span class="badge {confBadgeClass(a.confidence)}">{a.confidence || '—'}</span>
             </td>
