@@ -168,8 +168,13 @@
     allTrades = await fetchAlertTrades();
   }
 
-  onMount(async () => {
-    await Promise.all([loadAlertsForSelections(), loadTrades()]);
+  onMount(() => { loadTrades(); });
+
+  // Recharge les alertes dès que selectedKeys change (fixe la race condition
+  // avec loadSelections() du layout qui se termine après le mount de la page)
+  $effect(() => {
+    void ($selectedKeys);  // établit la dépendance réactive
+    loadAlertsForSelections();
   });
 
   // ---- UI helpers ----
