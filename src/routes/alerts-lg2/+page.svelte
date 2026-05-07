@@ -134,6 +134,7 @@
 
   let selectedLeague = $state('toutes');
   let selectedConfidence = $state('tout');
+  let selectedExclusion = $state('actives');
   let availableLeagues = $derived([...new Set(alerts.map(a => a.league_name).filter(Boolean))].sort());
   const CONF_ORDER = { fort_double: 0, fort: 1, moyen: 2 };
 
@@ -150,6 +151,8 @@
         if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
         if (selectedLeague !== 'toutes' && a.league_name !== selectedLeague) return false;
         if (!matchesConfidence(a)) return false;
+        if (selectedExclusion === 'actives' && a.user_excluded) return false;
+        if (selectedExclusion === 'exclus' && !a.user_excluded) return false;
         return true;
       })
       .sort((a, b) => {
@@ -270,6 +273,14 @@
       <option value="moyen">Moyen</option>
     </select>
   </div>
+  <div class="sub-filter-group">
+    <span class="sub-filter-label">Statut</span>
+    <select class="alerts-filter-select" bind:value={selectedExclusion}>
+      <option value="actives">Actives</option>
+      <option value="exclus">Exclus</option>
+      <option value="toutes">Toutes</option>
+    </select>
+  </div>
 </div>
 
 {#if error}
@@ -326,10 +337,6 @@
                 <span class="alert-pill__value">{a.fhg_factors.streakAway}</span>
               </div>
             {/if}
-            <div class="alert-pill">
-              <span class="alert-pill__label">H2H</span>
-              <span class="alert-pill__value">{a.h2h_count}</span>
-            </div>
           </div>
           <div class="alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
