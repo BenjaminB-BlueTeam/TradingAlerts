@@ -196,13 +196,13 @@
       <div class="metric-card__value" class:green={$apiConnected} class:red={!$apiConnected}>
         {$apiConnected ? 'OK' : 'KO'}
       </div>
-      <div class="metric-card__sub">{$apiConnected ? 'Connectée' : 'Déconnectée'}</div>
+      <div class="metric-card__sub">{$apiConnected ? 'API accessible' : 'API inaccessible'}</div>
     </div>
 
     <div class="metric-card">
-      <div class="metric-card__label">Ligues FootyStats</div>
+      <div class="metric-card__label">Ligues actives</div>
       <div class="metric-card__value blue">{totalLeagues}</div>
-      <div class="metric-card__sub">retournées par l'API</div>
+      <div class="metric-card__sub">sélectionnées FootyStats</div>
     </div>
 
     <div
@@ -211,7 +211,7 @@
       class:metric-card--warn={seedColorClass === 'orange'}
       class:metric-card--error={seedColorClass === 'red'}
     >
-      <div class="metric-card__label">Seed H2H</div>
+      <div class="metric-card__label">Historique H2H</div>
       {#if seedLoading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">chargement…</div>
@@ -228,7 +228,7 @@
           {seedDateLabel}
         </div>
         <div class="metric-card__sub">
-          {seedCount.toLocaleString('fr-FR')} matchs{seedLastTime ? ` · ${seedLastTime}` : ''}
+          {seedCount.toLocaleString('fr-FR')} matchs seedés{seedLastTime ? ` · ${seedLastTime}` : ''}
         </div>
       {/if}
     </div>
@@ -257,7 +257,7 @@
         >
           {hoursLabel(lastGenerateTs)}
         </div>
-        <div class="metric-card__sub">depuis le dernier run</div>
+        <div class="metric-card__sub">dernier run · cron 12h</div>
       {/if}
     </div>
 
@@ -280,7 +280,7 @@
         >
           {hoursLabel(lastCheckTs)}
         </div>
-        <div class="metric-card__sub">depuis la dernière vérif.</div>
+        <div class="metric-card__sub">dernier check statuts · cron 1h</div>
       {/if}
     </div>
 
@@ -289,7 +289,7 @@
       class:metric-card--ok={pendingOldColorClass === 'green'}
       class:metric-card--error={pendingOldColorClass === 'red'}
     >
-      <div class="metric-card__label">Alertes bloquées</div>
+      <div class="metric-card__label">Alertes > 48h</div>
       {#if cronsLoading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">chargement…</div>
@@ -301,7 +301,7 @@
         >
           {pendingOld ?? '!'}
         </div>
-        <div class="metric-card__sub">{pendingOld === 0 ? 'aucune en attente > 48h' : `pending sans résultat > 48h`}</div>
+        <div class="metric-card__sub">{pendingOld === 0 ? 'aucune alerte bloquée' : `alerte${pendingOld > 1 ? 's' : ''} sans résultat`}</div>
       {/if}
     </div>
 
@@ -333,7 +333,7 @@
     </a>
 
     <div class="metric-card">
-      <div class="metric-card__label">Taux validées (7j)</div>
+      <div class="metric-card__label">Performance 7j</div>
       {#if taux7jLoading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">chargement…</div>

@@ -89,10 +89,6 @@
       </div>
     {/if}
 
-    <button class="sidebar__refresh-btn" onclick={handleRefresh} disabled={refreshing} title="Vider le cache et recharger">
-      {refreshing ? '⏳' : '🔄'} Refresh
-    </button>
-
     {#each navItems as item}
       <a
         href={item.href}
@@ -145,6 +141,9 @@
       <div class="api-dot {apiDotClass}"></div>
       <span>{apiLabel}</span>
     </div>
+    <button class="sidebar__refresh-btn" onclick={handleRefresh} disabled={refreshing} title="Vider le cache et recharger">
+      {refreshing ? '⏳' : '🔄'} Refresh
+    </button>
     <button class="btn btn--danger btn--sm btn--full logout-btn" onclick={handleLogout}>
       Déconnexion
     </button>
