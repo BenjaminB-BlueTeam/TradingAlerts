@@ -22,7 +22,6 @@
     { href: '/historique',    icon: '📈', label: 'Historique'         },
     { href: '/matches',       icon: '⚽', label: 'Matchs à venir'     },
     { href: '/explore',       icon: '🌍', label: 'Classements ligues' },
-    { href: '/settings',      icon: '⚙️', label: 'Paramètres'        },
   ];
 
   const adminItems = [
