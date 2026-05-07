@@ -173,36 +173,57 @@
   // Recherche équipe avec autocomplete (table teams Supabase)
   let teamSearch = $state('');
   let selectedTeam = $state(null); // { id: number, name: string } | null
-  let searchFocused = $state(false);
   let teamSuggestions = $state([]);
+  let searchError = $state('');
   let searchDebounce;
 
-  $effect(() => {
-    const q = teamSearch;
-    clearTimeout(searchDebounce);
-    if (selectedTeam || q.length < 2) {
+  // La dropdown s'affiche dès qu'il y a des suggestions et que la query n'a pas
+  // été matérialisée comme une sélection (selectedTeam null + texte ne matche pas
+  // exactement le nom sélectionné). Pas de dépendance fragile à un focus state.
+  let showSuggestions = $derived(
+    !selectedTeam && teamSearch.trim().length >= 2 && teamSuggestions.length > 0
+  );
+
+  async function runSearch(q) {
+    const trimmed = q.trim();
+    if (trimmed.length < 2) {
+      teamSuggestions = [];
+      searchError = '';
+      return;
+    }
+    const { data, error } = await supabase
+      .from('teams')
+      .select('team_id, name')
+      .ilike('name', `%${trimmed}%`)
+      .limit(8);
+    if (error) {
+      console.error('[matches] team autocomplete error:', error);
+      searchError = 'Recherche indisponible : ' + (error.message || error.code || 'erreur inconnue');
       teamSuggestions = [];
       return;
     }
-    searchDebounce = setTimeout(async () => {
-      const { data } = await supabase
-        .from('teams')
-        .select('team_id, name')
-        .ilike('name', `%${q}%`)
-        .limit(8);
-      teamSuggestions = (data || []).map(t => ({ id: t.team_id, name: t.name }));
-    }, 200);
-  });
+    searchError = '';
+    teamSuggestions = (data || []).map(t => ({ id: t.team_id, name: t.name }));
+  }
+
+  function onSearchInput(e) {
+    teamSearch = e.target.value;
+    if (selectedTeam && teamSearch !== selectedTeam.name) selectedTeam = null;
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => runSearch(teamSearch), 200);
+  }
 
   function selectTeam(team) {
     selectedTeam = team;
     teamSearch = team.name;
-    searchFocused = false;
+    teamSuggestions = [];
   }
 
   function clearTeam() {
     selectedTeam = null;
     teamSearch = '';
+    teamSuggestions = [];
+    searchError = '';
   }
 
   let hoverBar = $state(null); // { key, pct, min }
@@ -249,22 +270,24 @@
       type="text"
       class="filter-select team-search-input"
       placeholder="Rechercher une équipe…"
-      bind:value={teamSearch}
-      onfocus={() => searchFocused = true}
-      onblur={() => setTimeout(() => { searchFocused = false; }, 150)}
+      value={teamSearch}
+      oninput={onSearchInput}
       onkeydown={(e) => { if (e.key === 'Escape') clearTeam(); }}
     />
-    {#if selectedTeam}
+    {#if teamSearch}
       <button class="team-search-clear" onclick={clearTeam} title="Effacer">✕</button>
     {/if}
-    {#if searchFocused && teamSuggestions.length > 0}
+    {#if showSuggestions}
       <div class="team-suggestions">
         {#each teamSuggestions as t}
-          <button class="team-suggestion-item" onmousedown={() => selectTeam(t)}>
+          <button class="team-suggestion-item" onmousedown={(e) => { e.preventDefault(); selectTeam(t); }}>
             {t.name}
           </button>
         {/each}
       </div>
+    {/if}
+    {#if searchError}
+      <div class="team-suggestions team-suggestions--error">{searchError}</div>
     {/if}
   </div>
 
@@ -493,5 +516,11 @@
   .team-suggestion-item:hover {
     background: rgba(255, 255, 255, 0.06);
     color: var(--color-accent-blue);
+  }
+
+  .team-suggestions--error {
+    padding: 8px 12px;
+    color: var(--color-danger);
+    font-size: 12px;
   }
 </style>
