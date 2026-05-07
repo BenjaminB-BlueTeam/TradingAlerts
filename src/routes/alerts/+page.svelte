@@ -259,15 +259,11 @@
   </div>
   <div class="sub-filter-group">
     <span class="sub-filter-label">Confiance</span>
-    {#each ['tout', 'fort', 'moyen'] as conf}
-      <button
-        class="alerts-filter-btn"
-        class:active={selectedConfidence === conf}
-        onclick={() => selectedConfidence = conf}
-      >
-        {conf === 'tout' ? 'Tout' : conf === 'fort' ? 'Fort' : 'Moyen'}
-      </button>
-    {/each}
+    <select class="alerts-filter-select" bind:value={selectedConfidence}>
+      <option value="tout">Tout</option>
+      <option value="fort">Fort</option>
+      <option value="moyen">Moyen</option>
+    </select>
   </div>
 </div>
 
@@ -326,9 +322,6 @@
           </div>
           <div class="alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
-            {#if a.signal_type && a.signal_type !== 'FHG'}
-              <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
-            {/if}
             {#if a.status === 'validated'}
               <span class="alert-badge alert-badge--validated">✓ Validé</span>
             {:else if a.status === 'lost'}

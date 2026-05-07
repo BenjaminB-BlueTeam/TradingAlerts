@@ -145,7 +145,7 @@
                   <div class="alert-card__league">{a.league_name || '—'}</div>
                 </div>
                 <div class="alert-card__badges">
-                  <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
+
                   <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
                   {#if a.status === 'validated'}
                     <span class="alert-badge alert-badge--validated">Valide</span>
@@ -187,7 +187,7 @@
                   <div class="alert-card__league">{a.league_name || '—'}</div>
                 </div>
                 <div class="alert-card__badges">
-                  <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
+
                   <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
                   {#if a.status === 'validated'}
                     <span class="alert-badge alert-badge--validated">Valide</span>
@@ -229,7 +229,7 @@
                   <div class="alert-card__league">{a.league_name || '—'}</div>
                 </div>
                 <div class="alert-card__badges">
-                  <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
+
                   <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
                   {#if a.status === 'validated'}
                     <span class="alert-badge alert-badge--validated">Valide</span>

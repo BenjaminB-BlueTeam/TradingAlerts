@@ -107,6 +107,21 @@ exports.handler = async (event) => {
       }
     }
 
+    // Build season_id → league_name map
+    const leagueMap = {};
+    try {
+      const leaguesData = await footyRequest('league-list', { chosen_leagues_only: 'true' });
+      if (leaguesData?.data) {
+        for (const l of leaguesData.data) {
+          for (const s of (Array.isArray(l.season) ? l.season : [])) {
+            if (s.id) leagueMap[s.id] = l.name;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[generate-alerts] league-list fetch failed, league_name will be null:', e.message);
+    }
+
     // Récupérer les alertes existantes pour ne pas dupliquer, scopées aux types qu'on génère
     // (FHG ne bloque pas LG2 ; idem symétriquement)
     const matchIds = allMatches.map(m => m.id).filter(Boolean);
@@ -211,7 +226,7 @@ exports.handler = async (event) => {
           away_team_id: m.awayID,
           home_team_name: m.home_name || null,
           away_team_name: m.away_name || null,
-          league_name: m.competition_name || null,
+          league_name: leagueMap[m.competition_id] || null,
           h2h_count: h2h.length,
           status: 'pending',
         };
