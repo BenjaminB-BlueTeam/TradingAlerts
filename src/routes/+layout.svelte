@@ -1,6 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import '../app.css';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import Toast from '$lib/components/Toast.svelte';
@@ -12,6 +13,8 @@
   import { supabase } from '$lib/api/supabase.js';
 
   let { children } = $props();
+
+  let isLoginPage = $derived($page.url.pathname === '/login');
 
   let toasts = $state([]);
   let initialized = $state(false);
@@ -61,15 +64,20 @@
 
 <a href="#main-content" class="skip-link">Aller au contenu</a>
 
-<div class="app-layout">
-  <Sidebar />
-
-  <main class="main-content" id="main-content">
-    <div class="page-container">
-      {@render children()}
-    </div>
+{#if isLoginPage}
+  <main id="main-content">
+    {@render children()}
   </main>
-</div>
+{:else}
+  <div class="app-layout">
+    <Sidebar />
+    <main class="main-content" id="main-content">
+      <div class="page-container">
+        {@render children()}
+      </div>
+    </main>
+  </div>
+{/if}
 
 <!-- TOAST CONTAINER -->
 <div class="toast-container">
