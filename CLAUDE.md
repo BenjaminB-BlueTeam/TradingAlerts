@@ -127,7 +127,7 @@ src/
       h2h.test.js       ← tests unitaires h2h
       filters.js        ← isWindowActive (fenêtre 31-45 min)
     utils/
-      formatters.js     ← fonctions partagées (formatDate, formatTime, isInPlay, etc.)
+      formatters.js     ← fonctions partagées (formatDate, formatTime, isInPlay, addDays, dateLabelNav, etc.)
       formatters.test.js← tests unitaires formatters (22 tests)
       teamData.js       ← fonctions partagées (loadTeamMatches, computeTeamStats, goalBar)
       teamData.test.js  ← tests unitaires teamData (14 tests)
@@ -295,14 +295,14 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Headers sécurité** — `src/hooks.server.js` injecte CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP sur toutes les réponses SSR
 - **PWA installable** — `static/manifest.json` + `static/sw.js` (service worker cache offline) + icônes 192×512px
 - **Drapeaux pays** — `src/lib/utils/countryFlags.js` : mapping ~90 noms de pays FootyStats → ISO 3166-1 alpha-2 (subdivisions UK incluses). Helpers `flagUrl(country)`, `extractCountry(leagueName)` (extraction par préfixe), `leagueFlagUrl(leagueName)`. Drapeau SVG depuis flagcdn.com affiché sur `/leagues`, `/explore` (header pays), `/alerts`, `/alerts-lg2`, `/mes-matchs` (à côté du nom de ligue).
-- **Dashboard** (`/`) — 12 KPIs en 4 sections : "Santé infra" (API FootyStats, Ligues actives, Historique H2H) + "Santé crons" (Génération FHG last run, Génération LG2 last run, Alertes > 48h) + "Alertes du jour" (FHG Fort, LG2 Fort, Performance 7j) + "Mes performances" (Renta semaine, Renta mois, Matchs joués). Layout centré max-width 960px.
+- **Dashboard** (`/`) — 12 KPIs en 4 sections : "Santé infra" (API FootyStats, Ligues actives, Historique H2H) + "Santé crons" (Génération FHG last run, Génération LG2 last run, Alertes > 48h) + "Alertes du jour" (FHG Fort, LG2 Fort, Performance 7j) + "Mes performances" (Renta semaine, Renta mois, Matchs joués ce mois). "Matchs joués ce mois" = alertes validated|lost dans selected_alerts du mois courant. Layout centré max-width 960px.
 - **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B/C/D, tri fort→moyen→date, filtres jour (boutons) + ligue (dropdown) + confiance (Tout/Fort/Moyen). Badges Fort/Moyen (sans badge signal_type). league_name via leagueMap. Expand détaillé, barres timing buts, Validé/Perdu/EN COURS, bouton Exclure, SelectAlertButton.
 - **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B, tri fort→moyen→date, filtres jour + ligue + confiance. Badges Fort/Moyen. Expand par équipe, barres timing buts (marqueur 80'), pills Dom/Ext streak, bouton Exclure, SelectAlertButton.
-- **Mes matchs** (`/mes-matchs`) — alertes sélectionnées via selectionStore, sections Actif (A venir/Aujourd'hui) + Terminés (collapsible). Saisie inline de positions (cote + mise) → insert dans `alert_trades`. Boutons résultat manuel Gagné/Perdu (`updateAlertStatus`). Chips réactifs par match après insert.
+- **Mes matchs** (`/mes-matchs`) — alertes sélectionnées via selectionStore, sections Actif (A venir/Aujourd'hui) + Terminés (collapsible). Matchs passés (match_date < today) → Terminés automatiquement. Saisie inline positions (cote + mise) → `alert_trades`. Boutons résultat manuel Gagné/Perdu. Chips P&L réactifs. Section "Rattrapage — 7 derniers jours" (collapsible) : alertes validated/lost des 7J non sélectionnées → saisie cote/mise rétroactive, impact Historique immédiat.
 - **Historique** (`/historique`) — FiltersBar multi-critères + ScopeToggle (Global / Mes positions). Section Global : grille 2x2 Chart.js (évolution, stacked stratégie, top équipes, top ligues) + tableau dense triable (infinite scroll 50/batch) + blocs "Mes trades vs Global" et "What-if exclusions" (Wilson CI). Section Mes positions : table `alert_trades` + P&L réel. Spec : `docs/superpowers/specs/2026-04-23-historique-redesign-design.md`
-- **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs. Curseur minute interactif. Tooltip opaque.
+- **Matchs a venir** (`/matches`) — navigation Flashscore J-1/J+29 (boutons ← date →), cache localStorage TTL 72h par date (`todays-matches-YYYY-MM-DD`). Filtre ligue + autocomplete équipe (Supabase `teams`). Panneau équipe : expand 2 colonnes Domicile/Extérieur (grid 1fr 1fr, `team-detail` + `team-matches` + `match-row` — structure identique à Sélection FHG). Cards matchs à venir expandables + goal bars H2H. Déduplication. Curseur minute interactif.
 - **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par FHG% 0-45 (depuis team_fhg_cache Supabase)
-- **Classements ligues** (`/explore`) — par pays, stats, classements
+- **Classements ligues** (`/explore`) — par pays, classements. Badges stat (1MT/AVG/BTTS/O2.5) supprimés.
 - **Config** (`/config`) — configuration algo (section Admin)
 - **Debug** (`/debug`) — test API/Supabase, boutons génération alertes FHG/LG2, seed complet, rattrapage matchs, token auth, testeur API brut. Panel CRON : 4 crons avec schedule, description, temps avant prochain run, bouton "Lancer maintenant"
 - **Proxy Netlify sécurisé** — whitelist endpoints, CORS restreint via `lib/cors.cjs`
