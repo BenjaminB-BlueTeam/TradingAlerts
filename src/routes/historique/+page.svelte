@@ -12,7 +12,8 @@
   import MatchesTable from '$lib/components/historique/MatchesTable.svelte';
   import TradesVsGlobal from '$lib/components/historique/TradesVsGlobal.svelte';
   import WhatIfExclusions from '$lib/components/historique/WhatIfExclusions.svelte';
-  import BetAnalytix from '$lib/components/historique/BetAnalytix.svelte';
+  import SectionGlobal from '$lib/components/historique/SectionGlobal.svelte';
+  import SectionMesPositions from '$lib/components/historique/SectionMesPositions.svelte';
 
   // ---------- État global ----------
   let allAlerts = $state([]);
@@ -165,9 +166,12 @@
     <WhatIfExclusions excludedAlerts={excludedAlerts} {globalPct} />
   {/if}
 
-  <!-- BET ANALYTIX -->
+  <!-- SECTIONS ANALYTIQUES -->
   {#if viewMode === 'active'}
-    <BetAnalytix alerts={allAlerts} />
+    <SectionGlobal strategy="FHG" alerts={allAlerts} />
+    <SectionGlobal strategy="LG2" alerts={allAlerts} />
+    <SectionMesPositions strategy="FHG" alerts={allAlerts} />
+    <SectionMesPositions strategy="LG2" alerts={allAlerts} />
   {/if}
 {/if}
 

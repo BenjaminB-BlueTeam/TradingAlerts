@@ -301,3 +301,27 @@ export async function getCurrentUser() {
   if (error || !data?.user) return null;
   return data.user;
 }
+
+// ============================================================
+// ALERT TRADES (positions de trading par alerte)
+// ============================================================
+
+export async function fetchAlertTrades() {
+  const { data, error } = await supabase.from('alert_trades').select('*').order('created_at');
+  if (error) { console.error('fetchAlertTrades:', error); return []; }
+  return data;
+}
+
+export async function insertAlertTrade({ match_id, signal_type, cote, mise }) {
+  const { data, error } = await supabase
+    .from('alert_trades')
+    .insert({ match_id, signal_type, cote: +cote, mise: mise ? +mise : null })
+    .select().single();
+  if (error) { console.error('insertAlertTrade:', error); return null; }
+  return data;
+}
+
+export async function deleteAlertTrade(id) {
+  const { error } = await supabase.from('alert_trades').delete().eq('id', id);
+  if (error) console.error('deleteAlertTrade:', error);
+}
