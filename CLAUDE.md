@@ -295,7 +295,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 3. Vérification FHG à la MT (pas à la volée — VAR)
 4. Terminologie : Validé / Perdu
 5. Pas de mode démo — données réelles uniquement
-6. Pas de cotes/stakes/profits dans l'app
+6. **Cotes et P&L** : utilisés uniquement dans `/settings` (TradeJournal, BankrollCalc, TradeStats) pour tracer mes positions réelles et calculer mon P&L a posteriori. Plusieurs positions possibles sur un même match (mises échelonnées à différentes cotes). **Aucune cote n'est utilisée par l'algo** (génération d'alertes, filtrage, validation).
 7. Pas de bouton "Analyse IA" — Benjamin fait sa propre analyse
 8. Clé anon sans fallback hardcodé
 9. ESM/CJS : scoring.js (frontend ESM) et analysis.cjs (backend CJS) dupliquent la logique streak — pas de fichier partagé (incompatibilité bundlers). Même règle pour lg2.js / lg2.cjs.
