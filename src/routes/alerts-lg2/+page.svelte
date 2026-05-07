@@ -391,7 +391,7 @@
                             <span class="bar-hover-min" style="position:absolute;bottom:calc(100% + 4px);left:{hoverBar.pct}%;transform:translateX(-50%);z-index:10;">{hoverBar.min}'</span>
                           {/if}
                           {#each bar.goals as g}
-                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} class:goal-dot--late={g.min >= 80} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
                           {/each}
                         </div>
                       </div>
@@ -433,7 +433,7 @@
                             <span class="bar-hover-min" style="position:absolute;bottom:calc(100% + 4px);left:{hoverBar.pct}%;transform:translateX(-50%);z-index:10;">{hoverBar.min}'</span>
                           {/if}
                           {#each bar.goals as g}
-                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} class:goal-dot--late={g.min >= 80} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
+                            <span class="goal-dot" class:goal-dot--conceded={!g.scored} style="left:{g.pct}%" data-tip="{g.label || g.min + '\''}"></span>
                           {/each}
                         </div>
                       </div>
@@ -493,9 +493,6 @@
 
   /* Expand */
   .alert-expand { border-top: 1px solid var(--color-border); padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-  /* Goal dot highlight pour les buts après 80' */
-  :global(.goal-dot--late) { box-shadow: 0 0 0 2px var(--color-warning-orange); }
 
   @media (max-width: 1200px) {
     .alert-expand { grid-template-columns: 1fr; }
