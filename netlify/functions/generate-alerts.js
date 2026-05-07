@@ -9,6 +9,7 @@ const { footyRequest, supabaseQuery } = require('./lib/api');
 const { analyzeStreakAlert } = require('./lib/analysis.cjs');
 const { analyzeLG2 } = require('./lib/lg2.cjs');
 const { requireAuth } = require('./lib/auth.cjs');
+const { corsHeaders, handlePreflight } = require('./lib/cors.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -76,11 +77,16 @@ async function getH2H(teamAId, teamBId) {
 // --- Main ---
 
 exports.handler = async (event) => {
+  const preflight = handlePreflight(event);
+  if (preflight) return preflight;
+
+  const cors = corsHeaders(event.headers?.origin || event.headers?.Origin);
+
   const auth = requireAuth(event, { allowScheduled: true });
-  if (!auth.authorized) return auth.response;
+  if (!auth.authorized) return { ...auth.response, headers: { ...(auth.response.headers || {}), ...cors } };
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
-    return { statusCode: 503, body: JSON.stringify({ error: 'Supabase non configuré' }) };
+    return { statusCode: 503, headers: cors, body: JSON.stringify({ error: 'Supabase non configuré' }) };
   }
 
   // Paramètre optionnel : ?type=FHG | LG2 pour filtrer le type d'alerte
@@ -297,7 +303,7 @@ exports.handler = async (event) => {
 
   return {
     statusCode: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...cors },
     body: JSON.stringify(results),
   };
 };

@@ -8,6 +8,7 @@
    ================================================ */
 
 const { requireAuth } = require('./lib/auth.cjs');
+const { corsHeaders, handlePreflight } = require('./lib/cors.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -86,8 +87,13 @@ async function upsertCache(rows) {
 }
 
 exports.handler = async function(event) {
+  const preflight = handlePreflight(event);
+  if (preflight) return preflight;
+
+  const cors = corsHeaders(event.headers?.origin || event.headers?.Origin);
+
   const auth = requireAuth(event, { allowScheduled: true });
-  if (!auth.authorized) return auth.response;
+  if (!auth.authorized) return { ...auth.response, headers: { ...(auth.response.headers || {}), ...cors } };
 
   try {
     const seasonStart = getCurrentSeasonStart();
@@ -97,7 +103,7 @@ exports.handler = async function(event) {
     console.log(`[compute-team-fhg] ${matches.length} matchs charges`);
 
     if (matches.length === 0) {
-      return { statusCode: 200, body: 'Aucun match — rien a calculer.' };
+      return { statusCode: 200, headers: cors, body: 'Aucun match — rien a calculer.' };
     }
 
     // Agregation : { "season_id:team_id" -> { season_id, team_id, team_name, total, fhg } }
@@ -141,10 +147,11 @@ exports.handler = async function(event) {
 
     return {
       statusCode: 200,
+      headers: cors,
       body: JSON.stringify({ teams: rows.length, matches: matches.length }),
     };
   } catch (err) {
     console.error('[compute-team-fhg] Erreur:', err.message);
-    return { statusCode: 500, body: err.message };
+    return { statusCode: 500, headers: cors, body: err.message };
   }
 };

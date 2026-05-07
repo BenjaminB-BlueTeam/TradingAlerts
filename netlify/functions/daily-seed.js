@@ -9,6 +9,7 @@
 const { footyRequest } = require('./lib/api');
 const { parseMatchRow } = require('./lib/parseMatch');
 const { requireAuth } = require('./lib/auth.cjs');
+const { corsHeaders, handlePreflight } = require('./lib/cors.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -76,12 +77,17 @@ async function seedDate(date) {
 }
 
 exports.handler = async (event) => {
+  const preflight = handlePreflight(event);
+  if (preflight) return preflight;
+
+  const cors = corsHeaders(event.headers?.origin || event.headers?.Origin);
+
   const auth = requireAuth(event, { allowScheduled: true });
-  if (!auth.authorized) return auth.response;
+  if (!auth.authorized) return { ...auth.response, headers: { ...(auth.response.headers || {}), ...cors } };
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error('[daily-seed] SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY non configure');
-    return { statusCode: 503, body: JSON.stringify({ error: 'Supabase non configure' }) };
+    return { statusCode: 503, headers: cors, body: JSON.stringify({ error: 'Supabase non configure' }) };
   }
 
   // Supporter une plage de dates via query params : ?from=2026-03-29&to=2026-04-22
@@ -142,7 +148,7 @@ exports.handler = async (event) => {
   console.log(`[daily-seed] END — ${results.dates} days, fetched=${results.fetched}, completed=${results.completed}, upserted=${results.upserted}, errors=${results.errors.length}`);
   return {
     statusCode: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...cors },
     body: JSON.stringify(results),
   };
 };

@@ -6,6 +6,7 @@
 
 const { footyRequest, supabaseQuery } = require('./lib/api');
 const { requireAuth } = require('./lib/auth.cjs');
+const { corsHeaders, handlePreflight } = require('./lib/cors.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -62,8 +63,13 @@ function evaluateLG2(matchData) {
 
 
 exports.handler = async (event) => {
+  const preflight = handlePreflight(event);
+  if (preflight) return preflight;
+
+  const cors = corsHeaders(event.headers?.origin || event.headers?.Origin);
+
   const auth = requireAuth(event, { allowScheduled: true });
-  if (!auth.authorized) return auth.response;
+  if (!auth.authorized) return { ...auth.response, headers: { ...(auth.response.headers || {}), ...cors } };
 
   const results = { checked: 0, validated: 0, lost: 0, expired: 0, errors: [] };
 
@@ -145,6 +151,7 @@ exports.handler = async (event) => {
 
   return {
     statusCode: 200,
+    headers: cors,
     body: JSON.stringify(results),
   };
 };
