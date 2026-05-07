@@ -102,12 +102,22 @@ async function seedLeague(seasonId) {
     const matches = matchesData?.data || [];
     const rows = matches.map(m => parseMatchRow(m, { seasonId }));
 
-    // Upsert des équipes dans la table teams (server-side, service_role)
+    // Insert h2h_matches server-side (service_role, batches de 200)
+    const BATCH = 200;
+    let insertedMatches = 0;
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const batch = rows.slice(i, i + BATCH);
+      await supabaseRequest('h2h_matches', 'POST', batch, '?on_conflict=match_id');
+      insertedMatches += batch.length;
+    }
+    console.log(`[seed-data] seed_league season_id=${seasonId} — ${insertedMatches} h2h_matches upserted`);
+
+    // Upsert des équipes dans la table teams (colonne: name)
     try {
       const teamsData = await footyRequest('league-teams', { season_id: seasonId, include: 'stats' }, 15000);
       const teamRows = (teamsData?.data || [])
         .filter(t => t.id && t.name)
-        .map(t => ({ team_id: t.id, team_name: t.name, updated_at: new Date().toISOString() }));
+        .map(t => ({ team_id: t.id, name: t.name, updated_at: new Date().toISOString() }));
       if (teamRows.length > 0) {
         await supabaseRequest('teams', 'POST', teamRows, '?on_conflict=team_id');
         console.log(`[seed-data] seed_league season_id=${seasonId} — ${teamRows.length} teams upserted`);
@@ -117,7 +127,7 @@ async function seedLeague(seasonId) {
     }
 
     console.log(`[seed-data] seed_league season_id=${seasonId} — ${rows.length} match rows prepared`);
-    return respond(200, { matches: rows.length, rows });
+    return respond(200, { matches: rows.length, inserted: insertedMatches });
   } catch (e) {
     console.error(`[seed-data] seed_league season_id=${seasonId} ERROR: ${e.message}`);
     return respond(200, { matches: 0, rows: [], errors: [e.message] });

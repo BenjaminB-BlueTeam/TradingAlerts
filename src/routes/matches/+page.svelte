@@ -190,7 +190,7 @@
         .select('team_id, team_name')
         .ilike('team_name', `%${q}%`)
         .limit(8);
-      teamSuggestions = (data || []).map(t => ({ id: t.team_id, name: t.team_name }));
+      teamSuggestions = (data || []).map(t => ({ id: t.team_id, name: t.name }));
     }, 200);
   });
 
