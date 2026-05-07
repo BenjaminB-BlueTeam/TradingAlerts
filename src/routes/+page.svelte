@@ -14,9 +14,6 @@
   let seedLoading = $state(true);
   let seedError = $state('');
 
-  let fhgCacheDate = $state(null);
-  let fhgCacheCount = $state(0);
-  let fhgCacheLoading = $state(true);
 
   let validated7j = $state(0);
   let lost7j = $state(0);
@@ -50,19 +47,6 @@
     return `${day}/${m}`;
   });
 
-  let fhgCacheColorClass = $derived.by(() => {
-    if (!fhgCacheDate) return 'red';
-    const d2 = new Date(); d2.setDate(d2.getDate() - 2);
-    const d4 = new Date(); d4.setDate(d4.getDate() - 4);
-    if (fhgCacheDate >= d2.toISOString().split('T')[0]) return 'green';
-    if (fhgCacheDate >= d4.toISOString().split('T')[0]) return 'orange';
-    return 'red';
-  });
-  let fhgCacheDateLabel = $derived.by(() => {
-    if (!fhgCacheDate) return '--';
-    const [, m, day] = fhgCacheDate.split('-');
-    return `${day}/${m}`;
-  });
 
   let taux7j = $derived.by(() => {
     const total = validated7j + lost7j;
@@ -122,21 +106,6 @@
     seedLoading = false;
   }
 
-  async function loadFhgCache() {
-    fhgCacheLoading = true;
-    const { data, count, error: dbError } = await supabase
-      .from('team_fhg_cache')
-      .select('updated_at', { count: 'exact' })
-      .order('updated_at', { ascending: false })
-      .limit(1);
-    if (!dbError) {
-      fhgCacheCount = count ?? 0;
-      if (data && data.length > 0 && data[0].updated_at) {
-        fhgCacheDate = data[0].updated_at.split('T')[0];
-      }
-    }
-    fhgCacheLoading = false;
-  }
 
   async function loadTaux7j() {
     taux7jLoading = true;
@@ -156,7 +125,6 @@
   onMount(() => {
     loadAlerts();
     loadSeedStatus();
-    loadFhgCache();
     loadTaux7j();
   });
 </script>
@@ -169,7 +137,7 @@
   </div>
 
   <div class="section-label">Santé infra</div>
-  <div class="metric-grid metric-grid--4">
+  <div class="metric-grid metric-grid--3">
 
     <div class="metric-card" class:metric-card--ok={$apiConnected} class:metric-card--error={!$apiConnected}>
       <div class="metric-card__label">API FootyStats</div>
@@ -213,28 +181,6 @@
       {/if}
     </div>
 
-    <div
-      class="metric-card"
-      class:metric-card--ok={fhgCacheColorClass === 'green'}
-      class:metric-card--warn={fhgCacheColorClass === 'orange'}
-      class:metric-card--error={fhgCacheColorClass === 'red'}
-    >
-      <div class="metric-card__label">FHG Cache</div>
-      {#if fhgCacheLoading}
-        <div class="metric-card__value muted">—</div>
-        <div class="metric-card__sub">chargement…</div>
-      {:else}
-        <div
-          class="metric-card__value"
-          class:green={fhgCacheColorClass === 'green'}
-          class:orange={fhgCacheColorClass === 'orange'}
-          class:red={fhgCacheColorClass === 'red'}
-        >
-          {fhgCacheDateLabel}
-        </div>
-        <div class="metric-card__sub">{fhgCacheCount.toLocaleString('fr-FR')} équipes</div>
-      {/if}
-    </div>
 
   </div>
 
