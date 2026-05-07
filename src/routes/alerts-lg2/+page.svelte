@@ -102,7 +102,8 @@
         genMessage = `${data.alerts_created} alerte${data.alerts_created > 1 ? 's' : ''} LG2 créée${data.alerts_created > 1 ? 's' : ''}`;
         await loadAlerts();
       } else {
-        genMessage = `Aucune alerte LG2 — ${data.analyzed} matchs analysés, aucun ne correspond`;
+        const dbg = data.debug_lg2 ? JSON.stringify(data.debug_lg2, null, 2) : '';
+        genMessage = `Aucune alerte LG2 — ${data.analyzed} matchs analysés, aucun ne correspond\n${dbg}`;
       }
     } catch (e) {
       genMessage = `Erreur : ${e.message}`;
@@ -235,7 +236,7 @@
   </div>
 </div>
 {#if genMessage}
-  <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--color-text-muted);">{genMessage}</div>
+  <pre style="font-size:11px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--color-text-muted);white-space:pre-wrap;word-break:break-all;">{genMessage}</pre>
 {/if}
 {#if deleteMessage}
   <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(226,75,74,0.08);color:var(--color-danger);">{deleteMessage}</div>
