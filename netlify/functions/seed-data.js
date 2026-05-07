@@ -96,14 +96,25 @@ async function startFull(maxSeasons = 5) {
 
 async function seedLeague(seasonId) {
   console.log(`[seed-data] action=seed_league, season_id=${seasonId}`);
-  // Récupère les matchs depuis FootyStats et retourne les rows formatées
-  // L'insert Supabase est fait côté client pour éviter le timeout
   try {
     // Timeout étendu à 25s : league-matches peut renvoyer 300+ matchs
     const matchesData = await footyRequest('league-matches', { season_id: seasonId }, 25000);
     const matches = matchesData?.data || [];
-
     const rows = matches.map(m => parseMatchRow(m, { seasonId }));
+
+    // Upsert des équipes dans la table teams (server-side, service_role)
+    try {
+      const teamsData = await footyRequest('league-teams', { season_id: seasonId, include: 'stats' }, 15000);
+      const teamRows = (teamsData?.data || [])
+        .filter(t => t.id && t.name)
+        .map(t => ({ team_id: t.id, team_name: t.name, updated_at: new Date().toISOString() }));
+      if (teamRows.length > 0) {
+        await supabaseRequest('teams', 'POST', teamRows, '?on_conflict=team_id');
+        console.log(`[seed-data] seed_league season_id=${seasonId} — ${teamRows.length} teams upserted`);
+      }
+    } catch (e) {
+      console.warn(`[seed-data] teams upsert season_id=${seasonId} warning: ${e.message}`);
+    }
 
     console.log(`[seed-data] seed_league season_id=${seasonId} — ${rows.length} match rows prepared`);
     return respond(200, { matches: rows.length, rows });

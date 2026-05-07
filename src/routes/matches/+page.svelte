@@ -170,25 +170,29 @@
     return fhgStatsCache[`${teamId}_${context}`];
   }
 
-  // Recherche équipe avec autocomplete
+  // Recherche équipe avec autocomplete (table teams Supabase)
   let teamSearch = $state('');
   let selectedTeam = $state(null); // { id: number, name: string } | null
   let searchFocused = $state(false);
+  let teamSuggestions = $state([]);
+  let searchDebounce;
 
-  let allTeams = $derived.by(() => {
-    const map = new Map();
-    for (const m of allMatches) {
-      if (m.homeID && m.home_name) map.set(m.homeID, { id: m.homeID, name: m.home_name });
-      if (m.awayID && m.away_name) map.set(m.awayID, { id: m.awayID, name: m.away_name });
+  $effect(() => {
+    const q = teamSearch;
+    clearTimeout(searchDebounce);
+    if (selectedTeam || q.length < 2) {
+      teamSuggestions = [];
+      return;
     }
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+    searchDebounce = setTimeout(async () => {
+      const { data } = await supabase
+        .from('teams')
+        .select('team_id, team_name')
+        .ilike('team_name', `%${q}%`)
+        .limit(8);
+      teamSuggestions = (data || []).map(t => ({ id: t.team_id, name: t.team_name }));
+    }, 200);
   });
-
-  let teamSuggestions = $derived(
-    teamSearch.length >= 2
-      ? allTeams.filter(t => t.name.toLowerCase().includes(teamSearch.toLowerCase())).slice(0, 8)
-      : []
-  );
 
   function selectTeam(team) {
     selectedTeam = team;
