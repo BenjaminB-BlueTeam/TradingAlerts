@@ -22,6 +22,24 @@
     loading = true;
     const result = await fetchLeagues();
     apiLeagues = result.leagues;
+    if (result.loaded && apiLeagues.length > 0) {
+      const current = $leagues;
+      const reconciled = apiLeagues.map(apiLg => {
+        const idx = findStoreIndex(current, apiLg);
+        if (idx > -1) {
+          return { ...current[idx], leagueId: apiLg.id, name: apiLg.name, country: apiLg.country };
+        }
+        return {
+          id: apiLg.name.toLowerCase().replace(/\s+/g, '-'),
+          name: apiLg.name,
+          country: apiLg.country,
+          flag: '',
+          active: false,
+          leagueId: apiLg.id,
+        };
+      });
+      saveLeagues(reconciled);
+    }
     if (result.loaded) {
       loaded = true;
       loadAllStats(apiLeagues, leagueStats, (id, stats) => {
