@@ -210,9 +210,19 @@ exports.handler = async (event) => {
 
         let lg2 = null;
         if (doLG2) {
-          // homeMatches = derniers matchs de l'équipe dom À DOMICILE
-          // awayMatches = derniers matchs de l'équipe ext À L'EXTÉRIEUR
           lg2 = analyzeLG2(homeMatches, awayMatches);
+          // Debug LG2 : log les 5 premiers résultats
+          if (!results.debug_lg2) results.debug_lg2 = [];
+          if (results.debug_lg2.length < 5) {
+            const sample0 = homeMatches[0];
+            results.debug_lg2.push({
+              match: `${m.home_name} vs ${m.away_name}`,
+              homeLen: homeMatches.length,
+              awayLen: awayMatches.length,
+              lg2Result: lg2,
+              sample_home0_ge: sample0 ? JSON.stringify(sample0.goal_events)?.slice(0, 100) : 'none',
+            });
+          }
         }
 
         const hasFHG = bestFHG !== null;
