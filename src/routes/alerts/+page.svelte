@@ -131,16 +131,20 @@
   }
 
   let selectedLeague = $state('toutes');
-  let selectedConfidence = $state('tout');
+  let selectedConfs = $state(new Set());
   let selectedExclusion = $state('actives');
   let availableLeagues = $derived([...new Set(alerts.map(a => a.league_name).filter(Boolean))].sort());
   const CONF_ORDER = { fort_double: 0, fort: 1, moyen: 2 };
 
   function matchesConfidence(alert) {
-    if (selectedConfidence === 'tout') return true;
-    if (selectedConfidence === 'fort') return alert.confidence === 'fort' || alert.confidence === 'fort_double';
-    if (selectedConfidence === 'moyen') return alert.confidence === 'moyen';
-    return true;
+    if (selectedConfs.size === 0) return true;
+    return selectedConfs.has(alert.confidence);
+  }
+
+  function toggleConf(val) {
+    const s = new Set(selectedConfs);
+    if (s.has(val)) s.delete(val); else s.add(val);
+    selectedConfs = s;
   }
 
   let filteredAlerts = $derived(
@@ -213,7 +217,7 @@
     const dayParam = params.get('day');
     const confParam = params.get('confidence');
     if (dayParam !== null) selectedDay = parseInt(dayParam);
-    if (confParam && ['tout', 'fort', 'moyen'].includes(confParam)) selectedConfidence = confParam;
+    // confParam ignoré (multi-select désormais)
     loadAlerts();
   });
 </script>
@@ -268,11 +272,12 @@
   </div>
   <div class="sub-filter-group">
     <span class="sub-filter-label">Confiance</span>
-    <select class="alerts-filter-select" bind:value={selectedConfidence}>
-      <option value="tout">Tout</option>
-      <option value="fort">Fort</option>
-      <option value="moyen">Moyen</option>
-    </select>
+    <div class="conf-btns">
+      <button class="alerts-filter-btn" class:active={selectedConfs.size === 0} onclick={() => selectedConfs = new Set()}>Tout</button>
+      <button class="alerts-filter-btn" class:active={selectedConfs.has('fort_double')} onclick={() => toggleConf('fort_double')}>Fort double</button>
+      <button class="alerts-filter-btn" class:active={selectedConfs.has('fort')} onclick={() => toggleConf('fort')}>Fort</button>
+      <button class="alerts-filter-btn" class:active={selectedConfs.has('moyen')} onclick={() => toggleConf('moyen')}>Moyen</button>
+    </div>
   </div>
   <div class="sub-filter-group">
     <span class="sub-filter-label">Statut</span>
@@ -453,6 +458,7 @@
   .alerts-filter-btn.active { background: var(--color-accent-blue); border-color: var(--color-accent-blue); color: white; }
 
   .alerts-sub-filters { display: flex; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; padding: 8px 12px; background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 8px; }
+  .conf-btns { display: flex; gap: 4px; flex-wrap: wrap; }
   .sub-filter-group { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
   .sub-filter-label { font-size: 11px; color: var(--color-text-muted); font-weight: 500; white-space: nowrap; }
   .alerts-filter-select { background: rgba(255,255,255,0.05); border: 1px solid var(--color-border); border-radius: 6px; padding: 4px 8px; font-size: 12px; color: var(--color-text-muted); cursor: pointer; max-width: 220px; }
