@@ -35,7 +35,9 @@
 
   // ---------- Helpers trades ----------
   function tradesForAlert(matchId, signalType) {
-    return trades.filter(t => t.match_id === matchId && t.signal_type === signalType);
+    // alert_trades.match_id est TEXT dans Supabase (retourné string),
+    // alerts.match_id est bigint (retourné number). Comparaison loose pour absorber le mismatch.
+    return trades.filter(t => String(t.match_id) === String(matchId) && t.signal_type === signalType);
   }
 
   function alertPnl(matchId, signalType, status) {
