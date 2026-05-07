@@ -165,31 +165,45 @@ src/
 
 Spec complète : `SPEC_STREAK_V2.md` à la racine du projet.
 
-### Deux scenarii indépendants (domicile ET extérieur évalués séparément)
+### Quatre scenarii (domicile ET extérieur évalués séparément)
 
-**Scénario A** — l'équipe marque en 31-45 :
-1. Streak : elle a marqué en 31-45 dans les N derniers matchs (dom ou ext selon le rôle)
+C et D sont des fallback — ils ne s'évaluent que si A et B sont tous deux inactifs.
+
+**Scénario A** — l'équipe marque en 31-45 (streak offensif) :
+1. Streak consécutif >= 3 en 31-45 (dom ou ext selon le rôle)
 2. Confirmation : l'adversaire a concédé en 1MT dans >= 60% de ses 5 derniers matchs (min 3)
 
-**Scénario B** — l'adversaire concède en 31-45 :
-1. Count : l'adversaire a concédé en 31-45 dans au moins 3 des 5 derniers matchs (non nécessairement consécutifs)
+**Scénario B** — l'adversaire concède en 31-45 (streak défensif) :
+1. Streak consécutif >= 3 de l'adversaire qui encaisse en 31-45
 2. Confirmation : l'équipe marque en 1MT dans >= 60% de ses 5 derniers matchs (min 3)
+
+**Scénario C** — streak court + confirmation maximale (fallback A/B) :
+1. Streak consécutif === 2 exactement en 31-45 (si >= 3, A aurait déclenché)
+2. Confirmation : l'adversaire a encaissé en 1MT dans les 3 derniers matchs, **3 sur 3** (100%)
+
+**Scénario D** — double activité 31-45 (fallback A/B/C) :
+1. L'équipe a marqué >= 1 ET encaissé >= 1 en 31-45 dans ses 3 derniers matchs
+2. Confirmation : l'adversaire a marqué en 1MT dans >= 1 de ses 3 derniers matchs
 
 ### Signal résultant
 | Cas | signal_type |
 |-----|------------|
-| A et B | `FHG_A+B` (priorité max) |
+| A et B actifs | `FHG_A+B` (priorité max) |
 | A seul | `FHG_A` |
 | B seul | `FHG_B` |
+| C seul (fallback, A/B inactifs) | `FHG_C` |
+| D seul (fallback, A/B/C inactifs) | `FHG_D` |
 
 ### Confiance
 | Critère | Scénario | Confidence |
 |---------|----------|-----------|
-| Streak A >= 3 consécutifs (`STREAK_FORT`) + confirmation | A | `fort` |
-| Count B >= 3/5 (non-consécutif) + confirmation | B | `moyen` |
+| Streak A >= 3 + confirmation | A | `fort` |
+| Streak B >= 3 + confirmation | B | `moyen` |
 | A et B actifs simultanément | A+B | `fort` |
+| Streak C = 2 + confirmation 3/3 | C | `moyen` |
+| Double activité D + confirmation | D | `moyen` |
 
-> Scénario A : streak 2 consécutifs → null (seuil minimum = 3). `STREAK_MOYEN` exporté mais non utilisé dans l'algo actuel.
+> `STREAK_MOYEN=2` est utilisé par le scénario C (streak exactement égal à 2).
 
 ### Veto H2H
 Si >= 3 H2H et l'équipe n'a jamais marqué en 1MT (0-45 min) → exclusion totale.
@@ -246,7 +260,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 
 ## Ce qui est implémenté
 
-- **Algo FHG streak v2** (2026-04-23) — `analysis.cjs` + `scoring.js` : Scénario A (streak consécutif >=3 → fort), Scénario B (count 3/5 non-consécutif → moyen), FHG_A+B → fort, veto H2H 1MT. Spec : `SPEC_STREAK_V2.md`
+- **Algo FHG streak v2** (2026-04-23) — `analysis.cjs` + `scoring.js` : Scénario A (streak >=3 → fort), B (streak adversaire >=3 → moyen), A+B → fort, C (streak=2 + confirmation 3/3 → moyen, fallback), D (double activité 31-45 → moyen, fallback). Veto H2H 1MT. Spec : `SPEC_STREAK_V2.md`
 - **Algo LG2 streak** (2026-04-23) — `lg2.cjs` + `lg2.js` : streak consécutif de matchs avec but >= 80' par équipe (dom ou ext). LG2_A (home), LG2_B (away), LG2_A+B. Confidence = moyen (3) / fort (4+). Spec : `docs/superpowers/specs/2026-04-23-lg2-design.md`
 - **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) : génère FHG_A/B/A+B + LG2_A/B/A+B, algo_version='v2' (FHG) ou 'lg2_v1' (LG2), table Supabase `alerts`
 - **Vérification auto résultats** — `check-results.js` (cron 1h) : FHG sur buts 31-45 min, LG2 sur buts >= 80 min via goal_events, statut -> validated/lost/expired (cleanup 48h)
