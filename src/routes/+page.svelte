@@ -114,7 +114,7 @@
   <div class="metric-card">
     <div class="metric-card__label">Ligues FootyStats</div>
     <div class="metric-card__value blue">{totalLeagues}</div>
-    <div class="metric-card__sub">{activeLeaguesCount} actives (filtre)</div>
+    <div class="metric-card__sub">retournées par l'API</div>
   </div>
 
   <div class="metric-card">

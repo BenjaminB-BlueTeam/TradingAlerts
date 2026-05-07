@@ -13,9 +13,9 @@ function reconcileLeaguesStore(apiLeagues) {
       l.name.includes(apiLg.name)
     );
     if (idx > -1) {
-      return { ...current[idx], leagueId: apiLg.id, name: apiLg.name, country: apiLg.country };
+      return { ...current[idx], leagueId: apiLg.id, name: apiLg.name, country: apiLg.country, active: true };
     }
-    return { id: apiLg.name.toLowerCase().replace(/\s+/g, '-'), name: apiLg.name, country: apiLg.country, flag: '', active: false, leagueId: apiLg.id };
+    return { id: apiLg.name.toLowerCase().replace(/\s+/g, '-'), name: apiLg.name, country: apiLg.country, flag: '', active: true, leagueId: apiLg.id };
   });
   saveLeagues(reconciled);
 }

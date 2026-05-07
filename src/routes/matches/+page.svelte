@@ -15,7 +15,7 @@
   let expandedId = $state(null);
   let teamMatchesCache = $state({});
 
-  let activeLeagues = $derived($leagues.filter(l => l.active));
+  let activeLeagues = $derived($leagues);
 
   function getLeagueName(m) {
     const compId = m.competition_id || m.league_id;
