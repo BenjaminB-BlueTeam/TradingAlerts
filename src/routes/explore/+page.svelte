@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { apiConnected } from '$lib/stores/appStore.js';
-  import { statColor, fetchLeagues, loadAllStats, toggleExpandLeague } from '$lib/utils/leagueHelpers.js';
+  import { fetchLeagues, toggleExpandLeague } from '$lib/utils/leagueHelpers.js';
   import { flagUrl } from '$lib/utils/countryFlags.js';
 
   let allLeagues = $state([]);
@@ -12,29 +12,12 @@
   let tableLoading = $state(false);
   let loaded = $state(false);
 
-  // Stats par ligue
-  let leagueStats = $state({});
-  let statsLoading = $state({});
-
   async function loadLeagues() {
     if (loaded && allLeagues.length > 10) return;
     loading = true;
     const result = await fetchLeagues();
     allLeagues = result.leagues;
-    if (result.loaded) {
-      loaded = true;
-      loadAllStats(allLeagues, leagueStats, (id, stats) => {
-        if (stats === undefined) {
-          statsLoading[id] = true;
-          statsLoading = statsLoading;
-        } else {
-          leagueStats[id] = stats;
-          leagueStats = leagueStats;
-          statsLoading[id] = false;
-          statsLoading = statsLoading;
-        }
-      });
-    }
+    if (result.loaded) loaded = true;
     loading = false;
   }
 
@@ -112,7 +95,6 @@
       </div>
       <div class="explore-leagues-grid">
         {#each leagues as league (league.id)}
-          {@const stats = leagueStats[league.id]}
           <div class="explore-league-card" class:expanded={expandedLeague === league.id}>
             <div class="explore-league-card__header" onclick={() => toggleLeague(league.id)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLeague(league.id); } }} role="button" tabindex="0" aria-expanded={expandedLeague === league.id}>
               <div class="explore-league-card__info">
@@ -122,29 +104,6 @@
                   {#if stats} · {stats.matchesPlayed}/{stats.totalMatches} matchs{/if}
                 </div>
               </div>
-
-              {#if stats}
-                <div class="explore-stats">
-                  <div class="explore-stat" title="But en 1MT (Over 0.5 FHG)">
-                    <span class="explore-stat__label">1MT</span>
-                    <span class="explore-stat__value" style:color={statColor(stats.over05FHG, 75, 60)}>{stats.over05FHG}%</span>
-                  </div>
-                  <div class="explore-stat" title="Moyenne buts/match">
-                    <span class="explore-stat__label">Avg</span>
-                    <span class="explore-stat__value" style:color={statColor(stats.avgGoals * 25, 75, 60)}>{stats.avgGoals}</span>
-                  </div>
-                  <div class="explore-stat" title="BTTS">
-                    <span class="explore-stat__label">BTTS</span>
-                    <span class="explore-stat__value" style:color={statColor(stats.btts, 55, 45)}>{stats.btts}%</span>
-                  </div>
-                  <div class="explore-stat" title="Over 2.5 buts">
-                    <span class="explore-stat__label">O2.5</span>
-                    <span class="explore-stat__value" style:color={statColor(stats.over25, 60, 45)}>{stats.over25}%</span>
-                  </div>
-                </div>
-              {:else if statsLoading[league.id]}
-                <span class="explore-stats-loading">...</span>
-              {/if}
 
               <span class="explore-league-card__arrow">{expandedLeague === league.id ? '▼' : '▶'}</span>
             </div>
@@ -276,36 +235,6 @@
     font-size: 11px;
     color: var(--color-text-muted);
   }
-  .explore-stats {
-    display: flex;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-  .explore-stats-loading {
-    font-size: 11px;
-    color: var(--color-text-muted);
-    flex-shrink: 0;
-  }
-  .explore-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: rgba(255,255,255,0.04);
-    border-radius: 6px;
-    padding: 3px 8px;
-    min-width: 42px;
-  }
-  .explore-stat__label {
-    font-size: 9px;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
-    letter-spacing: 0.3px;
-  }
-  .explore-stat__value {
-    font-size: 13px;
-    font-weight: 700;
-  }
   .explore-league-card__arrow {
     font-size: 11px;
     color: var(--color-text-muted);
@@ -334,9 +263,4 @@
     color: var(--color-accent-green);
   }
 
-  @media (max-width: 640px) {
-    .explore-stats {
-      display: none;
-    }
-  }
 </style>
