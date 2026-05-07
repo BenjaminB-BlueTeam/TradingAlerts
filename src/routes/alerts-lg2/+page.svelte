@@ -337,20 +337,6 @@
             <div class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</div>
             <div class="alert-card__league">{a.league_name || '—'}</div>
           </div>
-          <div class="alert-card__stats">
-            {#if a.fhg_factors?.streakHome !== undefined}
-              <div class="alert-pill">
-                <span class="alert-pill__label">Dom</span>
-                <span class="alert-pill__value">{a.fhg_factors.streakHome}</span>
-              </div>
-            {/if}
-            {#if a.fhg_factors?.streakAway !== undefined}
-              <div class="alert-pill">
-                <span class="alert-pill__label">Ext</span>
-                <span class="alert-pill__value">{a.fhg_factors.streakAway}</span>
-              </div>
-            {/if}
-          </div>
           <div class="alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
             {#if a.status === 'validated'}

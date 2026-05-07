@@ -339,14 +339,6 @@
             <div class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</div>
             <div class="alert-card__league">{a.league_name || '—'}</div>
           </div>
-          <div class="alert-card__stats">
-            {#if a.fhg_pct}
-              <div class="alert-pill">
-                <span class="alert-pill__label">FHG</span>
-                <span class="alert-pill__value" style:color={fhgColor(a.fhg_pct)}>{a.fhg_pct}%</span>
-              </div>
-            {/if}
-          </div>
           <div class="alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
             {#if a.status === 'validated'}
