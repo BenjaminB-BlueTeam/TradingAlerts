@@ -29,19 +29,25 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 - Cleanup automatique des alertes pending > 48h (status `expired`)
 
 ### Dashboard (`/`) — etat de sante prod
-- 5 KPIs : statut API FootyStats, ligues retournees par l'API (~48), FHG Fort du jour, LG2 Fort du jour, etat seed h2h_matches (derniere date seedee + count total)
-- Aucune liste de matchs — page de monitoring uniquement
-- Seed matchs : vert si J-1, orange si J-2, rouge si plus vieux
+- **7 KPIs** en 2 sections : "Santé infra" (API FootyStats, Ligues, Seed H2H, FHG Cache) et "Alertes du jour" (FHG Fort, LG2 Fort, Taux validées 7j)
+- Seed H2H : derniere date seedee (filtrée <= aujourd'hui) + count total + heure du dernier seed
+- FHG Cache : date dernier `compute-team-fhg`, nombre d'equipes en cache
+- Taux validées 7j : % validated/(validated+lost) sur 7 jours glissants
+- Couleurs : vert/orange/rouge selon ancienneté pour Seed et FHG Cache
+- Layout centre, max-width 960px, 2 grilles separees (4col + 3col)
 
 ### Selection FHG (`/alerts`)
-- Alertes FHG_A/B/A+B avec filtres : jour, ligue, confiance (Tout/Fort/Moyen)
+- Alertes FHG_A/B/A+B avec filtres : jour (boutons), ligue (dropdown), confiance (dropdown Tout/Fort/Moyen)
+- Badges affiches : Fort/Moyen uniquement (plus de badge FHG_A/FHG_B etc.)
+- league_name correctement renseignee depuis league-list FootyStats
 - Expand detaille : 15 derniers matchs dom/ext par equipe
 - Barres de timing buts (minutes exactes), curseur interactif
 - Stats resume : 1MT%, AVG buts
 - Badges Valide/Perdu/EN COURS
 
 ### Selection LG2 (`/alerts-lg2`)
-- Alertes LG2_A/B/A+B avec filtres : jour, ligue, confiance (Tout/Fort/Moyen)
+- Alertes LG2_A/B/A+B avec filtres : jour (boutons), ligue (dropdown), confiance (dropdown)
+- Badges affiches : Fort/Moyen uniquement
 - Expand par equipe avec barres timing buts (marqueur 80', buts apres 80' encadres)
 - Pills Dom/Ext affichant la longueur du streak
 
