@@ -98,6 +98,7 @@ const COUNTRY_TO_ISO = {
   'Korea Republic': 'kr',
   'North Korea': 'kp',
   'China': 'cn',
+  'Chinese': 'cn',
   'India': 'in',
   'Vietnam': 'vn',
   'Thailand': 'th',
