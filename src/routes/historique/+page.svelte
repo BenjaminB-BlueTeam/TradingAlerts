@@ -12,6 +12,7 @@
   import MatchesTable from '$lib/components/historique/MatchesTable.svelte';
   import TradesVsGlobal from '$lib/components/historique/TradesVsGlobal.svelte';
   import WhatIfExclusions from '$lib/components/historique/WhatIfExclusions.svelte';
+  import BetAnalytix from '$lib/components/historique/BetAnalytix.svelte';
 
   // ---------- État global ----------
   let allAlerts = $state([]);
@@ -162,6 +163,11 @@
     <TradesVsGlobal terminated={alertsForCharts} />
   {:else}
     <WhatIfExclusions excludedAlerts={excludedAlerts} {globalPct} />
+  {/if}
+
+  <!-- BET ANALYTIX -->
+  {#if viewMode === 'active'}
+    <BetAnalytix alerts={allAlerts} />
   {/if}
 {/if}
 
