@@ -3,7 +3,7 @@
   import { supabase } from '$lib/api/supabase.js';
   import { fetchAlertTrades, insertAlertTrade, deleteAlertTrade, updateAlertStatus } from '$lib/api/supabase.js';
   import { selectedKeys, keyOf } from '$lib/stores/selectionStore.js';
-  import { getDateStr, formatDateDMY, formatTime, isInPlay } from '$lib/utils/formatters.js';
+  import { getDateStr, addDays, formatDateDMY, formatTime, isInPlay } from '$lib/utils/formatters.js';
   import { leagueFlagUrl } from '$lib/utils/countryFlags.js';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
 
@@ -13,6 +13,8 @@
   let loading = $state(true);
   let error = $state('');
   let terminatedOpen = $state(false);
+  let catchupOpen = $state(false);
+  let catchupAlerts = $state([]);
 
   // Per-card inline form state: keyed by alertId
   let formCote = $state({});     // { [alertId]: string }
@@ -189,7 +191,18 @@
     allTrades = await fetchAlertTrades();
   }
 
-  onMount(() => { loadTrades(); });
+  async function loadCatchupAlerts() {
+    const sevenDaysAgo = addDays(getDateStr(0), -7);
+    const { data } = await supabase
+      .from('alerts')
+      .select('*')
+      .gte('match_date', sevenDaysAgo)
+      .in('status', ['validated', 'lost'])
+      .order('match_date', { ascending: false });
+    catchupAlerts = data || [];
+  }
+
+  onMount(() => { loadTrades(); loadCatchupAlerts(); });
 
   // Recharge les alertes dès que selectedKeys change (fixe la race condition
   // avec loadSelections() du layout qui se termine après le mount de la page)
@@ -197,6 +210,11 @@
     void ($selectedKeys);  // établit la dépendance réactive
     loadAlertsForSelections();
   });
+
+  // Rattrapage : alertes des 7 derniers jours NON dans selectedKeys
+  let catchupFiltered = $derived(
+    catchupAlerts.filter(a => !$selectedKeys.has(keyOf(a.match_id, a.signal_type)))
+  );
 
   // ---- UI helpers ----
   function confidenceClass(c) {
@@ -329,6 +347,31 @@
         {#if terminatedOpen}
           <div class="alerts-list" style="margin-top:10px;">
             {#each sections.terminated as a (a.id)}
+              {@render alertCard(a)}
+            {/each}
+          </div>
+        {/if}
+      </section>
+    {/if}
+
+    <!-- ============================================================
+         SECTION RATTRAPAGE 7 jours (collapsible)
+    ============================================================ -->
+    {#if catchupFiltered.length > 0}
+      <section class="mes-section">
+        <button
+          class="mes-section__collapsible"
+          onclick={() => (catchupOpen = !catchupOpen)}
+          aria-expanded={catchupOpen}
+        >
+          <span class="mes-section__chevron" class:mes-section__chevron--open={catchupOpen}>›</span>
+          <span class="mes-section__title-text">Rattrapage — 7 derniers jours</span>
+          <span class="mes-section__badge mes-section__badge--terminated">{catchupFiltered.length}</span>
+        </button>
+
+        {#if catchupOpen}
+          <div class="alerts-list" style="margin-top:10px;">
+            {#each catchupFiltered as a (a.id)}
               {@render alertCard(a)}
             {/each}
           </div>
