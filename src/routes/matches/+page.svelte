@@ -3,10 +3,21 @@
   import { leagues } from '$lib/stores/appStore.js';
   import { getTodaysMatches, getAllLeagues } from '$lib/api/footystats.js';
   import { supabase } from '$lib/api/supabase.js';
-  import { getDateStr, formatDate, formatTime, fhgColor } from '$lib/utils/formatters.js';
+  import { getDateStr, formatDate, formatTime, fhgColor, addDays, dateLabelNav } from '$lib/utils/formatters.js';
+  import { cacheGet, cacheSet } from '$lib/api/cache.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
 
-  let filtrePlage = $state(0);
+  let currentDate = $state(getDateStr(0));
+  const DATE_MIN = getDateStr(-1);
+  const DATE_MAX = getDateStr(29);
+  const TTL_MATCHES = 72 * 60 * 60 * 1000;
+
+  function canGoBack() { return currentDate > DATE_MIN; }
+  function canGoForward() { return currentDate < DATE_MAX; }
+  function goBack() { if (canGoBack()) currentDate = addDays(currentDate, -1); }
+  function goForward() { if (canGoForward()) currentDate = addDays(currentDate, 1); }
+  function goToday() { currentDate = getDateStr(0); }
+
   let filtreLigue = $state('toutes');
   let allMatches = $state([]);
   let loading = $state(false);
@@ -43,52 +54,45 @@
   }
 
 
-  async function loadMatches(plage) {
+  async function loadMatches(dateStr) {
     loading = true;
     error = '';
-    const offsets = plage === -1 ? [0, 1, 2] : [plage];
-    const results = [];
-    for (const offset of offsets) {
-      try {
-        const dateStr = getDateStr(offset);
-        const matches = await getTodaysMatches(dateStr);
-        if (Array.isArray(matches)) results.push(...matches);
-      } catch (e) {
-        console.error('loadMatches error:', e);
-        error = 'Impossible de charger les matchs.';
-      }
-    }
-    // Dédupliquer par match ID (l'API peut retourner le même match sur des dates qui se chevauchent)
-    const seen = new Set();
-    const unique = [];
-    for (const m of results) {
-      if (m.id && !seen.has(m.id)) {
-        seen.add(m.id);
-        unique.push(m);
-      }
-    }
-    allMatches = unique;
 
-    // Charger toutes les stats FHG 31-45 AVANT d'afficher
-    const uniqueTeams = new Set();
-    for (const m of results) {
-      if (m.homeID && m.awayID) {
-        uniqueTeams.add(`${m.homeID}_home`);
-        uniqueTeams.add(`${m.awayID}_away`);
+    const cacheKey = `todays-matches-${dateStr}`;
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      allMatches = cached;
+      loading = false;
+      const teamPairs = cached.filter(m => m.homeID && m.awayID);
+      for (let i = 0; i < teamPairs.length; i += 10) {
+        await Promise.all(teamPairs.slice(i, i + 10).map(m => loadFhgStats(m.homeID, m.awayID)));
       }
-    }
-    // Charger par batch de 10 équipes en parallèle
-    const teamPairs = results.filter(m => m.homeID && m.awayID);
-    for (let i = 0; i < teamPairs.length; i += 10) {
-      const batch = teamPairs.slice(i, i + 10);
-      await Promise.all(batch.map(m => loadFhgStats(m.homeID, m.awayID)));
+      return;
     }
 
+    try {
+      const matches = await getTodaysMatches(dateStr);
+      const results = Array.isArray(matches) ? matches : [];
+      const seen = new Set();
+      const unique = [];
+      for (const m of results) {
+        if (m.id && !seen.has(m.id)) { seen.add(m.id); unique.push(m); }
+      }
+      cacheSet(cacheKey, unique, TTL_MATCHES);
+      allMatches = unique;
+      const teamPairs = unique.filter(m => m.homeID && m.awayID);
+      for (let i = 0; i < teamPairs.length; i += 10) {
+        await Promise.all(teamPairs.slice(i, i + 10).map(m => loadFhgStats(m.homeID, m.awayID)));
+      }
+    } catch (e) {
+      console.error('loadMatches error:', e);
+      error = 'Impossible de charger les matchs.';
+    }
     loading = false;
   }
 
-  // Recharger quand la plage change
-  $effect(() => { loadMatches(filtrePlage); });
+  // Recharger quand la date change
+  $effect(() => { loadMatches(currentDate); });
 
   async function loadLeagueNames() {
     try {
@@ -251,12 +255,11 @@
 
 <!-- FILTERS BAR -->
 <div class="filters-bar">
-  <select class="filter-select" bind:value={filtrePlage}>
-    <option value={0}>Aujourd'hui</option>
-    <option value={1}>Demain</option>
-    <option value={2}>Après-demain</option>
-    <option value={-1}>3 jours</option>
-  </select>
+  <div class="date-nav">
+    <button class="date-nav__arrow" onclick={goBack} disabled={!canGoBack()} aria-label="Jour précédent">‹</button>
+    <button class="date-nav__label" onclick={goToday} title="Revenir à aujourd'hui">{dateLabelNav(currentDate)}</button>
+    <button class="date-nav__arrow" onclick={goForward} disabled={!canGoForward()} aria-label="Jour suivant">›</button>
+  </div>
 
   <select class="filter-select filter-select--league" bind:value={filtreLigue}>
     <option value="toutes">Toutes les ligues</option>
@@ -435,6 +438,46 @@
 {/if}
 
 <style>
+  .date-nav {
+    display: flex;
+    align-items: center;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .date-nav__arrow {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: 20px;
+    line-height: 1;
+    padding: 6px 12px;
+    transition: background var(--transition-fast), color var(--transition-fast);
+  }
+  .date-nav__arrow:hover:not(:disabled) {
+    background: rgba(255,255,255,0.06);
+    color: var(--color-text-primary);
+  }
+  .date-nav__arrow:disabled { opacity: 0.3; cursor: default; }
+  .date-nav__label {
+    background: none;
+    border: none;
+    border-left: 1px solid var(--color-border);
+    border-right: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 16px;
+    min-width: 120px;
+    text-align: center;
+    transition: background var(--transition-fast);
+  }
+  .date-nav__label:hover { background: rgba(255,255,255,0.04); }
+
   .matches-list { display: flex; flex-direction: column; gap: 6px; }
 
   .match-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
