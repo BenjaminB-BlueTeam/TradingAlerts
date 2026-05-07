@@ -83,6 +83,119 @@
   let lg2ColorClass = $derived(cronColorClass(lastLg2Ts));
   let pendingOldColorClass = $derived(pendingOld === 0 ? 'green' : pendingOld === null ? 'red' : 'red');
 
+  // Performances personnelles
+  let perfLoading = $state(true);
+  let pnlWeek = $state(null);
+  let pnlMonth = $state(null);
+  let matchesMonth = $state(null);
+  let tradesWeekCount = $state(0);
+  let tradesWeekValid = $state(0);
+  let tradesWeekLost = $state(0);
+  let tradesMonthCount = $state(0);
+  let tradesMonthValid = $state(0);
+  let tradesMonthLost = $state(0);
+
+  async function loadPerformances() {
+    perfLoading = true;
+    const now2 = new Date();
+
+    // Format date locale (évite le décalage UTC à 00h-02h Paris)
+    const pad = n => String(n).padStart(2, '0');
+    const toLocalDateStr = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    // lundi 00:00 de la semaine courante
+    const dow = (now2.getDay() + 6) % 7; // lundi=0 … dimanche=6
+    const weekStart = new Date(now2);
+    weekStart.setDate(weekStart.getDate() - dow);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekStartStr = toLocalDateStr(weekStart);
+
+    // 1er du mois courant 00:00
+    const monthStart = new Date(now2.getFullYear(), now2.getMonth(), 1);
+    const monthStartStr = toLocalDateStr(monthStart);
+
+    const [tradesRes, alertsRes, selectedRes] = await Promise.all([
+      supabase.from('alert_trades').select('match_id, signal_type, cote, mise'),
+      supabase.from('alerts').select('match_id, signal_type, status, match_date').gte('match_date', monthStartStr),
+      supabase.from('selected_alerts').select('match_id'),
+    ]);
+
+    if (tradesRes.error || alertsRes.error || selectedRes.error) {
+      perfLoading = false;
+      return;
+    }
+
+    const alertMap = new Map();
+    for (const a of (alertsRes.data || [])) {
+      alertMap.set(`${a.match_id}__${a.signal_type}`, a);
+    }
+
+    // Calcul P&L semaine et mois
+    let sumWeek = 0, sumMonth = 0;
+    let cntWeek = 0, cntMonth = 0;
+    let validWeek = 0, lostWeek = 0, validMonth = 0, lostMonth = 0;
+    let hasWeek = false, hasMonth = false;
+
+    for (const t of (tradesRes.data || [])) {
+      if (t.mise == null || t.cote == null || t.cote <= 1) continue;
+      const alert = alertMap.get(`${t.match_id}__${t.signal_type}`);
+      if (!alert) continue;
+      if (!['validated', 'lost'].includes(alert.status)) continue;
+
+      const inMonth = alert.match_date >= monthStartStr;
+      const inWeek = alert.match_date >= weekStartStr;
+      const gain = alert.status === 'validated' ? t.mise * (t.cote - 1) : -t.mise;
+
+      if (inMonth) {
+        sumMonth += gain;
+        cntMonth++;
+        hasMonth = true;
+        if (alert.status === 'validated') validMonth++;
+        else lostMonth++;
+      }
+      if (inWeek) {
+        sumWeek += gain;
+        cntWeek++;
+        hasWeek = true;
+        if (alert.status === 'validated') validWeek++;
+        else lostWeek++;
+      }
+    }
+
+    pnlWeek = hasWeek ? sumWeek : null;
+    pnlMonth = hasMonth ? sumMonth : null;
+    tradesWeekCount = cntWeek;
+    tradesWeekValid = validWeek;
+    tradesWeekLost = lostWeek;
+    tradesMonthCount = cntMonth;
+    tradesMonthValid = validMonth;
+    tradesMonthLost = lostMonth;
+
+    // Matchs distincts sélectionnés dans le mois courant
+    const selectedMatchIds = new Set((selectedRes.data || []).map(s => s.match_id));
+    const alertsInMonth = new Set(
+      (alertsRes.data || []).map(a => a.match_id)
+    );
+    let distinctMonthMatches = 0;
+    for (const mid of selectedMatchIds) {
+      if (alertsInMonth.has(mid)) distinctMonthMatches++;
+    }
+    matchesMonth = distinctMonthMatches;
+
+    perfLoading = false;
+  }
+
+  function pnlLabel(val) {
+    if (val === null) return '—';
+    return `${val > 0 ? '+' : ''}${val.toFixed(2)} €`;
+  }
+  function pnlColor(val) {
+    if (val === null) return 'muted';
+    if (val > 0) return 'green';
+    if (val < 0) return 'red';
+    return 'muted';
+  }
+
   let now = new Date();
   let dateLabel = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -173,6 +286,7 @@
     loadSeedStatus();
     loadTaux7j();
     loadCronHealth();
+    loadPerformances();
   });
 </script>
 
@@ -344,7 +458,7 @@
         >
           {taux7j}%
         </div>
-        <div class="metric-card__sub">{validated7j}✓ / {lost7j}✗ matchs</div>
+        <div class="metric-card__sub">{validated7j} ✓ / {lost7j} ✗ matchs</div>
       {/if}
     </div>
 
@@ -353,6 +467,50 @@
   {#if error}
     <p class="error-msg">{error}</p>
   {/if}
+
+  <div class="section-label">Mes performances</div>
+  <div class="metric-grid metric-grid--3">
+
+    <div class="metric-card">
+      <div class="metric-card__label">Renta de la semaine</div>
+      {#if perfLoading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">chargement…</div>
+      {:else if pnlWeek === null}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">aucun trade</div>
+      {:else}
+        <div class="metric-card__value {pnlColor(pnlWeek)}">{pnlLabel(pnlWeek)}</div>
+        <div class="metric-card__sub">{tradesWeekCount} trade{tradesWeekCount > 1 ? 's' : ''} · {tradesWeekValid} ✓ / {tradesWeekLost} ✗</div>
+      {/if}
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-card__label">Renta du mois</div>
+      {#if perfLoading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">chargement…</div>
+      {:else if pnlMonth === null}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">aucun trade</div>
+      {:else}
+        <div class="metric-card__value {pnlColor(pnlMonth)}">{pnlLabel(pnlMonth)}</div>
+        <div class="metric-card__sub">{tradesMonthCount} trade{tradesMonthCount > 1 ? 's' : ''} · {tradesMonthValid} ✓ / {tradesMonthLost} ✗</div>
+      {/if}
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-card__label">Matchs joués ce mois</div>
+      {#if perfLoading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">chargement…</div>
+      {:else}
+        <div class="metric-card__value blue">{matchesMonth ?? 0}</div>
+        <div class="metric-card__sub">sélectionné{matchesMonth > 1 ? 's' : ''} via Mes matchs</div>
+      {/if}
+    </div>
+
+  </div>
 
 </div>
 
