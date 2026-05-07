@@ -102,8 +102,7 @@
         genMessage = `${data.alerts_created} alerte${data.alerts_created > 1 ? 's' : ''} LG2 créée${data.alerts_created > 1 ? 's' : ''}`;
         await loadAlerts();
       } else {
-        const dbg = data.debug_lg2 ? JSON.stringify(data.debug_lg2, null, 2) : '';
-        genMessage = `Aucune alerte LG2 — ${data.analyzed} matchs analysés, aucun ne correspond\n${dbg}`;
+        genMessage = `Aucune alerte LG2 — ${data.analyzed} matchs analysés\nRÉPONSE COMPLÈTE:\n${JSON.stringify(data, null, 2)}`;
       }
     } catch (e) {
       genMessage = `Erreur : ${e.message}`;
