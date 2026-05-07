@@ -4,6 +4,7 @@
   import { isInPlay } from '$lib/utils/formatters.js';
   import { supabase } from '$lib/api/supabase.js';
   import { strategyOf } from '$lib/utils/historyFilters.js';
+  import { leagueFlagUrl } from '$lib/utils/countryFlags.js';
 
   let { alerts = [] } = $props();
 
@@ -15,9 +16,6 @@
     { key: 'match_date',   label: 'Date',   sortable: true, mobile: true },
     { key: 'league_name',  label: 'Ligue',  sortable: true, mobile: false },
     { key: 'teams',        label: 'Match',  sortable: false, mobile: true },
-    { key: 'score',        label: 'Score',  sortable: false, mobile: true },
-    { key: 'ht',           label: 'HT',     sortable: false, mobile: false },
-
     { key: 'confidence',   label: 'Conf',   sortable: true, mobile: false },
     { key: 'status',       label: 'Résultat', sortable: true, mobile: true },
   ];
@@ -169,10 +167,12 @@
           {@const r = resultBadge(a)}
           <tr class="data-row" class:expanded={expandedId === a.id} onclick={() => toggleExpand(a)}>
             <td class="col--match_date">{formatShortDate(a.match_date)}</td>
-            <td class="col--league_name mobile-hide">{a.league_name || '—'}</td>
+            <td class="col--league_name mobile-hide">
+              {#if leagueFlagUrl(a.league_name)}
+                <img class="country-flag" src={leagueFlagUrl(a.league_name)} alt="" loading="lazy" style="width:16px;height:12px;object-fit:cover;border-radius:2px;vertical-align:middle;margin-right:5px;" />
+              {/if}{a.league_name || '—'}
+            </td>
             <td class="col--teams"><span class="teams">{a.home_team_name} <span class="vs">vs</span> {a.away_team_name}</span></td>
-            <td class="col--score score-{a.status}">{scoreText(a)}</td>
-            <td class="col--ht mobile-hide">{htText(a)}</td>
 
             <td class="col--confidence mobile-hide">
               <span class="badge {confBadgeClass(a.confidence)}">{a.confidence || '—'}</span>
