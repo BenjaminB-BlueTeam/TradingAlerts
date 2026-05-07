@@ -147,6 +147,16 @@
     selectedConfs = s;
   }
 
+  let alertsNoDay = $derived(
+    alerts.filter(a => {
+      if (selectedLeague !== 'toutes' && a.league_name !== selectedLeague) return false;
+      if (!matchesConfidence(a)) return false;
+      if (selectedExclusion === 'actives' && a.user_excluded) return false;
+      if (selectedExclusion === 'exclus' && !a.user_excluded) return false;
+      return true;
+    })
+  );
+
   let filteredAlerts = $derived(
     alerts
       .filter(a => {
@@ -249,10 +259,10 @@
 
 <div class="alerts-filters">
   <button class="alerts-filter-btn" class:active={selectedDay === null} aria-pressed={selectedDay === null} onclick={() => selectedDay = null}>
-    Tous ({alerts.length})
+    Tous ({alertsNoDay.length})
   </button>
   {#each days as day}
-    {@const count = alerts.filter(a => a.match_date === getDateStr(day.offset)).length}
+    {@const count = alertsNoDay.filter(a => a.match_date === getDateStr(day.offset)).length}
     <button class="alerts-filter-btn" class:active={selectedDay === day.offset} aria-pressed={selectedDay === day.offset} onclick={() => selectedDay = (selectedDay === day.offset ? null : day.offset)}>
       {day.label} ({count})
     </button>
