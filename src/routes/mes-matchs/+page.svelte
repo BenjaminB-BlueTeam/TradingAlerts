@@ -75,9 +75,19 @@
     };
   });
 
-  // ---- Trades helpers ----
+  // ---- Trades helpers (derived → réactivité garantie dans le snippet) ----
+  let tradesMap = $derived.by(() => {
+    const map = new Map();
+    for (const t of allTrades) {
+      const key = t.match_id + ':' + t.signal_type;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(t);
+    }
+    return map;
+  });
+
   function tradesFor(alert) {
-    return allTrades.filter(t => t.match_id === alert.match_id && t.signal_type === alert.signal_type);
+    return tradesMap.get(alert.match_id + ':' + alert.signal_type) ?? [];
   }
 
   function pnl(trade, alertStatus) {
@@ -341,7 +351,7 @@
 ============================================================ -->
 {#snippet alertCard(a)}
   {@const badge = statusBadge(a)}
-  {@const trades = tradesFor(a)}
+  {@const trades = tradesMap.get(a.match_id + ':' + a.signal_type) ?? []}
   {@const total = totalPnl(a)}
   {@const cardId = a.id}
   <div
