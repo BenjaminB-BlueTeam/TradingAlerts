@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { apiConnected, alertesActives, pauseSession, savePrefs, apiRequestsRemaining } from '$lib/stores/appStore.js';
   import { cacheClear } from '$lib/api/cache.js';
+  import { signOut } from '$lib/api/supabase.js';
 
   let sidebarOpen = $state(false);
   let refreshing = $state(false);
@@ -41,6 +42,12 @@
 
   function togglePause() {
     pauseSession.update(p => !p);
+  }
+
+  async function handleLogout() {
+    await signOut();
+    cacheClear();
+    goto('/login', { replaceState: true });
   }
 
   function isActive(href) {
@@ -150,6 +157,9 @@
     >
       {$pauseSession ? '▶ REPRENDRE SESSION' : '⏸ PAUSE SESSION'}
     </button>
+    <button class="btn btn--danger btn--sm btn--full logout-btn" onclick={handleLogout}>
+      Déconnexion
+    </button>
   </div>
 </nav>
 
@@ -236,5 +246,8 @@
   .sidebar__nav-item--sub {
     padding-left: 40px !important;
     font-size: 13px;
+  }
+  .logout-btn {
+    margin-top: 0.5rem;
   }
 </style>

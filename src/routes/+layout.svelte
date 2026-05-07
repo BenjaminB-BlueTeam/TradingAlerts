@@ -1,5 +1,6 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
+  import { goto } from '$app/navigation';
   import '../app.css';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import Toast from '$lib/components/Toast.svelte';
@@ -8,11 +9,13 @@
   import { loadSelections } from '$lib/stores/selectionStore.js';
   import { initApp } from '$lib/data.js';
   import { cacheEvict } from '$lib/api/cache.js';
+  import { supabase } from '$lib/api/supabase.js';
 
   let { children } = $props();
 
   let toasts = $state([]);
   let initialized = $state(false);
+  let authSub;
 
   // Expose showToast globalement pour les composants non-Svelte
   if (typeof window !== 'undefined') {
@@ -39,7 +42,20 @@
     ]);
 
     initialized = true;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+        const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+        const qs = (path && path !== '/' && path !== '/login')
+          ? `?redirect=${encodeURIComponent(path)}`
+          : '';
+        goto(`/login${qs}`, { replaceState: true });
+      }
+    });
+    authSub = subscription;
   });
+
+  onDestroy(() => authSub?.unsubscribe());
 
 </script>
 
