@@ -9,6 +9,7 @@
   let error = $state('');
 
   let seedLastDate = $state(null);
+  let seedLastTime = $state(null);
   let seedCount = $state(0);
   let seedLoading = $state(true);
   let seedError = $state('');
@@ -92,19 +93,32 @@
     seedLoading = true;
     seedError = '';
     const today = new Date().toISOString().split('T')[0];
-    const { count, data, error: dbError } = await supabase
-      .from('h2h_matches')
-      .select('match_date', { count: 'exact' })
-      .lte('match_date', today)
-      .order('match_date', { ascending: false })
-      .limit(1);
-    if (dbError) {
+    const [dateRes, timeRes] = await Promise.all([
+      supabase
+        .from('h2h_matches')
+        .select('match_date', { count: 'exact' })
+        .lte('match_date', today)
+        .order('match_date', { ascending: false })
+        .limit(1),
+      supabase
+        .from('h2h_matches')
+        .select('last_updated')
+        .order('last_updated', { ascending: false })
+        .limit(1)
+    ]);
+    if (dateRes.error) {
       seedError = 'Erreur seed';
       seedLoading = false;
       return;
     }
-    seedCount = count ?? 0;
-    seedLastDate = data && data.length > 0 ? data[0].match_date : null;
+    seedCount = dateRes.count ?? 0;
+    seedLastDate = dateRes.data && dateRes.data.length > 0 ? dateRes.data[0].match_date : null;
+    if (timeRes.data && timeRes.data.length > 0 && timeRes.data[0].last_updated) {
+      const d = new Date(timeRes.data[0].last_updated);
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      seedLastTime = `${hh}h${mm}`;
+    }
     seedLoading = false;
   }
 
@@ -147,150 +161,190 @@
   });
 </script>
 
-<div class="dashboard-header">
-  <div class="dashboard-header__left">
-    <h1 class="page-title" style="margin-bottom:0;">Dashboard</h1>
+<div class="dashboard-wrap">
+
+  <div class="dashboard-header">
+    <h1 class="page-title">Dashboard</h1>
     <div class="dashboard-header__date">{dateLabel}</div>
   </div>
-</div>
 
-<div class="metric-grid">
+  <div class="section-label">Santé infra</div>
+  <div class="metric-grid metric-grid--4">
 
-  <!-- API & Data health -->
-  <div class="metric-card" class:metric-card--ok={$apiConnected} class:metric-card--error={!$apiConnected}>
-    <div class="metric-card__label">API FootyStats</div>
-    <div class="metric-card__value" class:green={$apiConnected} class:red={!$apiConnected}>
-      {$apiConnected ? 'OK' : 'KO'}
+    <div class="metric-card" class:metric-card--ok={$apiConnected} class:metric-card--error={!$apiConnected}>
+      <div class="metric-card__label">API FootyStats</div>
+      <div class="metric-card__value" class:green={$apiConnected} class:red={!$apiConnected}>
+        {$apiConnected ? 'OK' : 'KO'}
+      </div>
+      <div class="metric-card__sub">{$apiConnected ? 'Connectée' : 'Déconnectée'}</div>
     </div>
-    <div class="metric-card__sub">{$apiConnected ? 'Connectée' : 'Déconnectée'}</div>
+
+    <div class="metric-card">
+      <div class="metric-card__label">Ligues FootyStats</div>
+      <div class="metric-card__value blue">{totalLeagues}</div>
+      <div class="metric-card__sub">retournées par l'API</div>
+    </div>
+
+    <div
+      class="metric-card"
+      class:metric-card--ok={seedColorClass === 'green'}
+      class:metric-card--warn={seedColorClass === 'orange'}
+      class:metric-card--error={seedColorClass === 'red'}
+    >
+      <div class="metric-card__label">Seed H2H</div>
+      {#if seedLoading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">chargement…</div>
+      {:else if seedError}
+        <div class="metric-card__value red">!</div>
+        <div class="metric-card__sub">{seedError}</div>
+      {:else}
+        <div
+          class="metric-card__value"
+          class:green={seedColorClass === 'green'}
+          class:orange={seedColorClass === 'orange'}
+          class:red={seedColorClass === 'red'}
+        >
+          {seedDateLabel}
+        </div>
+        <div class="metric-card__sub">
+          {seedCount.toLocaleString('fr-FR')} matchs{seedLastTime ? ` · ${seedLastTime}` : ''}
+        </div>
+      {/if}
+    </div>
+
+    <div
+      class="metric-card"
+      class:metric-card--ok={fhgCacheColorClass === 'green'}
+      class:metric-card--warn={fhgCacheColorClass === 'orange'}
+      class:metric-card--error={fhgCacheColorClass === 'red'}
+    >
+      <div class="metric-card__label">FHG Cache</div>
+      {#if fhgCacheLoading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">chargement…</div>
+      {:else}
+        <div
+          class="metric-card__value"
+          class:green={fhgCacheColorClass === 'green'}
+          class:orange={fhgCacheColorClass === 'orange'}
+          class:red={fhgCacheColorClass === 'red'}
+        >
+          {fhgCacheDateLabel}
+        </div>
+        <div class="metric-card__sub">{fhgCacheCount.toLocaleString('fr-FR')} équipes</div>
+      {/if}
+    </div>
+
   </div>
 
-  <div class="metric-card">
-    <div class="metric-card__label">Ligues FootyStats</div>
-    <div class="metric-card__value blue">{totalLeagues}</div>
-    <div class="metric-card__sub">retournées par l'API</div>
+  <div class="section-label">Alertes du jour</div>
+  <div class="metric-grid metric-grid--3">
+
+    <div class="metric-card">
+      <div class="metric-card__label">FHG Fort — aujourd'hui</div>
+      {#if loading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">&nbsp;</div>
+      {:else}
+        <div class="metric-card__value green">{fhgFortToday.length}</div>
+        <div class="metric-card__sub">{fhgAlerts.length} FHG total</div>
+      {/if}
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-card__label">LG2 Fort — aujourd'hui</div>
+      {#if loading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">&nbsp;</div>
+      {:else}
+        <div class="metric-card__value blue">{lg2FortToday.length}</div>
+        <div class="metric-card__sub">{lg2Alerts.length} LG2 total</div>
+      {/if}
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-card__label">Taux validées (7j)</div>
+      {#if taux7jLoading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">chargement…</div>
+      {:else if taux7j === null}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">aucune donnée</div>
+      {:else}
+        <div
+          class="metric-card__value"
+          class:green={taux7j >= 60}
+          class:orange={taux7j >= 40 && taux7j < 60}
+          class:red={taux7j < 40}
+        >
+          {taux7j}%
+        </div>
+        <div class="metric-card__sub">{validated7j}✓ / {lost7j}✗ matchs</div>
+      {/if}
+    </div>
+
   </div>
 
-  <div
-    class="metric-card"
-    class:metric-card--ok={seedColorClass === 'green'}
-    class:metric-card--warn={seedColorClass === 'orange'}
-    class:metric-card--error={seedColorClass === 'red'}
-  >
-    <div class="metric-card__label">Seed H2H</div>
-    {#if seedLoading}
-      <div class="metric-card__value muted">—</div>
-      <div class="metric-card__sub">chargement…</div>
-    {:else if seedError}
-      <div class="metric-card__value red">!</div>
-      <div class="metric-card__sub">{seedError}</div>
-    {:else}
-      <div
-        class="metric-card__value"
-        class:green={seedColorClass === 'green'}
-        class:orange={seedColorClass === 'orange'}
-        class:red={seedColorClass === 'red'}
-      >
-        {seedDateLabel}
-      </div>
-      <div class="metric-card__sub">{seedCount.toLocaleString('fr-FR')} matchs</div>
-    {/if}
-  </div>
-
-  <div
-    class="metric-card"
-    class:metric-card--ok={fhgCacheColorClass === 'green'}
-    class:metric-card--warn={fhgCacheColorClass === 'orange'}
-    class:metric-card--error={fhgCacheColorClass === 'red'}
-  >
-    <div class="metric-card__label">FHG Cache</div>
-    {#if fhgCacheLoading}
-      <div class="metric-card__value muted">—</div>
-      <div class="metric-card__sub">chargement…</div>
-    {:else}
-      <div
-        class="metric-card__value"
-        class:green={fhgCacheColorClass === 'green'}
-        class:orange={fhgCacheColorClass === 'orange'}
-        class:red={fhgCacheColorClass === 'red'}
-      >
-        {fhgCacheDateLabel}
-      </div>
-      <div class="metric-card__sub">{fhgCacheCount.toLocaleString('fr-FR')} équipes</div>
-    {/if}
-  </div>
-
-  <!-- Alertes today -->
-  <div class="metric-card">
-    <div class="metric-card__label">FHG Fort — aujourd'hui</div>
-    {#if loading}
-      <div class="metric-card__value muted">—</div>
-      <div class="metric-card__sub">&nbsp;</div>
-    {:else}
-      <div class="metric-card__value green">{fhgFortToday.length}</div>
-      <div class="metric-card__sub">{fhgAlerts.length} FHG total</div>
-    {/if}
-  </div>
-
-  <div class="metric-card">
-    <div class="metric-card__label">LG2 Fort — aujourd'hui</div>
-    {#if loading}
-      <div class="metric-card__value muted">—</div>
-      <div class="metric-card__sub">&nbsp;</div>
-    {:else}
-      <div class="metric-card__value blue">{lg2FortToday.length}</div>
-      <div class="metric-card__sub">{lg2Alerts.length} LG2 total</div>
-    {/if}
-  </div>
-
-  <div class="metric-card">
-    <div class="metric-card__label">Taux validées (7j)</div>
-    {#if taux7jLoading}
-      <div class="metric-card__value muted">—</div>
-      <div class="metric-card__sub">chargement…</div>
-    {:else if taux7j === null}
-      <div class="metric-card__value muted">—</div>
-      <div class="metric-card__sub">aucune donnée</div>
-    {:else}
-      <div
-        class="metric-card__value"
-        class:green={taux7j >= 60}
-        class:orange={taux7j >= 40 && taux7j < 60}
-        class:red={taux7j < 40}
-      >
-        {taux7j}%
-      </div>
-      <div class="metric-card__sub">{validated7j}✓ / {lost7j}✗ matchs</div>
-    {/if}
-  </div>
+  {#if error}
+    <p class="error-msg">{error}</p>
+  {/if}
 
 </div>
-
-{#if error}
-  <p class="error-msg">{error}</p>
-{/if}
 
 <style>
-  .dashboard-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .dashboard-wrap { max-width: 960px; margin: 0 auto; }
+
+  .dashboard-header { margin-bottom: 28px; }
   .dashboard-header__date { font-size: 13px; color: var(--color-text-muted); margin-top: 2px; text-transform: capitalize; }
 
-  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
-  .metric-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-card); padding: 16px; text-align: center; }
-  .metric-card__label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 4px; }
-  .metric-card__value { font-size: 28px; font-weight: 700; }
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+  }
+
+  .metric-grid { display: grid; gap: 12px; margin-bottom: 24px; }
+  .metric-grid--4 { grid-template-columns: repeat(4, 1fr); }
+  .metric-grid--3 { grid-template-columns: repeat(3, 1fr); }
+
+  .metric-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    padding: 20px 16px;
+    text-align: center;
+  }
+  .metric-card__label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+  }
+  .metric-card__value { font-size: 32px; font-weight: 700; line-height: 1; }
   .metric-card__value.green { color: var(--color-accent-green); }
   .metric-card__value.blue { color: var(--color-accent-blue); }
   .metric-card__value.orange { color: var(--color-signal-moyen); }
   .metric-card__value.red { color: var(--color-danger); }
   .metric-card__value.muted { color: var(--color-text-muted); }
-  .metric-card__sub { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; min-height: 16px; }
+  .metric-card__sub { font-size: 11px; color: var(--color-text-muted); margin-top: 6px; min-height: 16px; }
+
   .metric-card--ok { border-color: rgba(29,158,117,0.3); }
   .metric-card--warn { border-color: rgba(239,159,39,0.3); }
   .metric-card--error { border-color: rgba(226,75,74,0.3); }
 
   .error-msg { color: var(--color-danger); font-size: 13px; margin-top: 8px; }
 
-  @media (max-width: 768px) {
-    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 900px) {
+    .metric-grid--4 { grid-template-columns: repeat(2, 1fr); }
+    .metric-grid--3 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 500px) {
+    .metric-grid--4, .metric-grid--3 { grid-template-columns: 1fr; }
   }
 </style>
