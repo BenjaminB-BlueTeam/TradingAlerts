@@ -14,10 +14,15 @@
   let seedLoading = $state(true);
   let seedError = $state('');
 
-
   let validated7j = $state(0);
   let lost7j = $state(0);
   let taux7jLoading = $state(true);
+
+  // Santé crons
+  let lastGenerateTs = $state(null);   // MAX(created_at) de alerts
+  let lastCheckTs = $state(null);      // MAX(verified_at) de alerts validated/lost
+  let pendingOld = $state(null);       // count pending + match_date < J-2
+  let cronsLoading = $state(true);
 
   let fhgAlerts = $derived(
     alerts.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B'].includes(a.signal_type) && !a.user_excluded)
@@ -47,12 +52,41 @@
     return `${day}/${m}`;
   });
 
-
   let taux7j = $derived.by(() => {
     const total = validated7j + lost7j;
     if (total === 0) return null;
     return Math.round(validated7j / total * 100);
   });
+
+  // Helpers crons
+  function hoursAgo(isoTs) {
+    if (!isoTs) return null;
+    return (Date.now() - new Date(isoTs).getTime()) / 3600000;
+  }
+  function hoursLabel(isoTs) {
+    if (!isoTs) return '--';
+    const h = hoursAgo(isoTs);
+    if (h < 1) return `${Math.round(h * 60)}min`;
+    if (h < 24) return `${Math.floor(h)}h`;
+    const d = Math.floor(h / 24);
+    return `${d}j`;
+  }
+
+  let generateColorClass = $derived.by(() => {
+    const h = hoursAgo(lastGenerateTs);
+    if (h === null) return 'red';
+    if (h < 13) return 'green';
+    if (h < 25) return 'orange';
+    return 'red';
+  });
+  let checkColorClass = $derived.by(() => {
+    const h = hoursAgo(lastCheckTs);
+    if (h === null) return 'red';
+    if (h < 2) return 'green';
+    if (h < 4) return 'orange';
+    return 'red';
+  });
+  let pendingOldColorClass = $derived(pendingOld === 0 ? 'green' : pendingOld === null ? 'red' : 'red');
 
   let now = new Date();
   let dateLabel = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -106,7 +140,6 @@
     seedLoading = false;
   }
 
-
   async function loadTaux7j() {
     taux7jLoading = true;
     const d7 = new Date(); d7.setDate(d7.getDate() - 7);
@@ -122,10 +155,29 @@
     taux7jLoading = false;
   }
 
+  async function loadCronHealth() {
+    cronsLoading = true;
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 2);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+
+    const [genRes, checkRes, pendingRes] = await Promise.all([
+      supabase.from('alerts').select('created_at').order('created_at', { ascending: false }).limit(1),
+      supabase.from('alerts').select('verified_at').in('status', ['validated', 'lost']).order('verified_at', { ascending: false }).limit(1),
+      supabase.from('alerts').select('id', { count: 'exact', head: true }).eq('status', 'pending').lt('match_date', cutoffStr),
+    ]);
+
+    if (!genRes.error && genRes.data?.length > 0) lastGenerateTs = genRes.data[0].created_at;
+    if (!checkRes.error && checkRes.data?.length > 0) lastCheckTs = checkRes.data[0].verified_at;
+    if (!pendingRes.error) pendingOld = pendingRes.count ?? 0;
+
+    cronsLoading = false;
+  }
+
   onMount(() => {
     loadAlerts();
     loadSeedStatus();
     loadTaux7j();
+    loadCronHealth();
   });
 </script>
 
@@ -181,6 +233,77 @@
       {/if}
     </div>
 
+  </div>
+
+  <div class="section-label">Santé crons</div>
+  <div class="metric-grid metric-grid--3">
+
+    <div
+      class="metric-card"
+      class:metric-card--ok={generateColorClass === 'green'}
+      class:metric-card--warn={generateColorClass === 'orange'}
+      class:metric-card--error={generateColorClass === 'red'}
+    >
+      <div class="metric-card__label">Generate alerts</div>
+      {#if cronsLoading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">chargement…</div>
+      {:else}
+        <div
+          class="metric-card__value"
+          class:green={generateColorClass === 'green'}
+          class:orange={generateColorClass === 'orange'}
+          class:red={generateColorClass === 'red'}
+        >
+          {hoursLabel(lastGenerateTs)}
+        </div>
+        <div class="metric-card__sub">dernier run</div>
+      {/if}
+    </div>
+
+    <div
+      class="metric-card"
+      class:metric-card--ok={checkColorClass === 'green'}
+      class:metric-card--warn={checkColorClass === 'orange'}
+      class:metric-card--error={checkColorClass === 'red'}
+    >
+      <div class="metric-card__label">Check results</div>
+      {#if cronsLoading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">chargement…</div>
+      {:else}
+        <div
+          class="metric-card__value"
+          class:green={checkColorClass === 'green'}
+          class:orange={checkColorClass === 'orange'}
+          class:red={checkColorClass === 'red'}
+        >
+          {hoursLabel(lastCheckTs)}
+        </div>
+        <div class="metric-card__sub">dernier résultat vérifié</div>
+      {/if}
+    </div>
+
+    <div
+      class="metric-card"
+      class:metric-card--ok={pendingOldColorClass === 'green'}
+      class:metric-card--error={pendingOldColorClass === 'red'}
+    >
+      <div class="metric-card__label">Pending > 48h</div>
+      {#if cronsLoading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">chargement…</div>
+      {:else}
+        <div
+          class="metric-card__value"
+          class:green={pendingOldColorClass === 'green'}
+          class:red={pendingOldColorClass === 'red'}
+        >
+          {pendingOld ?? '!'}
+        </div>
+        <div class="metric-card__sub">{pendingOld === 0 ? 'OK' : 'alertes bloquées'}</div>
+      {/if}
+    </div>
 
   </div>
 
@@ -254,7 +377,6 @@
   }
 
   .metric-grid { display: grid; gap: 12px; margin-bottom: 24px; }
-  .metric-grid--4 { grid-template-columns: repeat(4, 1fr); }
   .metric-grid--3 { grid-template-columns: repeat(3, 1fr); }
 
   .metric-card {
@@ -289,10 +411,9 @@
   .error-msg { color: var(--color-danger); font-size: 13px; margin-top: 8px; }
 
   @media (max-width: 900px) {
-    .metric-grid--4 { grid-template-columns: repeat(2, 1fr); }
     .metric-grid--3 { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 500px) {
-    .metric-grid--4, .metric-grid--3 { grid-template-columns: 1fr; }
+    .metric-grid--3 { grid-template-columns: 1fr; }
   }
 </style>
