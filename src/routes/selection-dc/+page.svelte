@@ -61,14 +61,19 @@
       })
   );
 
+  // Clé normalisée : on trie les deux IDs pour que (A,B) et (B,A) partagent le même cache
+  function h2hKey(idA, idB) {
+    return idA < idB ? `${idA}_${idB}` : `${idB}_${idA}`;
+  }
+
   async function loadH2H(homeId, awayId) {
-    const key = `${homeId}_${awayId}`;
+    const key = h2hKey(homeId, awayId);
     if (h2hCache[key]) return h2hCache[key];
+    // On charge les matchs dans les deux sens (A à dom + B à dom)
     const { data } = await supabase
       .from('h2h_matches')
       .select('*')
-      .eq('home_team_id', homeId)
-      .eq('away_team_id', awayId)
+      .or(`and(home_team_id.eq.${homeId},away_team_id.eq.${awayId}),and(home_team_id.eq.${awayId},away_team_id.eq.${homeId})`)
       .order('match_date', { ascending: false })
       .limit(10);
     h2hCache[key] = data || [];
@@ -83,7 +88,7 @@
   }
 
   function getH2H(homeId, awayId) {
-    return h2hCache[`${homeId}_${awayId}`] || [];
+    return h2hCache[h2hKey(homeId, awayId)] || [];
   }
 
   function formatDateFull(dateStr) {
