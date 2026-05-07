@@ -22,15 +22,20 @@
     return leagueNames[compId] || m.competition_name || m.league_name || '\u2014';
   }
 
-  // Filtrage r\u00e9actif : exclure termin\u00e9s et en cours + filtre ligue
-  let filteredMatches = $derived(allMatches.filter(m => {
-    const status = (m.status || '').toLowerCase();
-    if (status === 'complete' || status === 'finished') return false;
-    if (m.date_unix && m.date_unix * 1000 < Date.now()) return false;
-    if (filtreLigue === 'toutes') return true;
-    const matchLeague = getLeagueName(m);
-    return matchLeague.includes(filtreLigue) || filtreLigue.includes(matchLeague);
-  }).sort((a, b) => (a.date_unix || 0) - (b.date_unix || 0)));
+  // Filtrage r\u00e9actif : exclure termin\u00e9s et en cours + filtre ligue + filtre \u00e9quipe
+  let filteredMatches = $derived(
+    allMatches
+      .filter(m => {
+        const status = (m.status || '').toLowerCase();
+        if (status === 'complete' || status === 'finished') return false;
+        if (m.date_unix && m.date_unix * 1000 < Date.now()) return false;
+        if (filtreLigue === 'toutes') return true;
+        const matchLeague = getLeagueName(m);
+        return matchLeague.includes(filtreLigue) || filtreLigue.includes(matchLeague);
+      })
+      .filter(m => !selectedTeam || m.homeID === selectedTeam.id || m.awayID === selectedTeam.id)
+      .sort((a, b) => (a.date_unix || 0) - (b.date_unix || 0))
+  );
 
   function formatDateUnix(unix) {
     if (!unix) return '';
@@ -165,6 +170,37 @@
     return fhgStatsCache[`${teamId}_${context}`];
   }
 
+  // Recherche équipe avec autocomplete
+  let teamSearch = $state('');
+  let selectedTeam = $state(null); // { id: number, name: string } | null
+  let searchFocused = $state(false);
+
+  let allTeams = $derived.by(() => {
+    const map = new Map();
+    for (const m of allMatches) {
+      if (m.homeID && m.home_name) map.set(m.homeID, { id: m.homeID, name: m.home_name });
+      if (m.awayID && m.away_name) map.set(m.awayID, { id: m.awayID, name: m.away_name });
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  });
+
+  let teamSuggestions = $derived(
+    teamSearch.length >= 2
+      ? allTeams.filter(t => t.name.toLowerCase().includes(teamSearch.toLowerCase())).slice(0, 8)
+      : []
+  );
+
+  function selectTeam(team) {
+    selectedTeam = team;
+    teamSearch = team.name;
+    searchFocused = false;
+  }
+
+  function clearTeam() {
+    selectedTeam = null;
+    teamSearch = '';
+  }
+
   let hoverBar = $state(null); // { key, pct, min }
 
   function onBarMove(e, key) {
@@ -203,6 +239,30 @@
       <option value={l.name}>{l.name}</option>
     {/each}
   </select>
+
+  <div class="team-search-wrapper">
+    <input
+      type="text"
+      class="filter-select team-search-input"
+      placeholder="Rechercher une équipe…"
+      bind:value={teamSearch}
+      onfocus={() => searchFocused = true}
+      onblur={() => setTimeout(() => { searchFocused = false; }, 150)}
+      onkeydown={(e) => { if (e.key === 'Escape') clearTeam(); }}
+    />
+    {#if selectedTeam}
+      <button class="team-search-clear" onclick={clearTeam} title="Effacer">✕</button>
+    {/if}
+    {#if searchFocused && teamSuggestions.length > 0}
+      <div class="team-suggestions">
+        {#each teamSuggestions as t}
+          <button class="team-suggestion-item" onmousedown={() => selectTeam(t)}>
+            {t.name}
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </div>
 
   {#if loading}
     <span style="font-size:12px;color:var(--color-text-muted);">⏳ Chargement...</span>
@@ -374,5 +434,60 @@
   }
   @media (max-width: 768px) {
     .match-card__header { flex-wrap: wrap; }
+  }
+
+  /* Recherche équipe */
+  .team-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .team-search-input {
+    min-width: 200px;
+  }
+
+  .team-search-clear {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .team-search-clear:hover {
+    color: var(--color-danger);
+  }
+
+  .team-suggestions {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 100%;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-modal, 0 8px 24px rgba(0,0,0,0.4));
+    z-index: 100;
+    overflow: hidden;
+  }
+
+  .team-suggestion-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .team-suggestion-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--color-accent-blue);
   }
 </style>
