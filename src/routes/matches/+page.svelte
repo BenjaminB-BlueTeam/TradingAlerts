@@ -155,18 +155,12 @@
   });
 
   function teamMatchOpponent(match, teamId) {
-    // h2h_matches Supabase : home_id / away_id, home_team_name / away_team_name, home_goals / away_goals
-    const isHome = match.home_id === teamId || match.homeID === teamId;
-    const opponentName = isHome
-      ? (match.away_team_name || match.away_name || match.awayTeam || '—')
-      : (match.home_team_name || match.home_name || match.homeTeam || '—');
-    let score = '—';
-    if (match.home_goals !== undefined && match.away_goals !== undefined) {
-      score = isHome ? `${match.home_goals}-${match.away_goals}` : `${match.away_goals}-${match.home_goals}`;
-    } else if (match.homeGoalCount !== undefined) {
-      score = isHome ? `${match.homeGoalCount}-${match.awayGoalCount}` : `${match.awayGoalCount}-${match.homeGoalCount}`;
-    }
-    return { isHome, opponent: opponentName, score };
+    const isHome = match.home_team_id === teamId;
+    const opponent = isHome ? (match.away_team_name || '—') : (match.home_team_name || '—');
+    const score = (match.home_goals !== undefined && match.away_goals !== undefined)
+      ? (isHome ? `${match.home_goals}-${match.away_goals}` : `${match.away_goals}-${match.home_goals}`)
+      : '—';
+    return { isHome, opponent, score };
   }
 
   function hasGoal3145(match, isHome) {
@@ -314,9 +308,9 @@
         {#each teamMatches as m (m.id ?? m.match_id)}
           {@const info = teamMatchOpponent(m, selectedTeam.id)}
           {@const goal = hasGoal3145(m, info.isHome)}
-          {@const dateStr = m.date_unix
-            ? new Date(m.date_unix * 1000).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
-            : (m.match_date ?? '—')}
+          {@const dateStr = m.match_date
+            ? m.match_date.slice(8, 10) + '/' + m.match_date.slice(5, 7)
+            : '—'}
           <div class="team-panel__row" class:team-panel__row--goal={goal}>
             <span class="team-panel__date">{dateStr}</span>
             <span class="team-panel__opponent">{info.opponent || '—'}</span>
