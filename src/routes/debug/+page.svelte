@@ -4,6 +4,7 @@
   import { testSupabaseConnection, getTableCounts } from '$lib/api/supabase.js';
   import { cacheStats, cacheClear } from '$lib/api/cache.js';
   import { startFullSeed, seedLeague } from '$lib/api/seedClient.js';
+  import { callFunction } from '$lib/api/functions.js';
 
   // --- API Test ---
   let apiResult = $state(null);
@@ -143,7 +144,7 @@
       const url = type === 'ALL'
         ? '/.netlify/functions/generate-alerts'
         : `/.netlify/functions/generate-alerts?type=${type}`;
-      const res = await fetch(url);
+      const res = await callFunction(url);
       genResult = await res.json();
     } catch (e) {
       genResult = { error: e.message };
@@ -186,8 +187,7 @@
       const date = dates[i];
       backfillProgress = `${i + 1}/${dates.length} — ${date}`;
       try {
-        const headers = seedToken ? { 'Authorization': `Bearer ${seedToken}` } : {};
-        const res = await fetch(`/.netlify/functions/daily-seed?from=${date}&to=${date}`, { headers });
+        const res = await callFunction(`/.netlify/functions/daily-seed?from=${date}&to=${date}`);
         const data = await res.json();
         results.fetched += data.fetched || 0;
         results.completed += data.completed || 0;
@@ -284,7 +284,7 @@
     fhgCacheRunning = true;
     fhgCacheResult = null;
     try {
-      const res = await fetch('/.netlify/functions/compute-team-fhg');
+      const res = await callFunction('/.netlify/functions/compute-team-fhg');
       fhgCacheResult = await res.json();
     } catch (e) {
       fhgCacheResult = { error: e.message };

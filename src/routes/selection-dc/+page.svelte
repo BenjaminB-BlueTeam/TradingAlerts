@@ -3,6 +3,7 @@
   import { supabase } from '$lib/api/supabase.js';
   import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay, defeatColor, fhgColor } from '$lib/utils/formatters.js';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
+  import { callFunction } from '$lib/api/functions.js';
 
   let alerts = $state([]);
   let loading = $state(true);
@@ -118,7 +119,7 @@
     deleting = true;
     deleteMessage = '';
     try {
-      const res = await fetch('/.netlify/functions/delete-alerts', {
+      const res = await callFunction('/.netlify/functions/delete-alerts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids }),
@@ -140,7 +141,7 @@
     generating = true;
     genMessage = '';
     try {
-      const res = await fetch('/.netlify/functions/generate-alerts?type=DC');
+      const res = await callFunction('/.netlify/functions/generate-alerts?type=DC');
       const data = await res.json();
       if (data.error) {
         genMessage = `Erreur : ${data.error}`;

@@ -7,6 +7,7 @@
   import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
   import { selectedKeys, isSelected, unselect } from '$lib/stores/selectionStore.js';
+  import { callFunction } from '$lib/api/functions.js';
 
   let alerts = $state([]);
   let loading = $state(true);
@@ -35,7 +36,7 @@
     deleting = true;
     deleteMessage = '';
     try {
-      const res = await fetch('/.netlify/functions/delete-alerts', {
+      const res = await callFunction('/.netlify/functions/delete-alerts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids }),
@@ -93,7 +94,7 @@
     generating = true;
     genMessage = '';
     try {
-      const res = await fetch('/.netlify/functions/generate-alerts?type=FHG');
+      const res = await callFunction('/.netlify/functions/generate-alerts?type=FHG');
       const data = await res.json();
       if (data.error) {
         genMessage = `Erreur : ${data.error}`;
