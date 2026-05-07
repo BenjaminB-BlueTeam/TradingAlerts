@@ -60,7 +60,7 @@ export function analyzeLG2(homeMatches, awayMatches) {
     return {
       isAlert: true,
       signalType: 'LG2_A+B',
-      confidence: 'fort_double',
+      confidence: 'fort',
       factors,
     };
   }

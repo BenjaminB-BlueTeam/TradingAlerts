@@ -105,12 +105,12 @@ describe('analyzeLG2 (ESM)', () => {
     expect(r.confidence).toBe('moyen');
   });
 
-  it('LG2_A+B fort_double', () => {
+  it('LG2_A+B fort', () => {
     const home = [m([{ min: 85 }]), m([{ min: 88 }]), m([{ min: 82 }])];
     const away = [m([{ min: 85 }]), m([{ min: 88 }]), m([{ min: 82 }])];
     const r = analyzeLG2(home, away);
     expect(r.signalType).toBe('LG2_A+B');
-    expect(r.confidence).toBe('fort_double');
+    expect(r.confidence).toBe('fort');
   });
 
   it('pas d\'alerte si streak < 3 des deux côtés', () => {

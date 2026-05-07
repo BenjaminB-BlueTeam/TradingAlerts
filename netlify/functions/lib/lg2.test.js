@@ -172,17 +172,17 @@ describe('analyzeLG2', () => {
     const away = [m([{ min: 85 }]), m([{ min: 88 }]), m([{ min: 82 }])];
     const r = analyzeLG2(home, away);
     expect(r.signalType).toBe('LG2_A+B');
-    expect(r.confidence).toBe('fort_double');
+    expect(r.confidence).toBe('fort');
     expect(r.factors.streakHome).toBe(3);
     expect(r.factors.streakAway).toBe(3);
   });
 
-  it('LG2_A+B fort_double quelles que soient les longueurs de streak', () => {
+  it('LG2_A+B fort quelles que soient les longueurs de streak', () => {
     const home = Array(5).fill(null).map(() => m([{ min: 85 }]));
     const away = [m([{ min: 85 }]), m([{ min: 88 }]), m([{ min: 82 }])];
     const r = analyzeLG2(home, away);
     expect(r.signalType).toBe('LG2_A+B');
-    expect(r.confidence).toBe('fort_double');
+    expect(r.confidence).toBe('fort');
   });
 
   it('pas d\'alerte si les deux côtés < 3', () => {

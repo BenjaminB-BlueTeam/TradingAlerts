@@ -14,10 +14,9 @@
   ];
 
   const CONFIDENCES = [
-    { key: 'tous',        label: 'Toutes'     },
-    { key: 'fort_double', label: 'fort_double' },
-    { key: 'fort',        label: 'fort'       },
-    { key: 'moyen',       label: 'moyen'      },
+    { key: 'tous',  label: 'Toutes' },
+    { key: 'fort',  label: 'fort'   },
+    { key: 'moyen', label: 'moyen'  },
   ];
 
   const STATUSES = [

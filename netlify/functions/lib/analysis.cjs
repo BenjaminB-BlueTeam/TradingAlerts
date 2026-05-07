@@ -211,7 +211,7 @@ function analyzeStreakAlert(teamMatches, teamId, opponentMatches, opponentId, h2
     return {
       isAlert: true,
       signalType: 'FHG_A+B',
-      confidence: 'fort_double',
+      confidence: 'fort',
       factors: { scenarioA: a, scenarioB: b },
     };
   }

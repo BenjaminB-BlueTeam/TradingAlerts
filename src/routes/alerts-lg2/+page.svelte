@@ -135,7 +135,7 @@
   let selectedConfs = $state(new Set());
   let selectedExclusion = $state('actives');
   let availableLeagues = $derived([...new Set(alerts.map(a => a.league_name).filter(Boolean))].sort());
-  const CONF_ORDER = { fort_double: 0, fort: 1, moyen: 2 };
+  const CONF_ORDER = { fort: 0, moyen: 1 };
 
   function matchesConfidence(alert) {
     if (selectedConfs.size === 0) return true;
@@ -194,7 +194,7 @@
   }
 
   function confidenceClass(c) {
-    return c === 'fort' || c === 'fort_double' ? 'alert-badge--fort' : 'alert-badge--moyen';
+    return c === 'fort' ? 'alert-badge--fort' : 'alert-badge--moyen';
   }
 
   let hoverBar = $state(null);
@@ -272,7 +272,6 @@
     <span class="sub-filter-label">Confiance</span>
     <div class="conf-btns">
       <button class="alerts-filter-btn" class:active={selectedConfs.size === 0} onclick={() => selectedConfs = new Set()}>Tout</button>
-      <button class="alerts-filter-btn" class:active={selectedConfs.has('fort_double')} onclick={() => toggleConf('fort_double')}>Fort double</button>
       <button class="alerts-filter-btn" class:active={selectedConfs.has('fort')} onclick={() => toggleConf('fort')}>Fort</button>
       <button class="alerts-filter-btn" class:active={selectedConfs.has('moyen')} onclick={() => toggleConf('moyen')}>Moyen</button>
     </div>

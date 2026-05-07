@@ -3,7 +3,7 @@
  *
  * Analyse les alertes terminées (algo v2) et produit :
  *   1. Tableau par signal_type (FHG_DOM, FHG_EXT)
- *   2. Tableau par confiance (fort_double, fort, moyen)
+ *   2. Tableau par confiance (fort, fort, moyen)
  *   3. Cross-tab signal_type × confiance
  *   4. Recommandations sur les seuils de streak
  *
@@ -144,7 +144,7 @@ async function main() {
   // ── 2. Par confiance ────────────────────────────────────────
   header(`Par confiance  (v2 FHG, n=${fhgAll.length})`);
 
-  const confLevels = ['fort_double', 'fort', 'moyen'];
+  const confLevels = ['fort', 'fort', 'moyen'];
   const confStats = {};
   for (const conf of confLevels) {
     confStats[conf] = stats(fhgAll.filter(a => a.confidence === conf));
@@ -155,7 +155,7 @@ async function main() {
   console.log(`\n${'='.repeat(60)}`);
   console.log(`  Cross-tab signal_type × confiance`);
   console.log(`${'='.repeat(60)}`);
-  console.log(`  ${''.padEnd(12)} ${'fort_double'.padStart(13)} ${'fort'.padStart(13)} ${'moyen'.padStart(13)}`);
+  console.log(`  ${''.padEnd(12)} ${'fort'.padStart(13)} ${'fort'.padStart(13)} ${'moyen'.padStart(13)}`);
   console.log(`  ${'-'.repeat(54)}`);
 
   for (const sig of ['FHG_DOM', 'FHG_EXT']) {
@@ -173,7 +173,7 @@ async function main() {
   console.log(`  Recommandations (seuils actuels: FORT=${STREAK_FORT}, MOYEN=${STREAK_MOYEN}, CONFIRM=${Math.round(CONFIRM_MIN_RATE * 100)}%)`);
   console.log(`${'='.repeat(60)}\n`);
 
-  recommend(confStats['fort_double'], 'fort_double');
+  recommend(confStats['fort'], 'fort');
   recommend(confStats['fort'],        'fort        ');
   recommend(confStats['moyen'],       'moyen       ');
 
@@ -193,14 +193,14 @@ async function main() {
     }
   }
 
-  // fort_double vs standalone
-  const sDouble     = stats(fhgAll.filter(a => a.confidence === 'fort_double'));
-  const sStandalone = stats(fhgAll.filter(a => a.confidence !== 'fort_double'));
+  // fort vs standalone
+  const sDouble     = stats(fhgAll.filter(a => a.confidence === 'fort'));
+  const sStandalone = stats(fhgAll.filter(a => a.confidence !== 'fort'));
   if (sDouble && sDouble.n >= 5 && sStandalone && sStandalone.n >= 5) {
     const diff = sDouble.pct - sStandalone.pct;
-    console.log(`  ${diff >= 5 ? '✓' : '~'} fort_double : ${sDouble.pct}% vs autres : ${sStandalone.pct}% (écart ${diff > 0 ? '+' : ''}${diff}%)`);
+    console.log(`  ${diff >= 5 ? '✓' : '~'} fort : ${sDouble.pct}% vs autres : ${sStandalone.pct}% (écart ${diff > 0 ? '+' : ''}${diff}%)`);
     if (diff < 0) {
-      console.log(`    → fort_double est moins performant. Vérifier les critères A+B.`);
+      console.log(`    → fort est moins performant. Vérifier les critères A+B.`);
     }
   }
 

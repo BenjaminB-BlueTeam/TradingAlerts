@@ -203,7 +203,7 @@ export function analyserStreakFHG(teamMatches, teamId, opponentMatches, opponent
     return {
       isAlert: true,
       signalType: 'FHG_A+B',
-      confidence: 'fort_double',
+      confidence: 'fort',
       factors: { scenarioA: a, scenarioB: b },
     };
   }

@@ -20,7 +20,7 @@ Refondre la page `/historique` pour passer d'une vue liste + KPIs à un **dashbo
 │ FiltersBar (sticky top)                                  │
 │  - Date range picker + presets 7j/30j/90j/1an/Tout       │
 │  - Stratégie : Tous / FHG / LG2                          │
-│  - Confidence : Tous / fort / moyen / fort_double        │
+│  - Confidence : Tous / fort / moyen / fort        │
 │  - Équipe : dropdown search                              │
 │  - Ligue  : dropdown search                              │
 │  - Statut : Tous / Terminées / Validés / Perdus / En cours│
@@ -48,7 +48,7 @@ let filters = $state({
   dateFrom: null,        // ISO YYYY-MM-DD ou null
   dateTo: null,
   strategy: 'tous',      // tous | fhg | lg2
-  confidence: 'tous',    // tous | fort | moyen | fort_double
+  confidence: 'tous',    // tous | fort | moyen | fort
   team: null,            // team_id
   league: null,          // league_name
   status: 'terminees',   // tous | terminees | validated | lost | encours

@@ -90,11 +90,11 @@ Un signal est émis si :
 |----------|-------------|------------|
 | A seul (quelle que soit la confidence) | `FHG_A` | `'moyen'` ou `'fort'` |
 | B seul | `FHG_B` | `'moyen'` ou `'fort'` |
-| A et B tous les deux ≥ moyen | `FHG_A+B` | `'fort_double'` |
+| A et B tous les deux ≥ moyen | `FHG_A+B` | `'fort'` |
 
 ### Hiérarchie des confidences (tri/filtres)
 
-`fort_double` > `fort` > `moyen` > (null = pas d'alerte)
+`fort` > `moyen` > (null = pas d'alerte)
 
 ---
 
@@ -104,7 +104,7 @@ Un signal est émis si :
 |--------|-------------|
 | `FHG_A` | Scénario offensif uniquement |
 | `FHG_B` | Scénario défensif uniquement |
-| `FHG_A+B` | Les deux scénarios actifs → fort_double |
+| `FHG_A+B` | Les deux scénarios actifs → fort |
 
 L'ancien `signal_type = 'FHG'` n'est plus émis. Il subsiste uniquement dans `alerts_v1_backup`.
 

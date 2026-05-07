@@ -195,8 +195,8 @@ exports.handler = async (event) => {
             });
           }
 
-          // Hiérarchie de confidence : fort_double > fort > moyen
-          const priority = { fort_double: 3, fort: 2, moyen: 1 };
+          // Hiérarchie de confidence : fort > moyen
+          const priority = { fort: 2, moyen: 1 };
           const scoreHome = fhgHome?.isAlert ? (priority[fhgHome.confidence] || 0) : 0;
           const scoreAway = fhgAway?.isAlert ? (priority[fhgAway.confidence] || 0) : 0;
           if (scoreHome === 0 && scoreAway === 0) {
@@ -236,7 +236,7 @@ exports.handler = async (event) => {
             match_id: m.id,
             signal_type: bestFHG.signalType,         // FHG_A | FHG_B | FHG_A+B
             fhg_pct: null,                           // obsolete avec streak v2
-            fhg_confidence: bestFHG.confidence,      // moyen | fort | fort_double
+            fhg_confidence: bestFHG.confidence,      // moyen | fort
             fhg_factors: {                           // jsonb avec streak, rates, samples + team
               ...bestFHG.factors,
               team: bestFHG.team,
@@ -255,7 +255,7 @@ exports.handler = async (event) => {
             fhg_pct: null,
             fhg_confidence: null,
             fhg_factors: lg2.factors,             // { streakHome, streakAway }
-            confidence: lg2.confidence,            // moyen | fort | fort_double
+            confidence: lg2.confidence,            // moyen | fort
             algo_version: 'lg2_v1',
           });
         }

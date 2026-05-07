@@ -21,7 +21,7 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 
 ### Alertes autonomes
 - Generation automatique toutes les 12h (`generate-alerts.js`) pour J, J+1, J+2
-- Tags **FHG_A**, **FHG_B**, **FHG_A+B** avec confiance fort/moyen/fort_double
+- Tags **FHG_A**, **FHG_B**, **FHG_A+B** avec confiance fort/moyen
 - Tags **LG2_A**, **LG2_B**, **LG2_A+B** (but >= 80 min)
 - Verification auto des resultats toutes les heures (`check-results.js`)
 - Validation FHG : buts dans la fenetre 31-45 min (goal_events)
@@ -54,7 +54,7 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 ### Mes matchs (`/mes-matchs`)
 - Alertes selectionnees manuellement dans FHG et LG2
 - Sections : A venir / Aujourd'hui / Passes
-- Tri par date et confiance (fort_double > fort > moyen)
+- Tri par date et confiance (fort > moyen)
 
 ### Historique (`/historique`)
 - FiltersBar multi-criteres : periode, strategie FHG/LG2, confiance, equipe, ligue, statut
@@ -92,7 +92,7 @@ Analyse de **recurrence comportementale par equipe** dans son contexte (domicile
 |--------|-------------|-----------|
 | `FHG_A` | Scenario A seul (streak >= 3) | `fort` |
 | `FHG_B` | Scenario B seul (count 3/5) | `moyen` |
-| `FHG_A+B` | A et B simultanes | `fort_double` |
+| `FHG_A+B` | A et B simultanes | `fort` |
 
 **Veto H2H** : >= 3 H2H sans but 1MT de l'equipe → exclusion totale.
 
@@ -104,7 +104,7 @@ Streak consecutif de matchs avec au moins un but apres la 80e minute, par equipe
 |--------|-------------|-----------|
 | `LG2_A` | Streak dom >= 3 | `moyen` (3) / `fort` (4+) |
 | `LG2_B` | Streak ext >= 3 | `moyen` (3) / `fort` (4+) |
-| `LG2_A+B` | A et B simultanes | `fort_double` |
+| `LG2_A+B` | A et B simultanes | `fort` |
 
 ---
 

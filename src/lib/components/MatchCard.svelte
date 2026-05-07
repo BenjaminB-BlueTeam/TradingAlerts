@@ -21,7 +21,7 @@
   let streakB    = $derived(sc.signalType === 'FHG_A+B' ? sc.factors?.scenarioB : (sc.signalType === 'FHG_B' ? sc.factors : null));
   let streakPrincipal = $derived(streakA?.streakScored ?? streakB?.streakConceded ?? 0);
   let confirmRate = $derived(streakA?.oppConcedesRate ?? streakB?.teamScoresRate ?? 0);
-  let scoreClass = $derived(sc.confidence === 'fort_double' ? 'green' : sc.confidence === 'fort' ? 'green' : sc.confidence === 'moyen' ? 'orange' : 'grey');
+  let scoreClass = $derived(sc.confidence === 'fort' ? 'green' : sc.confidence === 'moyen' ? 'orange' : 'grey');
   let fhgColor   = $derived(streakPrincipal >= 3 ? 'green' : streakPrincipal >= 2 ? 'orange' : 'grey');
   let advColor   = $derived(confirmRate >= 60 ? 'green' : confirmRate >= 40 ? 'orange' : 'grey');
   let windowActive = $derived(isWindowActive(m.time));

@@ -132,7 +132,6 @@
     return 'badge--fhg';
   }
   function confBadgeClass(c) {
-    if (c === 'fort_double') return 'badge--fort-double';
     if (c === 'fort') return 'badge--fort';
     return 'badge--moyen';
   }

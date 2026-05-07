@@ -417,7 +417,7 @@ describe('analyzeStreakAlert', () => {
     expect(r.signalType).toBe('FHG_B');
   });
 
-  it('A+B actifs → FHG_A+B avec fort_double', () => {
+  it('A+B actifs → FHG_A+B avec fort', () => {
     // A : teamMatches avec streak 31-45 de 100
     const teamMatches = homeMatches31to45(4); // goal(35,true) → streak 31-45 home ✓
     // B : oppMatches où 200 encaisse 31-45 → goal(35,true) dans match home=100 → 200 encaisse
@@ -427,7 +427,7 @@ describe('analyzeStreakAlert', () => {
     const r = analyzeStreakAlert(teamMatches, 100, oppMatches, 200, []);
     expect(r.isAlert).toBe(true);
     expect(r.signalType).toBe('FHG_A+B');
-    expect(r.confidence).toBe('fort_double');
+    expect(r.confidence).toBe('fort');
     expect(r.factors).toHaveProperty('scenarioA');
     expect(r.factors).toHaveProperty('scenarioB');
   });

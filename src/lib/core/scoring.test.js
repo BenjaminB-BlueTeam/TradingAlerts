@@ -345,7 +345,7 @@ describe('analyserStreakFHG (ESM)', () => {
     expect(r.signalType).toBe('FHG_A');
   });
 
-  it('A+B actifs → FHG_A+B avec fort_double', () => {
+  it('A+B actifs → FHG_A+B avec fort', () => {
     const teamMatches = homeMatches31to45(4);
     const oppMatches = Array(4).fill(null).map(() => makeMatch({ goalEvents: [goal(35, true)] }));
     const r = analyserStreakFHG(teamMatches, 100, oppMatches, 200, []);
@@ -353,7 +353,7 @@ describe('analyserStreakFHG (ESM)', () => {
     // B : countConceded=4 (200 encaisse en 31-45 dans oppMatches) ✓, confirmation (100 marque en 1MT) = teamMatches goal(35,true) -> 4/4 ✓
     expect(r.isAlert).toBe(true);
     expect(r.signalType).toBe('FHG_A+B');
-    expect(r.confidence).toBe('fort_double');
+    expect(r.confidence).toBe('fort');
   });
 
   it('rien d\'actif → isAlert false', () => {

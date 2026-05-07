@@ -67,7 +67,7 @@ Remplace l'ancien score composite 0-100 depuis la session 2026-04-23.
 |---------|-----------|
 | Streak A >= 3 consecutifs + confirmation | `fort` |
 | Count B >= 3/5 + confirmation | `moyen` |
-| A+B simultanement | `fort_double` |
+| A+B simultanement | `fort` |
 
 > Streak A == 2 consecutifs → null (seuil minimum = 3).
 
@@ -98,7 +98,7 @@ But >= 80 min (temps additionnels inclus, peu importe qui marque). Streak consec
 |--------|-----------|
 | 3 consecutifs | `moyen` |
 | >= 4 consecutifs | `fort` |
-| A+B | `fort_double` |
+| A+B | `fort` |
 
 ### Constantes (lg2.cjs + lg2.js)
 ```
@@ -162,7 +162,7 @@ Bouton SelectAlertButton sur /alerts et /alerts-lg2.
 
 `scripts/calibrate-threshold.js` — a lancer manuellement avec les vars Supabase :
 - Tableau par signal_type (FHG_A, FHG_B, FHG_A+B)
-- Tableau par confiance (fort_double, fort, moyen)
+- Tableau par confiance (fort, fort, moyen)
 - Cross-tab signal_type x confiance
 - Wilson CI 95% + recommandations automatiques
 

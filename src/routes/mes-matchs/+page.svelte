@@ -17,7 +17,7 @@
 
   let today = $derived(getDateStr(0));
 
-  const CONF_ORDER = { fort_double: 0, fort: 1, moyen: 2 };
+  const CONF_ORDER = { fort: 0, moyen: 1 };
 
   let sections = $derived.by(() => {
     const coming = [];
@@ -83,7 +83,7 @@
   }
 
   function confidenceClass(c) {
-    return (c === 'fort' || c === 'fort_double') ? 'alert-badge--fort' : 'alert-badge--moyen';
+    return c === 'fort' ? 'alert-badge--fort' : 'alert-badge--moyen';
   }
 
   onMount(() => {

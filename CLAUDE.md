@@ -187,7 +187,7 @@ Spec complète : `SPEC_STREAK_V2.md` à la racine du projet.
 |---------|----------|-----------|
 | Streak A >= 3 consécutifs (`STREAK_FORT`) + confirmation | A | `fort` |
 | Count B >= 3/5 (non-consécutif) + confirmation | B | `moyen` |
-| A et B actifs simultanément | A+B | `fort_double` |
+| A et B actifs simultanément | A+B | `fort` |
 
 > Scénario A : streak 2 consécutifs → null (seuil minimum = 3). `STREAK_MOYEN` exporté mais non utilisé dans l'algo actuel.
 
@@ -216,14 +216,14 @@ Pour chaque équipe, on compte un **streak consécutif** de matchs (côté dom o
 
 - **Signal A** : streak équipe DOM >= 3 (sur ses matchs à domicile récents)
 - **Signal B** : streak équipe EXT >= 3 (sur ses matchs à l'extérieur récents)
-- **Signal A+B** : les deux simultanés → `fort_double`
+- **Signal A+B** : les deux simultanés → `fort`
 
 ### Confiance
 | Critère | Confidence |
 |---------|-----------|
 | Streak = 3 consécutifs | `moyen` |
 | Streak >= 4 consécutifs | `fort` |
-| A+B simultanés | `fort_double` |
+| A+B simultanés | `fort` |
 
 ### Constantes partagées (lg2.cjs + lg2.js)
 ```
@@ -246,16 +246,16 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 
 ## Ce qui est implémenté
 
-- **Algo FHG streak v2** (2026-04-23) — `analysis.cjs` + `scoring.js` : Scénario A (streak consécutif >=3 → fort), Scénario B (count 3/5 non-consécutif → moyen), FHG_A+B → fort_double, veto H2H 1MT. Spec : `SPEC_STREAK_V2.md`
-- **Algo LG2 streak** (2026-04-23) — `lg2.cjs` + `lg2.js` : streak consécutif de matchs avec but >= 80' par équipe (dom ou ext). LG2_A (home), LG2_B (away), LG2_A+B. Confidence = moyen (3) / fort (4+) / fort_double (A+B). Spec : `docs/superpowers/specs/2026-04-23-lg2-design.md`
+- **Algo FHG streak v2** (2026-04-23) — `analysis.cjs` + `scoring.js` : Scénario A (streak consécutif >=3 → fort), Scénario B (count 3/5 non-consécutif → moyen), FHG_A+B → fort, veto H2H 1MT. Spec : `SPEC_STREAK_V2.md`
+- **Algo LG2 streak** (2026-04-23) — `lg2.cjs` + `lg2.js` : streak consécutif de matchs avec but >= 80' par équipe (dom ou ext). LG2_A (home), LG2_B (away), LG2_A+B. Confidence = moyen (3) / fort (4+). Spec : `docs/superpowers/specs/2026-04-23-lg2-design.md`
 - **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) : génère FHG_A/B/A+B + LG2_A/B/A+B, algo_version='v2' (FHG) ou 'lg2_v1' (LG2), table Supabase `alerts`
 - **Vérification auto résultats** — `check-results.js` (cron 1h) : FHG sur buts 31-45 min, LG2 sur buts >= 80 min via goal_events, statut -> validated/lost/expired (cleanup 48h)
 - **Daily seed auto** — `daily-seed.js` (cron 6h UTC) : seed matchs d'hier dans `h2h_matches`
 - **Calcul FHG% équipes** — `compute-team-fhg.js` (cron 7h UTC) : FHG% 0-45 par (season_id, team_id) depuis `h2h_matches`, upsert dans `team_fhg_cache`
 - **Exclusion manuelle** — bouton rouge "Exclure" (btn--danger) sur dashboard/alertes, ExcludeAlertModal (7 tags + note), réintégration possible, what-if stats dans /historique (Wilson CI 95% par tag)
-- **Dashboard** (`/`) — 7 KPIs en 2 sections : "Santé infra" (API FootyStats, Ligues, Seed H2H avec heure dernier seed, FHG Cache) + "Alertes du jour" (FHG Fort, LG2 Fort, Taux validées 7j). Layout centré max-width 960px. Seed date filtrée <= today (bug fix matchs futurs).
-- **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B, tri fort→moyen→date, filtres jour (boutons) + ligue (dropdown) + confiance (dropdown Tout/Fort/Moyen). Badges Fort/Moyen uniquement (plus de badge signal_type FHG_A etc.). league_name renseignée via leagueMap (league-list). Expand détaillé, barres timing buts, Validé/Perdu/EN COURS, bouton Exclure.
-- **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B, tri fort_double→fort→moyen→date, filtres jour + ligue + confiance (dropdowns). Badges Fort/Moyen uniquement. Expand par équipe, barres timing buts, pills Dom/Ext streak, bouton Exclure.
+- **Dashboard** (`/`) — 9 KPIs en 3 sections : "Santé infra" (API FootyStats, Ligues, Seed H2H) + "Santé crons" (Generate Alerts last run, Check Results last run, Pending > 48h) + "Alertes du jour" (FHG Fort, LG2 Fort, Taux validées 7j). Layout centré max-width 960px.
+- **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B, tri fort→moyen→date, filtres jour (boutons) + ligue (dropdown) + confiance (boutons toggle multi-sélection : Tout/Fort/Moyen). Badges Fort/Moyen. league_name renseignée via leagueMap (league-list). Expand détaillé, barres timing buts, Validé/Perdu/EN COURS, bouton Exclure.
+- **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B, tri fort→moyen→date, filtres jour + ligue + confiance (boutons toggle multi-sélection). Badges Fort/Moyen. Expand par équipe, barres timing buts, pills Dom/Ext streak, bouton Exclure.
 - **Historique** (`/historique`) — dashboard analytique refondu (2026-04-23) : FiltersBar multi-critères (période + presets + stratégie FHG/LG2 + confidence + équipe + ligue + statut, AND strict), grille 2x2 de graphiques Chart.js (évolution hybride, stacked par stratégie, top 10 équipes, top 10 ligues), tableau dense triable avec expand goal-bar par match, blocs "Mes trades vs Global" (collapsible) et "What-if exclusions" (Wilson CI). Infinite scroll 50 lignes par batch. Spec : `docs/superpowers/specs/2026-04-23-historique-redesign-design.md`
 - **Matchs a venir** (`/matches`) — cards avec streak FHG par équipe, expand barres timing buts, déduplication matchs. Curseur minute dans la 1ère barre (data-tip + CSS, pas de délai, calcul * 90). Ballon encaissé : label "(Encaissé) - X'". Tooltip opaque (#1e2330 + border)
 - **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par FHG% 0-45 (depuis team_fhg_cache Supabase, affichage instantané)

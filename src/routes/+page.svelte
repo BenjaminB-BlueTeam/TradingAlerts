@@ -31,10 +31,10 @@
     alerts.filter(a => ['LG2_A', 'LG2_B', 'LG2_A+B'].includes(a.signal_type) && !a.user_excluded)
   );
   let fhgFortToday = $derived(
-    fhgAlerts.filter(a => a.confidence === 'fort' || a.confidence === 'fort_double')
+    fhgAlerts.filter(a => a.confidence === 'fort')
   );
   let lg2FortToday = $derived(
-    lg2Alerts.filter(a => a.confidence === 'fort' || a.confidence === 'fort_double')
+    lg2Alerts.filter(a => a.confidence === 'fort')
   );
   let totalLeagues = $derived($leagues.length);
 

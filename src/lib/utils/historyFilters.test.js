@@ -43,7 +43,7 @@ describe('applyFilters', () => {
     a({ match_date: '2026-04-19', signal_type: 'LG2_B', confidence: 'moyen', status: 'lost',     league_name: 'L2' }),
     a({ match_date: '2026-04-20', signal_type: 'LG2_A', confidence: 'moyen', status: 'validated', league_name: 'L1' }),
     a({ match_date: '2026-04-21', signal_type: 'FHG_B', confidence: 'moyen', status: 'pending',  league_name: 'L1' }),
-    a({ match_date: '2026-04-22', signal_type: 'FHG_A', confidence: 'fort_double', status: 'validated', league_name: 'L1' }),
+    a({ match_date: '2026-04-22', signal_type: 'FHG_A', confidence: 'moyen', status: 'validated', league_name: 'L1' }),
   ];
 
   it('retourne tout si filtres tous par défaut (sauf statut terminees)', () => {
