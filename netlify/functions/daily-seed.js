@@ -8,6 +8,7 @@
 
 const { footyRequest } = require('./lib/api');
 const { parseMatchRow } = require('./lib/parseMatch');
+const { requireAuth } = require('./lib/auth.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -75,6 +76,9 @@ async function seedDate(date) {
 }
 
 exports.handler = async (event) => {
+  const auth = requireAuth(event, { allowScheduled: true });
+  if (!auth.authorized) return auth.response;
+
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.error('[daily-seed] SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY non configure');
     return { statusCode: 503, body: JSON.stringify({ error: 'Supabase non configure' }) };
@@ -85,17 +89,8 @@ exports.handler = async (event) => {
   const from = params.from;
   const to = params.to;
 
-  // Mode backfill (query params) : exiger SEED_AUTH_TOKEN
-  if (from || to) {
-    const expectedToken = process.env.SEED_AUTH_TOKEN;
-    if (!expectedToken) {
-      return { statusCode: 503, body: JSON.stringify({ error: 'Backfill désactivé : SEED_AUTH_TOKEN manquant' }) };
-    }
-    const authHeader = event.headers?.authorization || event.headers?.Authorization;
-    if (authHeader !== `Bearer ${expectedToken}`) {
-      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized — SEED_AUTH_TOKEN requis pour le backfill' }) };
-    }
-  }
+  // Mode backfill : requireAuth (au debut du handler) a deja valide FUNCTIONS_AUTH_TOKEN.
+  // Pas de second check SEED_AUTH_TOKEN — la protection est assuree par requireAuth.
 
   let dates;
   if (from && to) {

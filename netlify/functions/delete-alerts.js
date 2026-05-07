@@ -5,8 +5,12 @@
    ================================================ */
 
 const { createClient } = require('@supabase/supabase-js');
+const { requireAuth } = require('./lib/auth.cjs');
 
 exports.handler = async (event) => {
+  const auth = requireAuth(event);
+  if (!auth.authorized) return auth.response;
+
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }

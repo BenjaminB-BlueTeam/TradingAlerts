@@ -7,6 +7,8 @@
    Tourne 1x/jour a 7h UTC via Netlify Scheduled Functions.
    ================================================ */
 
+const { requireAuth } = require('./lib/auth.cjs');
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
@@ -83,7 +85,10 @@ async function upsertCache(rows) {
   }
 }
 
-exports.handler = async function() {
+exports.handler = async function(event) {
+  const auth = requireAuth(event, { allowScheduled: true });
+  if (!auth.authorized) return auth.response;
+
   try {
     const seasonStart = getCurrentSeasonStart();
     console.log(`[compute-team-fhg] Saison courante depuis ${seasonStart}`);

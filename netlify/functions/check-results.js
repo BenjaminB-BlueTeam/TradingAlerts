@@ -5,6 +5,7 @@
    ================================================ */
 
 const { footyRequest, supabaseQuery } = require('./lib/api');
+const { requireAuth } = require('./lib/auth.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -67,7 +68,10 @@ function evaluateDC(matchData, dcBestSide) {
   return 'lost';
 }
 
-exports.handler = async () => {
+exports.handler = async (event) => {
+  const auth = requireAuth(event, { allowScheduled: true });
+  if (!auth.authorized) return auth.response;
+
   const results = { checked: 0, validated: 0, lost: 0, expired: 0, errors: [] };
 
   try {

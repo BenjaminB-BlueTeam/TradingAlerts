@@ -8,6 +8,7 @@
 const { footyRequest, supabaseQuery } = require('./lib/api');
 const { analyzeStreakAlert, analyzeDCFromH2H } = require('./lib/analysis.cjs');
 const { analyzeLG2 } = require('./lib/lg2.cjs');
+const { requireAuth } = require('./lib/auth.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -75,6 +76,9 @@ async function getH2H(teamAId, teamBId) {
 // --- Main ---
 
 exports.handler = async (event) => {
+  const auth = requireAuth(event, { allowScheduled: true });
+  if (!auth.authorized) return auth.response;
+
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     return { statusCode: 503, body: JSON.stringify({ error: 'Supabase non configuré' }) };
   }
