@@ -20,6 +20,7 @@
   |     Fenetre glissante J-3→J-1 via todays-matches (attrape matchs reprogrammes)
   |     Upsert dans h2h_matches avec scores + goal_events (idempotent, on_conflict=match_id)
   |     Mode backfill : ?from=...&to=... (requiert FUNCTIONS_AUTH_TOKEN)
+  |     Sanity check : appel league-list, log WARNING si count < 40 ou > 60
   |
   +-- compute-team-fhg.js (cron 7h UTC)
         Calcule FHG% 0-45 min par (season_id, team_id) depuis h2h_matches

@@ -28,9 +28,10 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 - Validation LG2 : au moins un but >= 80 min
 - Cleanup automatique des alertes pending > 48h (status `expired`)
 
-### Dashboard (`/`)
-- 5 KPIs en temps reel : statut API, ligues actives (N/50), FHG Fort du jour, LG2 Fort du jour, alertes en attente
-- Alertes du jour et a venir depuis Supabase
+### Dashboard (`/`) — etat de sante prod
+- 5 KPIs : statut API FootyStats, ligues retournees par l'API (~48), FHG Fort du jour, LG2 Fort du jour, etat seed h2h_matches (derniere date seedee + count total)
+- Aucune liste de matchs — page de monitoring uniquement
+- Seed matchs : vert si J-1, orange si J-2, rouge si plus vieux
 
 ### Selection FHG (`/alerts`)
 - Alertes FHG_A/B/A+B avec filtres : jour, ligue, confiance (Tout/Fort/Moyen)
@@ -168,7 +169,7 @@ npm run test:watch
 ```bash
 node scripts/run-seed.mjs
 ```
-Orchestre 240 saisons (51 ligues x 5 ans) via Netlify Function server-side. ~10 min. Peuple `h2h_matches` (65k matchs) et `teams` (1077 equipes).
+Orchestre ~240 saisons (~48 ligues x 5 ans) via Netlify Function server-side. ~10 min. Peuple `h2h_matches` (65k matchs) et `teams` (1077 equipes).
 
 Le seed quotidien (`daily-seed.js`, 6h UTC) rafraichit en fenetre glissante J-3→J-1 pour attraper les matchs reprogrammes.
 
