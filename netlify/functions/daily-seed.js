@@ -100,8 +100,11 @@ exports.handler = async (event) => {
     dates = getDateRange(from, getYesterdayStr());
     console.log(`[daily-seed] START — backfill mode: ${dates.length} days (${from} → ${getYesterdayStr()})`);
   } else {
-    dates = [getYesterdayStr()];
-    console.log(`[daily-seed] START — daily mode: ${dates[0]}`);
+    // Rolling window J-3 → J-1 : attrape les matchs reprogrammés tardifs (upsert idempotent)
+    const d3ago = new Date();
+    d3ago.setDate(d3ago.getDate() - 3);
+    dates = getDateRange(d3ago.toISOString().split('T')[0], getYesterdayStr());
+    console.log(`[daily-seed] START — daily mode (rolling 3j): ${dates.join(', ')}`);
   }
 
   const results = { mode: dates.length > 1 ? 'backfill' : 'daily', dates: dates.length, fetched: 0, completed: 0, upserted: 0, errors: [], details: [] };
