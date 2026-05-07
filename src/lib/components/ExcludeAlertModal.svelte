@@ -1,9 +1,5 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
-
-  let { alert, open = $bindable(false) } = $props();
-
-  const dispatch = createEventDispatcher();
+  let { alert, open = $bindable(false), onexcluded } = $props();
 
   const TAGS = [
     { id: 'streak_trop_court',    label: 'Streak trop court' },
@@ -29,7 +25,7 @@
 
   async function handleSubmit() {
     submitting = true;
-    dispatch('excluded', { tags: selectedTags, note: note.trim() || null });
+    onexcluded?.({ tags: selectedTags, note: note.trim() || null });
     open = false;
     selectedTags = [];
     note = '';

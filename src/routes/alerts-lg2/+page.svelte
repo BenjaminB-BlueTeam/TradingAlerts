@@ -64,8 +64,7 @@
     excludeModalOpen = true;
   }
 
-  async function handleExcluded(e) {
-    const { tags, note } = e.detail;
+  async function handleExcluded({ tags, note }) {
     try {
       // Cas 4a : désélectionner toutes les variantes du match avant exclusion
       const set = get(selectedKeys);
@@ -511,5 +510,5 @@
 <ExcludeAlertModal
   alert={excludeModalAlert}
   bind:open={excludeModalOpen}
-  on:excluded={handleExcluded}
+  onexcluded={handleExcluded}
 />
