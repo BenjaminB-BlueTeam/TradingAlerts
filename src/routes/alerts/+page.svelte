@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
-  import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay, fhgColor } from '$lib/utils/formatters.js';
+  import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay } from '$lib/utils/formatters.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
   import { leagueFlagUrl } from '$lib/utils/countryFlags.js';
   import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
