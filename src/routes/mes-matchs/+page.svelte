@@ -8,7 +8,7 @@
   let allAlerts = $state([]);
   let loading = $state(true);
   let error = $state('');
-  let cascadeMessage = $state('');
+
 
   // Filtrage reactif : dès qu'une alerte est désélectionnée, elle disparaît
   let visibleAlerts = $derived(
@@ -94,13 +94,10 @@
 <div class="page-header">
   <h1 class="page-title">Mes matchs</h1>
   <p class="page-subtitle">
-    {visibleAlerts.length} alerte{visibleAlerts.length !== 1 ? 's' : ''} sélectionnée{visibleAlerts.length !== 1 ? 's' : ''} — FHG, DC, LG2
+    {visibleAlerts.length} alerte{visibleAlerts.length !== 1 ? 's' : ''} sélectionnée{visibleAlerts.length !== 1 ? 's' : ''} — FHG, LG2
   </p>
 </div>
 
-{#if cascadeMessage}
-  <div class="cascade-msg">{cascadeMessage}</div>
-{/if}
 
 {#if error}
   <p class="error-msg">{error}</p>
@@ -117,7 +114,7 @@
     <div class="empty-state__icon">⭐</div>
     <div class="empty-state__title">Aucune alerte sélectionnée</div>
     <div class="empty-state__desc">
-      Va sur <a href="/alerts">Sélection FHG</a>, <a href="/selection-dc">Sélection DC</a> ou <a href="/alerts-lg2">Sélection LG2</a> pour faire ta première sélection.
+      Va sur <a href="/alerts">Sélection FHG</a> ou <a href="/alerts-lg2">Sélection LG2</a> pour faire ta première sélection.
     </div>
   </div>
 
@@ -157,7 +154,7 @@
                   {:else if isInPlay(a)}
                     <span class="alert-badge alert-badge--live">EN COURS</span>
                   {/if}
-                  <SelectAlertButton alert={a} oncascade={(d) => cascadeMessage = d.message} />
+                  <SelectAlertButton alert={a}  />
                 </div>
               </div>
             </div>
@@ -199,7 +196,7 @@
                   {:else if isInPlay(a)}
                     <span class="alert-badge alert-badge--live">EN COURS</span>
                   {/if}
-                  <SelectAlertButton alert={a} oncascade={(d) => cascadeMessage = d.message} />
+                  <SelectAlertButton alert={a}  />
                 </div>
               </div>
             </div>
@@ -241,7 +238,7 @@
                   {:else if isInPlay(a)}
                     <span class="alert-badge alert-badge--live">EN COURS</span>
                   {/if}
-                  <SelectAlertButton alert={a} oncascade={(d) => cascadeMessage = d.message} />
+                  <SelectAlertButton alert={a}  />
                 </div>
               </div>
             </div>

@@ -12,7 +12,6 @@ export function strategyOf(alert) {
   if (!alert?.signal_type) return null;
   if (FHG_SIGNALS.includes(alert.signal_type)) return 'FHG';
   if (LG2_SIGNALS.includes(alert.signal_type)) return 'LG2';
-  if (alert.signal_type === 'DC') return 'DC';
   return null;
 }
 
@@ -55,7 +54,7 @@ export function applyFilters(alerts, filters) {
  * Considère uniquement les alertes terminées.
  */
 export function aggregateByStrategy(alerts) {
-  const out = { FHG: { validated: 0, lost: 0 }, DC: { validated: 0, lost: 0 }, LG2: { validated: 0, lost: 0 } };
+  const out = { FHG: { validated: 0, lost: 0 }, LG2: { validated: 0, lost: 0 } };
   for (const a of alerts) {
     if (a.status !== 'validated' && a.status !== 'lost') continue;
     const s = strategyOf(a);
@@ -123,7 +122,7 @@ export function aggregateByLeague(alerts, { minMatches = 3, topN = 10 } = {}) {
  * Agrégation pour Chart A — évolution par date.
  * granularity : 'jour' | 'mois' | 'annee'
  * Retourne un tableau trié par bucket ascendant :
- * [{ bucket: '2026-04-23', FHG: {v, t}, DC: {...}, LG2: {...} }, ...]
+ * [{ bucket: '2026-04-23', FHG: {v, t}, LG2: {...} }, ...]
  */
 export function aggregateByDate(alerts, granularity = 'jour') {
   function bucketOf(dateStr) {
@@ -138,7 +137,7 @@ export function aggregateByDate(alerts, granularity = 'jour') {
     if (a.status !== 'validated' && a.status !== 'lost') continue;
     const b = bucketOf(a.match_date);
     if (!b) continue;
-    if (!map.has(b)) map.set(b, { bucket: b, FHG: { v: 0, t: 0 }, DC: { v: 0, t: 0 }, LG2: { v: 0, t: 0 } });
+    if (!map.has(b)) map.set(b, { bucket: b, FHG: { v: 0, t: 0 }, LG2: { v: 0, t: 0 } });
     const row = map.get(b);
     const s = strategyOf(a);
     if (!s || !row[s]) continue;

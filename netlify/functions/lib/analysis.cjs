@@ -1,45 +1,8 @@
 /* ================================================
    netlify/functions/lib/analysis.cjs
-   Fonctions d'analyse FHG (streak v2) et DC.
+   Fonctions d'analyse FHG streak v2.
    Utilisé par generate-alerts.js et testable indépendamment.
    ================================================ */
-
-const DC_MIN_MATCHES = 5;
-const DC_SEUIL_MOYEN = 30;
-const DC_SEUIL_FORT = 20;
-
-function analyzeDCFromH2H(h2h, homeId) {
-  if (h2h.length < DC_MIN_MATCHES) return null;
-
-  let homeLosses = 0, awayLosses = 0;
-  for (const m of h2h) {
-    const hg = m.home_goals ?? 0;
-    const ag = m.away_goals ?? 0;
-    const isHome = m.home_team_id === homeId;
-    if (hg > ag) {          // H2H home side won
-      if (!isHome) homeLosses++;   // homeId was away in this H2H, so homeId lost
-      else awayLosses++;           // awayId was away in this H2H, so awayId lost
-    } else if (ag > hg) {   // H2H away side won
-      if (isHome) homeLosses++;    // homeId was home in this H2H, still lost
-      else awayLosses++;           // awayId was home in this H2H, still lost
-    }
-  }
-
-  const total = h2h.length;
-  const homeDefeatPct = Math.round((homeLosses / total) * 100);
-  const awayDefeatPct = Math.round((awayLosses / total) * 100);
-  const bestSide = homeDefeatPct <= awayDefeatPct ? 'home' : 'away';
-  const bestDefeatPct = Math.min(homeDefeatPct, awayDefeatPct);
-  const confidence = bestDefeatPct <= DC_SEUIL_FORT ? 'fort' : bestDefeatPct <= DC_SEUIL_MOYEN ? 'moyen' : null;
-
-  return {
-    isAlert: confidence !== null,
-    confidence,
-    bestSide,
-    bestDefeatPct,
-    h2hCount: total,
-  };
-}
 
 // ============================================================
 // ALGO FHG v2 — Logique streak
@@ -283,11 +246,6 @@ function analyzeStreakAlert(teamMatches, teamId, opponentMatches, opponentId, h2
 }
 
 module.exports = {
-  // DC (inchangé)
-  analyzeDCFromH2H,
-  DC_MIN_MATCHES,
-  DC_SEUIL_MOYEN,
-  DC_SEUIL_FORT,
   // FHG streak v2
   analyzeStreakAlert,
   analyzeScenarioA,

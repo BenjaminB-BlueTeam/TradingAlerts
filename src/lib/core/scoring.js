@@ -1,5 +1,5 @@
 /* ================================================
-   scoring.js — Logique FHG streak v2 (ESM) + DC + timer
+   scoring.js — Logique FHG streak v2 (ESM) + timer
    FHG Tracker — miroir ESM de analysis.cjs côté backend
    ================================================ */
 
@@ -235,28 +235,6 @@ export function analyserStreakFHG(teamMatches, teamId, opponentMatches, opponent
   }
 
   return { isAlert: false };
-}
-
-// ============================================================
-// DC (inchangé)
-// ============================================================
-
-const FHG_SEUIL_MOYEN = 50; // seuil DC lié au score FHG legacy — à revoir si DC évolue
-
-/**
- * Calcule le score DC pour une équipe, uniquement si FHG validé.
- * @deprecated — DC géré par analyzeDCFromH2H côté serveur désormais
- */
-export function calculerScoreDC(equipe, scoreFHG) {
-  if (!scoreFHG || scoreFHG < FHG_SEUIL_MOYEN) return null;
-
-  let score = 0;
-  score += (equipe.pct_retour_si_encaisse || 0) * 0.40;
-  score += (scoreFHG / 100) * 30;
-  score += (equipe.pct_victoire_domicile || 0) * 0.20;
-  score += (equipe.matches_played || 0) > 10 ? 10 : 0;
-
-  return Math.round(score);
 }
 
 // ============================================================

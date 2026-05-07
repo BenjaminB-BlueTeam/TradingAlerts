@@ -29,11 +29,9 @@ describe('strategyOf', () => {
       expect(strategyOf({ signal_type: t })).toBe('LG2')
     );
   });
-  it('DC pour DC', () => {
-    expect(strategyOf({ signal_type: 'DC' })).toBe('DC');
-  });
-  it('null pour signal inconnu ou absent', () => {
+  it('null pour signal inconnu ou absent (inclut DC supprimé)', () => {
     expect(strategyOf({ signal_type: 'UNKNOWN' })).toBe(null);
+    expect(strategyOf({ signal_type: 'DC' })).toBe(null);
     expect(strategyOf({})).toBe(null);
     expect(strategyOf(null)).toBe(null);
   });
@@ -42,7 +40,7 @@ describe('strategyOf', () => {
 describe('applyFilters', () => {
   const base = [
     a({ match_date: '2026-04-18', signal_type: 'FHG_A', confidence: 'fort', status: 'validated', league_name: 'L1' }),
-    a({ match_date: '2026-04-19', signal_type: 'DC',    confidence: 'moyen', status: 'lost',    league_name: 'L2' }),
+    a({ match_date: '2026-04-19', signal_type: 'LG2_B', confidence: 'moyen', status: 'lost',     league_name: 'L2' }),
     a({ match_date: '2026-04-20', signal_type: 'LG2_A', confidence: 'moyen', status: 'validated', league_name: 'L1' }),
     a({ match_date: '2026-04-21', signal_type: 'FHG_B', confidence: 'moyen', status: 'pending',  league_name: 'L1' }),
     a({ match_date: '2026-04-22', signal_type: 'FHG_A', confidence: 'fort_double', status: 'validated', league_name: 'L1' }),
@@ -59,10 +57,10 @@ describe('applyFilters', () => {
     expect(r.every(x => strategyOf(x) === 'FHG')).toBe(true);
   });
 
-  it('filtre par stratégie DC', () => {
-    const r = applyFilters(base, { strategy: 'dc', status: 'tous' });
-    expect(r.length).toBe(1);
-    expect(r[0].signal_type).toBe('DC');
+  it('filtre par stratégie LG2', () => {
+    const r = applyFilters(base, { strategy: 'lg2', status: 'tous' });
+    expect(r.length).toBe(2);
+    expect(r.every(x => strategyOf(x) === 'LG2')).toBe(true);
   });
 
   it('filtre par confidence', () => {
@@ -96,7 +94,7 @@ describe('applyFilters', () => {
 
   it('status validated / lost / encours', () => {
     expect(applyFilters(base, { status: 'validated' }).length).toBe(3);
-    expect(applyFilters(base, { status: 'lost' }).length).toBe(1);
+    expect(applyFilters(base, { status: 'lost' }).length).toBe(1);   // LG2_B est lost
     expect(applyFilters(base, { status: 'encours' }).length).toBe(1);
   });
 
@@ -112,20 +110,20 @@ describe('aggregateByStrategy', () => {
       a({ signal_type: 'FHG_A', status: 'validated' }),
       a({ signal_type: 'FHG_B', status: 'validated' }),
       a({ signal_type: 'FHG_A', status: 'lost' }),
-      a({ signal_type: 'DC',    status: 'validated' }),
-      a({ signal_type: 'LG2_A', status: 'lost' }),
+      a({ signal_type: 'LG2_A', status: 'validated' }),
+      a({ signal_type: 'LG2_B', status: 'lost' }),
     ];
     const r = aggregateByStrategy(alerts);
     expect(r.FHG).toEqual({ validated: 2, lost: 1, total: 3, pct: 67 });
-    expect(r.DC).toEqual({ validated: 1, lost: 0, total: 1, pct: 100 });
-    expect(r.LG2).toEqual({ validated: 0, lost: 1, total: 1, pct: 0 });
+    expect(r.LG2).toEqual({ validated: 1, lost: 1, total: 2, pct: 50 });
+    expect(r.DC).toBeUndefined();
   });
 
   it('pct=null si total=0', () => {
     const r = aggregateByStrategy([]);
     expect(r.FHG.pct).toBeNull();
-    expect(r.DC.pct).toBeNull();
     expect(r.LG2.pct).toBeNull();
+    expect(r.DC).toBeUndefined();
   });
 
   it('ignore les pending', () => {
@@ -216,14 +214,15 @@ describe('aggregateByDate', () => {
   it('bucket par jour', () => {
     const alerts = [
       a({ match_date: '2026-04-20', signal_type: 'FHG_A', status: 'validated' }),
-      a({ match_date: '2026-04-20', signal_type: 'DC',    status: 'lost' }),
+      a({ match_date: '2026-04-20', signal_type: 'LG2_A', status: 'lost' }),
       a({ match_date: '2026-04-21', signal_type: 'FHG_A', status: 'validated' }),
     ];
     const r = aggregateByDate(alerts, 'jour');
     expect(r.length).toBe(2);
     expect(r[0].bucket).toBe('2026-04-20');
     expect(r[0].FHG).toEqual({ v: 1, t: 1 });
-    expect(r[0].DC).toEqual({ v: 0, t: 1 });
+    expect(r[0].LG2).toEqual({ v: 0, t: 1 });
+    expect(r[0].DC).toBeUndefined();
     expect(r[1].FHG).toEqual({ v: 1, t: 1 });
   });
 
@@ -270,14 +269,14 @@ describe('aggregateByDate', () => {
 describe('rateForBuckets', () => {
   it('pct calculé par bucket et stratégie', () => {
     const buckets = [
-      { bucket: '2026-04-20', FHG: { v: 2, t: 3 }, DC: { v: 0, t: 0 }, LG2: { v: 0, t: 0 } },
+      { bucket: '2026-04-20', FHG: { v: 2, t: 3 }, LG2: { v: 0, t: 0 } },
     ];
     const r = rateForBuckets(buckets, 'FHG');
     expect(r[0]).toEqual({ bucket: '2026-04-20', pct: 67, v: 2, t: 3 });
   });
 
   it('pct=null si t=0', () => {
-    const buckets = [{ bucket: '2026-04-20', FHG: { v: 0, t: 0 }, DC: { v: 0, t: 0 }, LG2: { v: 0, t: 0 } }];
+    const buckets = [{ bucket: '2026-04-20', FHG: { v: 0, t: 0 }, LG2: { v: 0, t: 0 } }];
     expect(rateForBuckets(buckets, 'FHG')[0].pct).toBeNull();
   });
 });

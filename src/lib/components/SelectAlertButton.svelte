@@ -1,21 +1,11 @@
 <script>
-  import { selectedKeys, select, unselect, isSelected, keyOf } from '$lib/stores/selectionStore.js';
+  import { selectedKeys, select, unselect, isSelected } from '$lib/stores/selectionStore.js';
 
-  let { alert, oncascade = null } = $props();
-
-  // Liste des signal_types FHG — cohérence avec historyFilters.FHG_SIGNALS
-  const FHG_SIGNALS = ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D'];
+  let { alert } = $props();
 
   let isPending = $state(false);
 
   let selected = $derived(isSelected($selectedKeys, alert.match_id, alert.signal_type));
-
-  // Bouton DC bloqué si aucun FHG du même match n'est dans le Set
-  let dcBlockedNoFhg = $derived(
-    alert.signal_type === 'DC' &&
-    !selected &&
-    !FHG_SIGNALS.some(s => $selectedKeys.has(keyOf(alert.match_id, s)))
-  );
 
   let isExcluded = $derived(!!alert.user_excluded);
   // Clôturée ET non-sélectionnée : interdit la sélection rétroactive (anti-biais)
@@ -24,12 +14,11 @@
     !!alert.status && alert.status !== 'pending' && !selected
   );
 
-  let disabled = $derived(isPending || isExcluded || isClosedNonSelected || dcBlockedNoFhg);
+  let disabled = $derived(isPending || isExcluded || isClosedNonSelected);
 
   let tooltip = $derived.by(() => {
     if (isExcluded) return "Alerte exclue — réintégrez-la pour pouvoir la sélectionner";
     if (isClosedNonSelected) return "Alerte clôturée — sélection rétroactive interdite (anti-biais)";
-    if (dcBlockedNoFhg) return "Sélectionner d'abord le FHG du match (DC ne se joue jamais seule)";
     if (selected) return "Cliquer pour désélectionner";
     return "Sélectionner cette alerte";
   });
@@ -40,10 +29,7 @@
     isPending = true;
     try {
       if (selected) {
-        const result = await unselect(alert.match_id, alert.signal_type);
-        if (result?.cascadedDC && oncascade) {
-          oncascade({ message: "DC désélectionnée car le FHG ne l'est plus." });
-        }
+        await unselect(alert.match_id, alert.signal_type);
       } else {
         await select(alert.match_id, alert.signal_type);
       }

@@ -60,13 +60,6 @@ function evaluateLG2(matchData) {
   return 'lost';
 }
 
-function evaluateDC(matchData, dcBestSide) {
-  const homeGoals = matchData.homeGoalCount || 0;
-  const awayGoals = matchData.awayGoalCount || 0;
-  if (dcBestSide === 'home') return homeGoals >= awayGoals ? 'validated' : 'lost';
-  if (dcBestSide === 'away') return awayGoals >= homeGoals ? 'validated' : 'lost';
-  return 'lost';
-}
 
 exports.handler = async (event) => {
   const auth = requireAuth(event, { allowScheduled: true });
@@ -115,8 +108,6 @@ exports.handler = async (event) => {
           newStatus = evaluateFHG(matchData);
         } else if (LG2_TYPES.includes(signalType)) {
           newStatus = evaluateLG2(matchData);
-        } else if (signalType === 'DC') {
-          newStatus = evaluateDC(matchData, alert.dc_best_side);
         } else {
           continue;
         }

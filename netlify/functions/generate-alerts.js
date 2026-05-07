@@ -1,12 +1,12 @@
 /* ================================================
    netlify/functions/generate-alerts.js
-   Tâche planifiée — génère les alertes FHG/DC
+   Tâche planifiée — génère les alertes FHG et LG2
    pour les 3 prochains jours.
    Tourne toutes les 12h via Netlify Scheduled Functions.
    ================================================ */
 
 const { footyRequest, supabaseQuery } = require('./lib/api');
-const { analyzeStreakAlert, analyzeDCFromH2H } = require('./lib/analysis.cjs');
+const { analyzeStreakAlert } = require('./lib/analysis.cjs');
 const { analyzeLG2 } = require('./lib/lg2.cjs');
 const { requireAuth } = require('./lib/auth.cjs');
 
@@ -83,10 +83,9 @@ exports.handler = async (event) => {
     return { statusCode: 503, body: JSON.stringify({ error: 'Supabase non configuré' }) };
   }
 
-  // Paramètre optionnel : ?type=FHG | DC | LG2 pour filtrer le type d'alerte
+  // Paramètre optionnel : ?type=FHG | LG2 pour filtrer le type d'alerte
   const typeFilter = (event.queryStringParameters?.type || '').toUpperCase();
   const doFHG = !typeFilter || typeFilter === 'FHG';
-  const doDC = !typeFilter || typeFilter === 'DC';
   const doLG2 = !typeFilter || typeFilter === 'LG2';
 
   const results = { type: typeFilter || 'ALL', analyzed: 0, alerts_created: 0, errors: [] };
@@ -109,13 +108,12 @@ exports.handler = async (event) => {
     }
 
     // Récupérer les alertes existantes pour ne pas dupliquer, scopées aux types qu'on génère
-    // (FHG ne bloque pas DC ni LG2 ; idem symétriquement)
+    // (FHG ne bloque pas LG2 ; idem symétriquement)
     const matchIds = allMatches.map(m => m.id).filter(Boolean);
     const fhgTypes = 'FHG_A,FHG_B,FHG_A%2BB,FHG_C,FHG_D';
     const lg2Types = 'LG2_A,LG2_B,LG2_A%2BB';
     const blockParts = [];
     if (doFHG) blockParts.push(fhgTypes);
-    if (doDC) blockParts.push('DC');
     if (doLG2) blockParts.push(lg2Types);
     const blockTypes = blockParts.join(',');
     // Map match_id → Set des signal_types existants (pour décider, type par type, s'il faut recalculer)
@@ -132,12 +130,10 @@ exports.handler = async (event) => {
     // Un match est "entièrement existant" si toutes les familles actives ont au moins un type déjà présent
     const hasFHGAlready = (set) => set && ['FHG_A','FHG_B','FHG_A+B','FHG_C','FHG_D'].some(t => set.has(t));
     const hasLG2Already = (set) => set && ['LG2_A','LG2_B','LG2_A+B'].some(t => set.has(t));
-    const hasDCAlready  = (set) => set && set.has('DC');
     function matchFullyCovered(mid) {
       const s = existingByMatch.get(mid);
       if (!s) return false;
       if (doFHG && !hasFHGAlready(s)) return false;
-      if (doDC  && !hasDCAlready(s))  return false;
       if (doLG2 && !hasLG2Already(s)) return false;
       return true;
     }
@@ -197,11 +193,6 @@ exports.handler = async (event) => {
           }
         }
 
-        let dc = null;
-        if (doDC) {
-          dc = analyzeDCFromH2H(h2h, m.homeID);
-        }
-
         let lg2 = null;
         if (doLG2) {
           // homeMatches = derniers matchs de l'équipe dom À DOMICILE
@@ -210,9 +201,8 @@ exports.handler = async (event) => {
         }
 
         const hasFHG = bestFHG !== null;
-        const hasDC = dc?.isAlert === true;
         const hasLG2 = lg2?.isAlert === true;
-        if (!hasFHG && !hasDC && !hasLG2) return null;
+        if (!hasFHG && !hasLG2) return null;
 
         const baseFields = {
           match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : getDateStr(0),
@@ -226,7 +216,6 @@ exports.handler = async (event) => {
           status: 'pending',
         };
 
-        // Créer des alertes séparées pour FHG et DC (pas de tag combiné)
         const alerts = [];
         if (hasFHG) {
           alerts.push({
@@ -241,25 +230,8 @@ exports.handler = async (event) => {
               teamId: bestFHG.teamId,
               teamName: bestFHG.teamName,
             },
-            dc_defeat_pct: null,
-            dc_best_side: null,
-            dc_confidence: null,
             confidence: bestFHG.confidence,
             algo_version: 'v2',
-          });
-        }
-        if (hasDC) {
-          alerts.push({
-            ...baseFields,
-            match_id: m.id,
-            signal_type: 'DC',
-            fhg_pct: null,
-            fhg_confidence: null,
-            fhg_factors: null,
-            dc_defeat_pct: dc.bestDefeatPct,
-            dc_best_side: dc.bestSide,
-            dc_confidence: dc.confidence,
-            confidence: dc.confidence,
           });
         }
         if (hasLG2) {
@@ -270,9 +242,6 @@ exports.handler = async (event) => {
             fhg_pct: null,
             fhg_confidence: null,
             fhg_factors: lg2.factors,             // { streakHome, streakAway }
-            dc_defeat_pct: null,
-            dc_best_side: null,
-            dc_confidence: null,
             confidence: lg2.confidence,            // moyen | fort | fort_double
             algo_version: 'lg2_v1',
           });

@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
-  import { getDateStr, formatDateDMY, formatTime, isInPlay, fhgColor, defeatColor } from '$lib/utils/formatters.js';
+  import { getDateStr, formatDateDMY, formatTime, isInPlay, fhgColor } from '$lib/utils/formatters.js';
   import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
   import { selectedKeys, isSelected, unselect } from '$lib/stores/selectionStore.js';
@@ -15,7 +15,7 @@
   let excludeModalOpen = $state(false);
   let excludeModalAlert = $state(null);
   let excludeError = $state('');
-  let cascadeMessage = $state('');
+
 
   function openExcludeModal(alert) {
     excludeModalAlert = alert;
@@ -27,7 +27,7 @@
     try {
       // Cas 4a : désélectionner toutes les variantes du match avant exclusion
       const set = get(selectedKeys);
-      const allSignals = ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'LG2_A', 'LG2_B', 'LG2_A+B', 'DC'];
+      const allSignals = ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'LG2_A', 'LG2_B', 'LG2_A+B'];
       for (const sig of allSignals) {
         if (isSelected(set, excludeModalAlert.match_id, sig)) {
           await unselect(excludeModalAlert.match_id, sig);
@@ -53,7 +53,7 @@
   let todayStr = $derived(getDateStr(0));
   let todayAlerts = $derived(alerts.filter(a => a.match_date === todayStr));
   let fhgAlerts = $derived(todayAlerts.filter(a => ['FHG_A','FHG_B','FHG_A+B','FHG_C','FHG_D'].includes(a.signal_type) && !a.user_excluded));
-  let dcAlerts = $derived(todayAlerts.filter(a => a.signal_type === 'DC' && !a.user_excluded));
+  let lg2Alerts = $derived(todayAlerts.filter(a => ['LG2_A','LG2_B','LG2_A+B'].includes(a.signal_type) && !a.user_excluded));
   let validatedToday = $derived(todayAlerts.filter(a => a.status === 'validated'));
   let lostToday = $derived(todayAlerts.filter(a => a.status === 'lost'));
   let pendingToday = $derived(todayAlerts.filter(a => a.status === 'pending'));
@@ -111,8 +111,8 @@
     <div class="metric-card__sub">dont {fortToday.length} fort{fortToday.length > 1 ? 's' : ''}</div>
   </div>
   <div class="metric-card">
-    <div class="metric-card__label">Alertes DC</div>
-    <div class="metric-card__value blue">{dcAlerts.length}</div>
+    <div class="metric-card__label">Alertes LG2</div>
+    <div class="metric-card__value blue">{lg2Alerts.length}</div>
     <div class="metric-card__sub">aujourd'hui</div>
   </div>
   <div class="metric-card">
@@ -127,9 +127,6 @@
   </div>
 </div>
 
-{#if cascadeMessage}
-  <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(239,159,39,0.08);color:var(--color-warning-orange);">{cascadeMessage}</div>
-{/if}
 
 {#if loading}
   <div class="page-loading">
@@ -161,16 +158,11 @@
             {#if a.fhg_pct}
               <span class="dash-pill" style:color={fhgColor(a.fhg_pct)}>FHG {a.fhg_pct}%</span>
             {/if}
-            {#if a.dc_defeat_pct !== null && a.dc_defeat_pct !== undefined}
-              <span class="dash-pill" style:color={defeatColor(a.dc_defeat_pct)}>DC {a.dc_defeat_pct}%</span>
-            {/if}
           </div>
           <div class="dash-alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
-            {#if a.signal_type && a.signal_type !== 'DC'}
+            {#if a.signal_type}
               <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
-            {:else if a.signal_type === 'DC'}
-              <span class="alert-badge alert-badge--signal">DC</span>
             {/if}
             {#if a.status === 'validated'}
               <span class="alert-badge alert-badge--validated">Valide</span>
@@ -179,7 +171,7 @@
             {:else if isInPlay(a)}
               <span class="alert-badge alert-badge--live">EN COURS</span>
             {/if}
-            <SelectAlertButton alert={a} oncascade={(d) => cascadeMessage = d.message} />
+            <SelectAlertButton alert={a}  />
             {#if a.user_excluded}
               <span class="alert-badge alert-badge--exclu">EXCLUE</span>
               <button class="btn btn--sm btn-reinstate" onclick={() => handleUnexclude(a)}>Réintégrer</button>
@@ -216,18 +208,13 @@
             {#if a.fhg_pct}
               <span class="dash-pill" style:color={fhgColor(a.fhg_pct)}>FHG {a.fhg_pct}%</span>
             {/if}
-            {#if a.dc_defeat_pct !== null && a.dc_defeat_pct !== undefined}
-              <span class="dash-pill" style:color={defeatColor(a.dc_defeat_pct)}>DC {a.dc_defeat_pct}%</span>
-            {/if}
           </div>
           <div class="dash-alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
-            {#if a.signal_type && a.signal_type !== 'DC'}
+            {#if a.signal_type}
               <span class="alert-badge alert-badge--signal">{a.signal_type}</span>
-            {:else if a.signal_type === 'DC'}
-              <span class="alert-badge alert-badge--signal">DC</span>
             {/if}
-            <SelectAlertButton alert={a} oncascade={(d) => cascadeMessage = d.message} />
+            <SelectAlertButton alert={a}  />
             {#if a.user_excluded}
               <span class="alert-badge alert-badge--exclu">EXCLUE</span>
               <button class="btn btn--sm btn-reinstate" onclick={() => handleUnexclude(a)}>Réintégrer</button>

@@ -22,8 +22,8 @@ ALTER TABLE alerts ADD COLUMN IF NOT EXISTS user_excluded_at timestamptz;
 -- Si une constraint existe, la supprimer et recréer :
 -- ALTER TABLE alerts DROP CONSTRAINT IF EXISTS <nom_constraint>;
 -- ALTER TABLE alerts ADD CONSTRAINT alerts_signal_type_check
---   CHECK (signal_type IN ('FHG', 'FHG_A', 'FHG_B', 'FHG_A+B', 'DC'));
--- (garder 'FHG' pour compatibilité avec alerts_v1_backup)
+--   CHECK (signal_type IN ('FHG', 'FHG_A', 'FHG_B', 'FHG_A+B', 'LG2_A', 'LG2_B', 'LG2_A+B'));
+-- (garder 'FHG' pour compatibilité avec alerts_v1_backup ; DC supprimé le 2026-05-07)
 
 -- 5. Index pour les nouvelles colonnes
 CREATE INDEX IF NOT EXISTS idx_alerts_algo_version ON alerts(algo_version);

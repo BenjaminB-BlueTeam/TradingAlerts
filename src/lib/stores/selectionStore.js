@@ -33,28 +33,11 @@ export async function select(matchId, signalType, note = null) {
 }
 
 /**
- * Désélectionne une alerte.
- * Si le signal est un FHG et que le DC du même match est sélectionné,
- * le DC est également désélectionné (cascade métier — DC ne se joue jamais seule).
- * Retourne { cascadedDC: boolean }.
+ * Désélectionne une alerte et la retire de Supabase.
  */
 export async function unselect(matchId, signalType) {
   await api.unselectAlert(matchId, signalType);
   removeFromSet(matchId, signalType);
-
-  // Cascade : si on désélectionne un FHG, on désélectionne le DC du même match.
-  let cascadedDC = false;
-  if (signalType.startsWith('FHG')) {
-    const dcKey = keyOf(matchId, 'DC');
-    const currentSet = get(selectedKeys);
-    if (currentSet.has(dcKey)) {
-      await api.unselectAlert(matchId, 'DC');
-      removeFromSet(matchId, 'DC');
-      cascadedDC = true;
-    }
-  }
-
-  return { cascadedDC };
 }
 
 /**

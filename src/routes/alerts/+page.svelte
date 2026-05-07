@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
-  import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay, fhgColor, defeatColor } from '$lib/utils/formatters.js';
+  import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay, fhgColor } from '$lib/utils/formatters.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
   import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
@@ -27,7 +27,7 @@
   let genMessage = $state('');
   let deleting = $state(false);
   let deleteMessage = $state('');
-  let cascadeMessage = $state('');
+
 
   async function handleDeleteVisible() {
     const ids = filteredAlerts.map(a => a.id);
@@ -68,7 +68,7 @@
     try {
       // Cas 4a : désélectionner toutes les variantes du match avant exclusion
       const set = get(selectedKeys);
-      const allSignals = ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'LG2_A', 'LG2_B', 'LG2_A+B', 'DC'];
+      const allSignals = ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'LG2_A', 'LG2_B', 'LG2_A+B'];
       for (const sig of allSignals) {
         if (isSelected(set, excludeModalAlert.match_id, sig)) {
           await unselect(excludeModalAlert.match_id, sig);
@@ -223,9 +223,6 @@
 {#if genMessage}
   <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(255,255,255,0.04);color:var(--color-text-muted);">{genMessage}</div>
 {/if}
-{#if cascadeMessage}
-  <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(239,159,39,0.08);color:var(--color-warning-orange);">{cascadeMessage}</div>
-{/if}
 {#if deleteMessage}
   <div style="font-size:12px;padding:6px 12px;margin-bottom:8px;border-radius:6px;background:rgba(226,75,74,0.08);color:var(--color-danger);">{deleteMessage}</div>
 {/if}
@@ -316,12 +313,6 @@
                 <span class="alert-pill__value" style:color={fhgColor(a.fhg_pct)}>{a.fhg_pct}%</span>
               </div>
             {/if}
-            {#if a.dc_defeat_pct !== null}
-              <div class="alert-pill">
-                <span class="alert-pill__label">DC def.</span>
-                <span class="alert-pill__value" style:color={defeatColor(a.dc_defeat_pct)}>{a.dc_defeat_pct}%</span>
-              </div>
-            {/if}
             <div class="alert-pill">
               <span class="alert-pill__label">H2H</span>
               <span class="alert-pill__value">{a.h2h_count}</span>
@@ -339,7 +330,7 @@
             {:else if isInPlay(a)}
               <span class="alert-badge alert-badge--live">EN COURS</span>
             {/if}
-            <SelectAlertButton alert={a} oncascade={(d) => cascadeMessage = d.message} />
+            <SelectAlertButton alert={a}  />
             {#if a.user_excluded}
               <span class="alert-badge alert-badge--exclu">EXCLUE</span>
               <button class="btn btn--sm btn-reinstate" onclick={e => { e.stopPropagation(); handleUnexclude(a); }}>Réintégrer</button>

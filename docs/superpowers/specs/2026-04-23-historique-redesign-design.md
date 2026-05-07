@@ -19,7 +19,7 @@ Refondre la page `/historique` pour passer d'une vue liste + KPIs à un **dashbo
 ┌── H1 Historique ────────────────────────────────────────┐
 │ FiltersBar (sticky top)                                  │
 │  - Date range picker + presets 7j/30j/90j/1an/Tout       │
-│  - Stratégie : Tous / FHG / DC / LG2                     │
+│  - Stratégie : Tous / FHG / LG2                          │
 │  - Confidence : Tous / fort / moyen / fort_double        │
 │  - Équipe : dropdown search                              │
 │  - Ligue  : dropdown search                              │
@@ -47,7 +47,7 @@ Combinaison **AND stricte** : tous les filtres actifs s'additionnent. Les graphi
 let filters = $state({
   dateFrom: null,        // ISO YYYY-MM-DD ou null
   dateTo: null,
-  strategy: 'tous',      // tous | fhg | dc | lg2
+  strategy: 'tous',      // tous | fhg | lg2
   confidence: 'tous',    // tous | fort | moyen | fort_double
   team: null,            // team_id
   league: null,          // league_name
@@ -71,16 +71,16 @@ Rendus via composants isolés dans `src/lib/components/historique/`. Chacun reç
 ### Chart A — Évolution du taux
 - Line chart, X = dates (jour/mois/année selon granularité), Y = taux %
 - **Hybride** :
-  - si `filters.strategy === 'tous'` : 3 courbes FHG (vert), DC (bleu), LG2 (orange)
+  - si `filters.strategy === 'tous'` : 2 courbes FHG (vert), LG2 (orange)
   - sinon : 1 courbe unique de la stratégie active
 - Sélecteur Jour/Mois/Année au-dessus (change `filters.evolutionGranularity`)
 - Tooltip : "X validés / Y terminés (Z%)" pour le point pointé
 
 ### Chart B — Stacked stratégie
-- Bar chart vertical empilé, X = FHG / DC / LG2 (ou un seul si filtré)
+- Bar chart vertical empilé, X = FHG / LG2 (ou un seul si filtré)
 - Empilement vert (validés) + rouge (perdus)
 - Label data sur chaque segment : chiffre exact
-- Tooltip : "FHG — 45 validés / 18 perdus (71,4%)"
+- Tooltip : "FHG — 45 validés / 18 perdus (71,4%)" ou "LG2 — N validés / M perdus"
 
 ### Chart C — Top 10 équipes
 - Horizontal bar chart
@@ -176,8 +176,7 @@ applyFilters(alerts, filters) → alerts[]
 // Agrégations pour chaque graphique, calculées sur alerts filtrées
 aggregateByStrategy(alerts) → {
   FHG: { validated, lost, total, pct },
-  DC:  { ... },
-  LG2: { ... },
+  LG2: { validated, lost, total, pct },
 }
 
 aggregateByTeam(alerts, minMatches = 3, topN = 10) → [
@@ -189,7 +188,7 @@ aggregateByLeague(alerts, minMatches = 3, topN = 10) → [
 ]
 
 aggregateByDate(alerts, granularity) → [
-  { date, FHG: { v, t }, DC: { v, t }, LG2: { v, t } }, ...
+  { date, FHG: { v, t }, LG2: { v, t } }, ...
 ]
 // granularity : jour → match_date ; mois → YYYY-MM ; année → YYYY
 ```

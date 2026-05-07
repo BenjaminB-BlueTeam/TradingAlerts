@@ -25,8 +25,6 @@ export const defaultConfig = {
   filtreH2HActif:   true,
   minH2H:           3,
   penaliteH2H:      8,
-  analyseDC:        true,
-  seuilRetourDC:    55,
   profil:           'intermediaire',
   minuteMin:        20,
   minuteMax:        70,

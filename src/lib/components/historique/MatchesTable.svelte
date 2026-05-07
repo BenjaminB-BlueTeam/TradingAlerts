@@ -125,7 +125,6 @@
     return                               { label: 'En attente', cls: 'res--pending' };
   }
   function signalBadgeClass(sig) {
-    if (sig === 'DC') return 'badge--dc';
     if (strategyOf({ signal_type: sig }) === 'LG2') return 'badge--lg2';
     if (sig === 'FHG_A+B') return 'badge--fhg-ab';
     if (sig === 'FHG_A') return 'badge--fhg-dom';
@@ -288,7 +287,7 @@
   .badge--fhg-dom { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
   .badge--fhg-ext { background: rgba(100,160,230,0.15); color: #7cb9f7; }
   .badge--fhg-ab  { background: rgba(29,158,117,0.2); color: var(--color-accent-green); }
-  .badge--dc      { background: rgba(239,159,39,0.15); color: var(--color-signal-moyen); }
+
   .badge--lg2     { background: rgba(226,75,74,0.15); color: var(--color-danger); }
   .badge--fort-double { background: rgba(29,158,117,0.25); color: #fff; border: 1px solid var(--color-accent-green); }
   .badge--fort    { background: rgba(29,158,117,0.15); color: var(--color-accent-green); }

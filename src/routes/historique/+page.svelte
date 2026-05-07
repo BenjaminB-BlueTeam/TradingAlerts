@@ -103,7 +103,7 @@
     <p class="page-subtitle" style="margin:4px 0 0;">
       {filteredAlerts.length} alerte{filteredAlerts.length > 1 ? 's' : ''} affichée{filteredAlerts.length > 1 ? 's' : ''}
       {#if filters.scope === 'mine' && filteredAlerts.length === 0}
-        — sélectionne des alertes depuis /alerts, /selection-dc ou /alerts-lg2
+        — sélectionne des alertes depuis /alerts ou /alerts-lg2
       {/if}
       {#if globalPct !== null}
         · taux global <strong style:color={globalPct >= 65 ? 'var(--color-accent-green)' : globalPct >= 50 ? 'var(--color-signal-moyen)' : 'var(--color-danger)'}>{globalPct}%</strong>

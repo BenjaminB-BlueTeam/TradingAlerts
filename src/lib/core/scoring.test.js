@@ -4,7 +4,7 @@ import {
   analyzeScenarioA, analyzeScenarioB, analyzeScenarioC, analyzeScenarioD,
   computeStreak, confirmationRate, isH2HCleanSheetFirstHalf,
   teamScored31to45, teamConceded31to45, teamScoredInFirstHalf, teamConcededInFirstHalf,
-  getTimerConseille, calculerScoreDC,
+  getTimerConseille,
   STREAK_FORT, STREAK_MOYEN, CONFIRM_WINDOW, CONFIRM_MIN_COUNT, STREAK_MIN_MATCHES,
 } from './scoring.js';
 

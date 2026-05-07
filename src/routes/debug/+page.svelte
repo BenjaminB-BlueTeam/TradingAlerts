@@ -134,7 +134,7 @@
   }
 
   // --- Génération alertes manuelle ---
-  let genRunning = $state(null); // 'FHG' | 'DC' | 'ALL' | null
+  let genRunning = $state(null); // 'FHG' | 'ALL' | null
   let genResult = $state(null);
 
   async function handleGenerate(type) {
@@ -216,7 +216,7 @@
       fn: 'generate-alerts.js',
       schedule: '0 */12 * * *',
       human: 'Tous les jours à 0h et 12h UTC',
-      desc: 'Génère les alertes FHG/DC pour J, J+1, J+2 depuis h2h_matches + team_seasons.',
+      desc: 'Génère les alertes FHG/LG2 pour J, J+1, J+2 depuis h2h_matches + team_seasons.',
     },
     {
       id: 'check-results',
@@ -451,11 +451,8 @@
     <button class="btn btn--primary" onclick={() => handleGenerate('FHG')} disabled={genRunning}>
       {genRunning === 'FHG' ? '⏳ Analyse FHG...' : '⚡ Sélection FHG'}
     </button>
-    <button class="btn btn--primary" onclick={() => handleGenerate('DC')} disabled={genRunning}>
-      {genRunning === 'DC' ? '⏳ Analyse DC...' : '🎯 Sélection DC'}
-    </button>
     <button class="btn btn--secondary" onclick={() => handleGenerate('ALL')} disabled={genRunning}>
-      {genRunning === 'ALL' ? '⏳ Analyse complète...' : '🔄 Les deux'}
+      {genRunning === 'ALL' ? '⏳ Analyse complète...' : '🔄 Toutes les alertes'}
     </button>
   </div>
   {#if genResult}

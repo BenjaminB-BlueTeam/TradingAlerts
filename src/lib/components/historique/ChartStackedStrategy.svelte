@@ -11,7 +11,7 @@
   function draw() {
     if (!canvas) return;
     const agg = aggregateByStrategy(alerts);
-    const labels = ['FHG', 'DC', 'LG2'];
+    const labels = ['FHG', 'LG2'];
     const validated = labels.map(k => agg[k].validated);
     const lost      = labels.map(k => agg[k].lost);
     chart = makeStackedBarChart(canvas, {

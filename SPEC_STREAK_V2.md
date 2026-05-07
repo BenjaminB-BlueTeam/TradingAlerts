@@ -17,7 +17,7 @@ Cette spec remplace l'ancien algorithme FHG composite (score 0-100 avec coeffici
 
 ## Règles absolues
 
-- La logique DC reste **inchangée** : `analyzeDCFromH2H`, route `/selection-dc`, colonnes `dc_*`, `check-results.js` évaluation DC.
+- [ARCHIVÉ 2026-05-07] La logique DC a été supprimée de l'app. Les colonnes `dc_*` et les données historiques sont conservées en BDD sans modification du schéma.
 - Pas de migration TypeScript — reste JS/ESM + CommonJS selon contexte.
 - Pas de cotes / ROI / ML / IA prédictive.
 - Confirmation Benjamin requise avant : SQL en prod Supabase, suppression fichier, modif `analysis.cjs`.
@@ -105,7 +105,6 @@ Un signal est émis si :
 | `FHG_A` | Scénario offensif uniquement |
 | `FHG_B` | Scénario défensif uniquement |
 | `FHG_A+B` | Les deux scénarios actifs → fort_double |
-| `DC` | Double Chance (inchangé) |
 
 L'ancien `signal_type = 'FHG'` n'est plus émis. Il subsiste uniquement dans `alerts_v1_backup`.
 
@@ -146,9 +145,5 @@ L'ancien `signal_type = 'FHG'` n'est plus émis. Il subsiste uniquement dans `al
 
 ## Ce qui ne change pas
 
-- `analyzeDCFromH2H` et ses tests
-- Route `/selection-dc`
-- Colonnes `dc_defeat_pct`, `dc_best_side`, `dc_confidence`
-- Logique `evaluateDC` dans `check-results.js`
 - Liaison `trades ↔ alerts` via `match_id` dans `/historique`
-- Paramètre `?type=FHG` / `?type=DC` dans `generate-alerts.js`
+- Colonnes `dc_*` en BDD (conservées pour les données historiques — pas de migration destructive)

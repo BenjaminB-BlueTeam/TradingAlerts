@@ -212,37 +212,6 @@
   </div>
 </div>
 
-<!-- BLOC DC -->
-<div class="settings-block">
-  <div class="settings-block__title">🔄 Double Chance (DC)</div>
-
-  <div class="toggle-row">
-    <div class="toggle-info">
-      <div class="toggle-info__label">Analyse DC automatique</div>
-    </div>
-    <label class="toggle-switch">
-      <input type="checkbox" checked={cfg.analyseDC}
-        onchange={e => setToggle('analyseDC', e.target.checked)} />
-      <span class="toggle-slider"></span>
-    </label>
-  </div>
-
-  <div class="slider-row mb-16 mt-12">
-    <div class="slider-header">
-      <span class="slider-label">Seuil % retour au score si encaisse</span>
-      <span class="slider-value">{cfg.seuilRetourDC}%</span>
-    </div>
-    <input type="range" class="form-input"
-      min="45" max="75" value={cfg.seuilRetourDC}
-      onchange={e => setConfig('seuilRetourDC', parseInt(e.target.value))}
-      oninput={e => config.update(c => ({...c, seuilRetourDC: parseInt(e.target.value)}))} />
-  </div>
-
-  <div class="info-box" style="font-size:12px;">
-    🔒 DC identifiee uniquement apres analyse FHG — Regle absolue (non modifiable)
-  </div>
-</div>
-
 <!-- BLOC TIMING -->
 <div class="settings-block">
   <div class="settings-block__title">⏱ Timing</div>

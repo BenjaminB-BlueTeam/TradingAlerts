@@ -10,7 +10,6 @@
   const STRATEGIES = [
     { key: 'tous', label: 'Tous' },
     { key: 'fhg',  label: 'FHG'  },
-    { key: 'dc',   label: 'DC'   },
     { key: 'lg2',  label: 'LG2'  },
   ];
 

@@ -2,7 +2,7 @@
  * calibrate-threshold.js — streak v2
  *
  * Analyse les alertes terminées (algo v2) et produit :
- *   1. Tableau par signal_type (FHG_A, FHG_B, FHG_A+B, DC)
+ *   1. Tableau par signal_type (FHG_DOM, FHG_EXT)
  *   2. Tableau par confiance (fort_double, fort, moyen)
  *   3. Cross-tab signal_type × confiance
  *   4. Recommandations sur les seuils de streak
@@ -32,7 +32,7 @@ async function fetchAlerts() {
   // Récupère toutes les alertes terminées (inclut v1 + v2 pour comparaison)
   const url = `${SUPABASE_URL}/rest/v1/alerts`
     + `?status=in.(validated,lost)`
-    + `&select=signal_type,fhg_pct,dc_defeat_pct,confidence,status,algo_version,user_excluded`
+    + `&select=signal_type,fhg_pct,confidence,status,algo_version,user_excluded`
     + `&order=kickoff_unix.desc`;
 
   const res = await fetch(url, {
@@ -131,7 +131,7 @@ async function main() {
   // ── 1. Par signal_type ──────────────────────────────────────
   header(`Par signal_type  (v2, n=${v2.length})`);
 
-  const sigTypes = ['FHG_DOM', 'FHG_EXT', 'DC'];
+  const sigTypes = ['FHG_DOM', 'FHG_EXT'];
   const sigStats = {};
   for (const sig of sigTypes) {
     sigStats[sig] = stats(v2.filter(a => a.signal_type === sig));
@@ -203,10 +203,6 @@ async function main() {
       console.log(`    → fort_double est moins performant. Vérifier les critères A+B.`);
     }
   }
-
-  // DC
-  const sDC = sigStats['DC'];
-  if (sDC) recommend(sDC, 'DC          ');
 
   console.log(`\n  Seuils actuels : STREAK_FORT=${STREAK_FORT}, STREAK_MOYEN=${STREAK_MOYEN}, CONFIRM_MIN_RATE=${CONFIRM_MIN_RATE}, CONFIRM_MIN_SAMPLE=${CONFIRM_MIN_SAMPLE}`);
   console.log(`  Pour modifier : netlify/functions/lib/analysis.cjs + src/lib/core/scoring.js\n`);

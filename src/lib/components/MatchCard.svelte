@@ -171,9 +171,6 @@
         </span>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        {#if m.scoreDC}
-          <span class="badge badge--h2h-gris">DC: {m.scoreDC}pts</span>
-        {/if}
         {#if onTrade}
           <button class="btn btn--primary btn--sm" onclick={() => onTrade(m)}>
             + Trade

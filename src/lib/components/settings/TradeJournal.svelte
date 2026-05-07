@@ -102,7 +102,7 @@
               <td style="font-size:12px;max-width:160px;">{t.match || '—'}</td>
               <td style="font-size:11px;">{t.ligue || '—'}</td>
               <td>{t.fhgPct || '—'}</td>
-              <td>{t.strategie === 'fhg_dc' ? 'FHG+DC' : 'FHG'}</td>
+              <td>{t.strategie || '—'}</td>
               <td>
                 {#if t.badge1MT}
                   <span class="badge badge--1mt">★</span>

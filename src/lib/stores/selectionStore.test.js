@@ -17,7 +17,7 @@ const { selectedKeys, select, unselect, isSelected, keyOf, loadSelections } = aw
 describe('keyOf (re-export)', () => {
   it('re-export depuis selectionFilters fonctionnel', () => {
     expect(keyOf(1, 'FHG_A')).toBe('1:FHG_A');
-    expect(keyOf(99, 'DC')).toBe('99:DC');
+    expect(keyOf(99, 'LG2_A')).toBe('99:LG2_A');
   });
 });
 
@@ -38,7 +38,7 @@ describe('isSelected', () => {
   it('retourne false si signal_type différent (granularité fine)', () => {
     const set = new Set(['1:FHG_A']);
     expect(isSelected(set, 1, 'FHG_B')).toBe(false);
-    expect(isSelected(set, 1, 'DC')).toBe(false);
+    expect(isSelected(set, 1, 'LG2_A')).toBe(false);
   });
 });
 
@@ -51,7 +51,7 @@ describe('loadSelections', () => {
   it('hydrate selectedKeys depuis le retour de getSelectedAlerts', async () => {
     const mockData = [
       { match_id: 1, signal_type: 'FHG_A' },
-      { match_id: 2, signal_type: 'DC' },
+      { match_id: 2, signal_type: 'LG2_B' },
       { match_id: 3, signal_type: 'LG2_A' },
     ];
     mockGetSelectedAlerts.mockResolvedValue(mockData);
@@ -60,7 +60,7 @@ describe('loadSelections', () => {
 
     const currentSet = get(selectedKeys);
     expect(currentSet.has('1:FHG_A')).toBe(true);
-    expect(currentSet.has('2:DC')).toBe(true);
+    expect(currentSet.has('2:LG2_B')).toBe(true);
     expect(currentSet.has('3:LG2_A')).toBe(true);
   });
 
@@ -121,9 +121,9 @@ describe('select', () => {
   });
 
   it('note est passée correctement à api.selectAlert quand fournie', async () => {
-    await select(5, 'DC', 'ma note perso');
+    await select(5, 'LG2_A', 'ma note perso');
 
-    expect(mockSelectAlert).toHaveBeenCalledWith(5, 'DC', 'ma note perso');
+    expect(mockSelectAlert).toHaveBeenCalledWith(5, 'LG2_A', 'ma note perso');
   });
 
   it('note défaut à null si non fournie', async () => {
@@ -141,86 +141,52 @@ describe('unselect', () => {
     mockUnselectAlert.mockResolvedValue(undefined);
   });
 
-  it('cas nominal sans cascade : appelle api.unselectAlert une fois, retire la clé, retourne cascadedDC: false', async () => {
-    selectedKeys.set(new Set(['1:DC']));
-
-    const result = await unselect(1, 'DC');
-
-    expect(mockUnselectAlert).toHaveBeenCalledOnce();
-    expect(mockUnselectAlert).toHaveBeenCalledWith(1, 'DC');
-    expect(get(selectedKeys).has('1:DC')).toBe(false);
-    expect(result).toEqual({ cascadedDC: false });
-  });
-
-  it('cascade FHG → DC : si on désélectionne FHG_A et que DC du même match est sélectionné', async () => {
-    selectedKeys.set(new Set(['1:FHG_A', '1:DC']));
-
-    const result = await unselect(1, 'FHG_A');
-
-    // api.unselectAlert appelé 2 fois : FHG_A, puis DC
-    expect(mockUnselectAlert).toHaveBeenCalledTimes(2);
-    expect(mockUnselectAlert).toHaveBeenNthCalledWith(1, 1, 'FHG_A');
-    expect(mockUnselectAlert).toHaveBeenNthCalledWith(2, 1, 'DC');
-    // Les deux clés sont retirées du Set
-    expect(get(selectedKeys).has('1:FHG_A')).toBe(false);
-    expect(get(selectedKeys).has('1:DC')).toBe(false);
-    // Retourne cascadedDC: true
-    expect(result).toEqual({ cascadedDC: true });
-  });
-
-  it('cascade FHG → DC : si on désélectionne FHG_A mais qu\'il n\'y a PAS de DC, pas de cascade', async () => {
+  it('cas nominal : appelle api.unselectAlert une fois et retire la clé du Set', async () => {
     selectedKeys.set(new Set(['1:FHG_A']));
 
-    const result = await unselect(1, 'FHG_A');
+    await unselect(1, 'FHG_A');
 
     expect(mockUnselectAlert).toHaveBeenCalledOnce();
     expect(mockUnselectAlert).toHaveBeenCalledWith(1, 'FHG_A');
     expect(get(selectedKeys).has('1:FHG_A')).toBe(false);
-    expect(result).toEqual({ cascadedDC: false });
   });
 
-  it('désélection d\'un signal qui ne commence pas par FHG (ex: DC direct) : pas de cascade', async () => {
-    selectedKeys.set(new Set(['1:DC', '1:FHG_A']));
+  it('désélectionner LG2_A : appelle api.unselectAlert une fois et retire la clé', async () => {
+    selectedKeys.set(new Set(['2:LG2_A']));
 
-    const result = await unselect(1, 'DC');
+    await unselect(2, 'LG2_A');
 
     expect(mockUnselectAlert).toHaveBeenCalledOnce();
-    expect(mockUnselectAlert).toHaveBeenCalledWith(1, 'DC');
-    expect(get(selectedKeys).has('1:DC')).toBe(false);
-    expect(get(selectedKeys).has('1:FHG_A')).toBe(true); // FHG_A n'est pas affecté
-    expect(result).toEqual({ cascadedDC: false });
+    expect(mockUnselectAlert).toHaveBeenCalledWith(2, 'LG2_A');
+    expect(get(selectedKeys).has('2:LG2_A')).toBe(false);
   });
 
-  it('désélection d\'une variante FHG (FHG_B, FHG_A+B) : la cascade s\'applique aussi', async () => {
-    selectedKeys.set(new Set(['2:FHG_B', '2:DC']));
+  it('désélectionner FHG_B : n\'affecte pas les autres signaux du même match', async () => {
+    selectedKeys.set(new Set(['3:FHG_B', '3:LG2_A']));
 
-    const result = await unselect(2, 'FHG_B');
-
-    expect(mockUnselectAlert).toHaveBeenCalledTimes(2);
-    expect(mockUnselectAlert).toHaveBeenNthCalledWith(1, 2, 'FHG_B');
-    expect(mockUnselectAlert).toHaveBeenNthCalledWith(2, 2, 'DC');
-    expect(result).toEqual({ cascadedDC: true });
-  });
-
-  it('cascade FHG_A+B → DC du même match', async () => {
-    selectedKeys.set(new Set(['3:FHG_A+B', '3:DC']));
-
-    const result = await unselect(3, 'FHG_A+B');
-
-    expect(mockUnselectAlert).toHaveBeenCalledTimes(2);
-    expect(mockUnselectAlert).toHaveBeenNthCalledWith(1, 3, 'FHG_A+B');
-    expect(mockUnselectAlert).toHaveBeenNthCalledWith(2, 3, 'DC');
-    expect(result).toEqual({ cascadedDC: true });
-  });
-
-  it('LG2_A ne provoque pas de cascade (ne commence pas par FHG)', async () => {
-    selectedKeys.set(new Set(['4:LG2_A', '4:DC']));
-
-    const result = await unselect(4, 'LG2_A');
+    await unselect(3, 'FHG_B');
 
     expect(mockUnselectAlert).toHaveBeenCalledOnce();
-    expect(mockUnselectAlert).toHaveBeenCalledWith(4, 'LG2_A');
-    expect(get(selectedKeys).has('4:DC')).toBe(true); // DC n'est pas affecté
-    expect(result).toEqual({ cascadedDC: false });
+    expect(mockUnselectAlert).toHaveBeenCalledWith(3, 'FHG_B');
+    expect(get(selectedKeys).has('3:FHG_B')).toBe(false);
+    expect(get(selectedKeys).has('3:LG2_A')).toBe(true); // LG2_A n'est pas affecté
+  });
+
+  it('désélectionner FHG_A+B : retire uniquement cette clé', async () => {
+    selectedKeys.set(new Set(['4:FHG_A+B', '4:LG2_B']));
+
+    await unselect(4, 'FHG_A+B');
+
+    expect(mockUnselectAlert).toHaveBeenCalledOnce();
+    expect(mockUnselectAlert).toHaveBeenCalledWith(4, 'FHG_A+B');
+    expect(get(selectedKeys).has('4:FHG_A+B')).toBe(false);
+    expect(get(selectedKeys).has('4:LG2_B')).toBe(true);
+  });
+
+  it('si api.unselectAlert throw, l\'erreur est propagée', async () => {
+    selectedKeys.set(new Set(['5:FHG_A']));
+    mockUnselectAlert.mockRejectedValue(new Error('API error'));
+
+    await expect(unselect(5, 'FHG_A')).rejects.toThrow('API error');
   });
 });
