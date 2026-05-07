@@ -241,7 +241,7 @@
   <div class="section-label">Alertes du jour</div>
   <div class="metric-grid metric-grid--3">
 
-    <div class="metric-card">
+    <a href="/alerts?day=0&confidence=fort" class="metric-card metric-card--link">
       <div class="metric-card__label">FHG Fort — aujourd'hui</div>
       {#if loading}
         <div class="metric-card__value muted">—</div>
@@ -250,9 +250,9 @@
         <div class="metric-card__value green">{fhgFortToday.length}</div>
         <div class="metric-card__sub">{fhgAlerts.length} FHG total</div>
       {/if}
-    </div>
+    </a>
 
-    <div class="metric-card">
+    <a href="/alerts-lg2?day=0&confidence=fort" class="metric-card metric-card--link">
       <div class="metric-card__label">LG2 Fort — aujourd'hui</div>
       {#if loading}
         <div class="metric-card__value muted">—</div>
@@ -261,7 +261,7 @@
         <div class="metric-card__value blue">{lg2FortToday.length}</div>
         <div class="metric-card__sub">{lg2Alerts.length} LG2 total</div>
       {/if}
-    </div>
+    </a>
 
     <div class="metric-card">
       <div class="metric-card__label">Taux validées (7j)</div>
@@ -334,6 +334,8 @@
   .metric-card__value.muted { color: var(--color-text-muted); }
   .metric-card__sub { font-size: 11px; color: var(--color-text-muted); margin-top: 6px; min-height: 16px; }
 
+  .metric-card--link { text-decoration: none; color: inherit; display: block; cursor: pointer; }
+  .metric-card--link:hover { border-color: var(--color-accent-blue); }
   .metric-card--ok { border-color: rgba(29,158,117,0.3); }
   .metric-card--warn { border-color: rgba(239,159,39,0.3); }
   .metric-card--error { border-color: rgba(226,75,74,0.3); }

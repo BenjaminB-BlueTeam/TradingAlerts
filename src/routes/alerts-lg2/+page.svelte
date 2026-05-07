@@ -204,7 +204,14 @@
     hoverBar = null;
   }
 
-  onMount(() => { loadAlerts(); });
+  onMount(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dayParam = params.get('day');
+    const confParam = params.get('confidence');
+    if (dayParam !== null) selectedDay = parseInt(dayParam);
+    if (confParam && ['tout', 'fort', 'moyen'].includes(confParam)) selectedConfidence = confParam;
+    loadAlerts();
+  });
 </script>
 
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
