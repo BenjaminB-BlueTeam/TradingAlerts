@@ -1,18 +1,34 @@
-/* ================================================
-   data.js — Initialisation app (test connexion API)
-   FHG Tracker
-   ================================================ */
+import { getAllLeagues, normalizeLeagues } from '$lib/api/footystats.js';
+import { apiConnected, leagues, saveLeagues } from '$lib/stores/appStore.js';
+import { get } from 'svelte/store';
 
-import { testApiConnection } from '$lib/api/footystats.js';
-import { apiConnected } from '$lib/stores/appStore.js';
+function reconcileLeaguesStore(apiLeagues) {
+  if (!apiLeagues.length) return;
+  const current = get(leagues);
+  const reconciled = apiLeagues.map(apiLg => {
+    const idx = current.findIndex(l =>
+      (l.leagueId && l.leagueId === apiLg.id) ||
+      l.name === apiLg.name ||
+      apiLg.name.includes(l.name) ||
+      l.name.includes(apiLg.name)
+    );
+    if (idx > -1) {
+      return { ...current[idx], leagueId: apiLg.id, name: apiLg.name, country: apiLg.country };
+    }
+    return { id: apiLg.name.toLowerCase().replace(/\s+/g, '-'), name: apiLg.name, country: apiLg.country, flag: '', active: false, leagueId: apiLg.id };
+  });
+  saveLeagues(reconciled);
+}
 
-/**
- * Test la connexion API FootyStats et met à jour le store.
- * Note: loadData() a été supprimée — le Dashboard utilise désormais
- * les alertes Supabase directement (comme /alerts et /alerts-lg2).
- */
 export async function initApp() {
-  const status = await testApiConnection();
-  apiConnected.set(status.success);
-  return status;
+  try {
+    const apiLeagues = await getAllLeagues();
+    const success = apiLeagues.length > 0;
+    apiConnected.set(success);
+    if (success) reconcileLeaguesStore(apiLeagues);
+    return { success, message: success ? 'Connexion réussie' : 'Aucune ligue retournée' };
+  } catch (e) {
+    apiConnected.set(false);
+    return { success: false, error: `Erreur réseau : ${e.message}` };
+  }
 }
