@@ -69,10 +69,15 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 - Cards avec expand (barres timing buts, curseur minute)
 
 ### Autres pages
-- **Classements ligues** (`/explore`) — par pays, stats, classements
-- **Ligues actives** (`/leagues`) — 50 ligues, toggle actif/inactif, FHG% equipes
+- **Classements ligues** (`/explore`) — par pays (avec drapeaux), stats, classements
+- **Ligues actives** (`/leagues`) — 50 ligues, toggle actif/inactif, FHG% equipes (drapeau pays)
 - **Configuration** (`/config`) — config algo (Admin)
 - **Debug** (`/debug`) — tests API/Supabase, seed, panel crons (auth requise en prod)
+
+### UX
+- **PWA installable** sur mobile (manifest + service worker)
+- **Drapeaux pays** : flagcdn.com via mapping ISO 3166-1 alpha-2 sur `/leagues`, `/explore` et toutes les cards d'alertes (`/alerts`, `/alerts-lg2`, `/mes-matchs`). Extraction du pays par préfixe de `league_name`.
+- **Autocomplete équipe** sur `/matches` (table Supabase `teams`, ~1098 équipes seedées)
 
 ---
 

@@ -136,6 +136,7 @@ src/
       historyFilters.test.js ← tests unitaires filtres + agrégations (30 tests)
       selectionFilters.js    ← filtres pour /mes-matchs (tri, sections actif/terminé)
       selectionFilters.test.js ← tests unitaires selectionFilters
+      countryFlags.js     ← mapping nom de pays FootyStats → ISO 3166-1 alpha-2 + helpers flagUrl/extractCountry/leagueFlagUrl (drapeaux flagcdn.com)
     data.js             ← initApp (test connexion API)
 static/
   manifest.json         ← PWA manifest (nom, icônes, display standalone)
@@ -178,7 +179,7 @@ scripts/
 | `team_seasons` | Stats équipes par saison (legacy, non peuplée) | ON | SELECT | — | ALL |
 | `seed_jobs` | Suivi progression seed | ON | SELECT, INSERT, UPDATE | — | ALL |
 | `team_fhg_cache` | FHG% 0-45 min par equipe par saison (PK: season_id+team_id) | ON | SELECT | — | ALL |
-| `teams` | 1077 équipes (team_id unique + name), autocomplete /matches | ON | — | SELECT | ALL |
+| `teams` | 1098 équipes (team_id unique + colonne réelle `name`, pas `team_name`), autocomplete /matches | ON | SELECT | SELECT | ALL |
 | `selected_alerts` | Sélections manuelles FHG/LG2 par Benjamin | ON | SELECT, INSERT, DELETE | — | ALL |
 | `alert_trades` | Positions trading (cote + mise), plusieurs par match | ON | ALL | ALL | ALL |
 
@@ -293,6 +294,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Auth Supabase** — email/password solo, sign ups désactivés, guard SvelteKit dans +layout.svelte, page `/login`, redirect automatique si non authentifié
 - **Headers sécurité** — `src/hooks.server.js` injecte CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP sur toutes les réponses SSR
 - **PWA installable** — `static/manifest.json` + `static/sw.js` (service worker cache offline) + icônes 192×512px
+- **Drapeaux pays** — `src/lib/utils/countryFlags.js` : mapping ~90 noms de pays FootyStats → ISO 3166-1 alpha-2 (subdivisions UK incluses). Helpers `flagUrl(country)`, `extractCountry(leagueName)` (extraction par préfixe), `leagueFlagUrl(leagueName)`. Drapeau SVG depuis flagcdn.com affiché sur `/leagues`, `/explore` (header pays), `/alerts`, `/alerts-lg2`, `/mes-matchs` (à côté du nom de ligue).
 - **Dashboard** (`/`) — 12 KPIs en 4 sections : "Santé infra" (API FootyStats, Ligues actives, Historique H2H) + "Santé crons" (Génération FHG last run, Génération LG2 last run, Alertes > 48h) + "Alertes du jour" (FHG Fort, LG2 Fort, Performance 7j) + "Mes performances" (Renta semaine, Renta mois, Matchs joués). Layout centré max-width 960px.
 - **Selection FHG** (`/alerts`) — alertes FHG_A/B/A+B/C/D, tri fort→moyen→date, filtres jour (boutons) + ligue (dropdown) + confiance (Tout/Fort/Moyen). Badges Fort/Moyen (sans badge signal_type). league_name via leagueMap. Expand détaillé, barres timing buts, Validé/Perdu/EN COURS, bouton Exclure, SelectAlertButton.
 - **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B, tri fort→moyen→date, filtres jour + ligue + confiance. Badges Fort/Moyen. Expand par équipe, barres timing buts (marqueur 80'), pills Dom/Ext streak, bouton Exclure, SelectAlertButton.
@@ -357,6 +359,8 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Utilitaires partages** : utiliser `$lib/utils/formatters.js` et `$lib/utils/teamData.js` au lieu de dupliquer
 - **Helpers serverless** : utiliser `netlify/functions/lib/api.js` pour `footyRequest`/`supabaseQuery`
 - **Type mismatch `match_id`** : `alerts.match_id` est `bigint` (retourné `number` par Supabase) tandis que `alert_trades.match_id` est `TEXT` (retourné `string`). Toujours normaliser via `String(...)` (ou template literal) des deux côtés avant comparaison ou jointure côté client. La comparaison `===` stricte échoue silencieusement et fait disparaître les trades.
+- **Schéma `teams` vs migration** : la migration `20260507140000_create_teams_table.sql` déclare `team_name` mais la table préexistait avec `(id, team_id, league_id, name, stats, updated_at)` — `CREATE TABLE IF NOT EXISTS` a été un no-op. **La vraie colonne pour le nom est `name`**, pas `team_name`. Toujours vérifier avec `information_schema.columns` (ou MCP Supabase) en cas de doute sur un schéma plutôt que faire confiance au fichier de migration.
+- **Tables créées après hardening** : si une nouvelle table publique est créée APRÈS la migration `20260507120000_harden_rls_authenticated.sql`, elle doit avoir explicitement une policy `to authenticated` (sinon le frontend logué — qui passe en rôle `authenticated` — voit 0 ligne silencieusement). Ne pas se reposer sur les policies `to anon`. Les policies anon ne s'appliquent qu'au rôle `anon`, pas à `authenticated`.
 
 ## Conventions git
 

@@ -39,7 +39,7 @@ Toutes les tables ont RLS active. `service_role` bypass RLS par defaut.
 | `alerts` | match_id, signal_type, confidence, status, algo_version, user_excluded | SELECT + UPDATE | UPDATE (résultat manuel) | generate-alerts.js, check-results.js |
 | `trades` | match_id, mise, resultat | ALL | — | Frontend |
 | `h2h_matches` | match_id, home/away_team_id, goal_events, match_date (65k lignes) | SELECT | — | daily-seed.js, seed-data.js |
-| `teams` | team_id (unique), name (1077 equipes) | — | SELECT | seed-data.js (league-teams) |
+| `teams` | team_id (unique), name (~1098 equipes — colonne réelle `name`, pas `team_name`) | SELECT | SELECT | seed-data.js (league-teams) |
 | `team_seasons` | team_id, season_id, stats (non peuplee, legacy) | SELECT | — | — |
 | `seed_jobs` | job_id, status, progress | SELECT + INSERT + UPDATE | — | seed-data.js |
 | `team_fhg_cache` | season_id, team_id, fhg_pct (PK composite) | SELECT | — | compute-team-fhg.js |
@@ -192,6 +192,15 @@ Le frontend n'accede jamais directement a FootyStats. Tout passe par `/.netlify/
 
 `static/manifest.json` declare l'app comme installable (display: standalone, theme_color, icons 192/512px).
 `static/sw.js` (Service Worker) met en cache l'app shell pour un demarrage offline.
+
+## Drapeaux pays
+
+`src/lib/utils/countryFlags.js` — mapping des noms de pays FootyStats vers ISO 3166-1 alpha-2 (~90 pays + subdivisions UK gb-eng/sct/wls/nir). Helpers :
+- `flagUrl(country)` : URL SVG flagcdn.com (`https://flagcdn.com/{iso2}.svg`) ou null
+- `extractCountry(leagueName)` : extrait le pays depuis le préfixe (ex: "Germany 2. Bundesliga" → "Germany"), tri par longueur DESC pour matcher "South Korea" avant "South"
+- `leagueFlagUrl(leagueName)` : raccourci composé
+
+Affiché sur `/leagues`, `/explore` (header pays) et toutes les cards d'alertes (`/alerts`, `/alerts-lg2`, `/mes-matchs`).
 
 ## Strategie DC
 
