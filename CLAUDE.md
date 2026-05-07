@@ -301,6 +301,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 ## Conventions de developpement
 
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()` (pas de `$:` ni `export let`)
+- **Events composants** — NE PAS utiliser `createEventDispatcher` + `on:event` dans les composants runes : l'event est silencieusement ignoré. Utiliser des **callback props** : `let { onexcluded } = $props()` → `onexcluded?.({ ... })` côté composant, `onexcluded={handler}` côté parent.
 - **SvelteKit** — composants .svelte, stores Svelte, routing fichier
 - **Pas de modification du store global** sans verifier les subscribers existants
 - **Toute nouvelle feature** : legere, compatible Netlify static + Supabase
