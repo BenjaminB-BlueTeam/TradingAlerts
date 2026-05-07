@@ -4,6 +4,7 @@
   import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
   import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay } from '$lib/utils/formatters.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
+  import { leagueFlagUrl } from '$lib/utils/countryFlags.js';
   import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
   import { selectedKeys, isSelected, unselect } from '$lib/stores/selectionStore.js';
@@ -335,7 +336,12 @@
           </div>
           <div class="alert-card__match">
             <div class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</div>
-            <div class="alert-card__league">{a.league_name || '—'}</div>
+            <div class="alert-card__league">
+              {#if leagueFlagUrl(a.league_name)}
+                <img class="country-flag" src={leagueFlagUrl(a.league_name)} alt="" loading="lazy" />
+              {/if}
+              {a.league_name || '—'}
+            </div>
           </div>
           <div class="alert-card__badges">
             <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
@@ -478,7 +484,8 @@
   .alert-card__hour { font-size: 14px; font-weight: 600; }
   .alert-card__match { flex: 1; min-width: 0; }
   .alert-card__teams { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .alert-card__league { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+  .alert-card__league { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+  .alert-card__league .country-flag { width: 16px; height: 12px; object-fit: cover; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255,255,255,0.08); flex-shrink: 0; }
   .alert-card__arrow { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
 
   .alert-card__stats { display: flex; gap: 6px; flex-shrink: 0; }

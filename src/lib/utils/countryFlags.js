@@ -170,3 +170,35 @@ export function flagUrl(countryName) {
 export function knownCountries() {
   return Object.keys(COUNTRY_TO_ISO);
 }
+
+// Liste pré-triée par longueur DESC pour matcher "South Korea" avant "South",
+// "Saudi Arabia" avant "Saudi", etc.
+const COUNTRIES_BY_LENGTH = Object.keys(COUNTRY_TO_ISO)
+  .filter(c => COUNTRY_TO_ISO[c] !== null)
+  .sort((a, b) => b.length - a.length);
+
+/**
+ * Extrait le pays depuis un nom de ligue FootyStats (préfixe).
+ * Ex: "Germany 2. Bundesliga" → "Germany"
+ *     "Mexico Liga MX Femenil" → "Mexico"
+ *     "South Korea K League 1" → "South Korea"
+ *
+ * @param {string} leagueName
+ * @returns {string|null} — nom du pays connu, ou null si rien ne matche
+ */
+export function extractCountry(leagueName) {
+  if (!leagueName) return null;
+  for (const c of COUNTRIES_BY_LENGTH) {
+    // match exact en début + frontière (espace, fin, ponctuation)
+    if (leagueName === c) return c;
+    if (leagueName.startsWith(c + ' ')) return c;
+  }
+  return null;
+}
+
+/**
+ * Raccourci : drapeau directement depuis un nom de ligue.
+ */
+export function leagueFlagUrl(leagueName) {
+  return flagUrl(extractCountry(leagueName));
+}

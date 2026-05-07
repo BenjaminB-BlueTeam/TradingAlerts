@@ -4,6 +4,7 @@
   import { fetchAlertTrades, insertAlertTrade, deleteAlertTrade, updateAlertStatus } from '$lib/api/supabase.js';
   import { selectedKeys, keyOf } from '$lib/stores/selectionStore.js';
   import { getDateStr, formatDateDMY, formatTime, isInPlay } from '$lib/utils/formatters.js';
+  import { leagueFlagUrl } from '$lib/utils/countryFlags.js';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
 
   // ---- State ----
@@ -380,7 +381,12 @@
       </div>
       <div class="alert-card__match">
         <div class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</div>
-        <div class="alert-card__league">{a.league_name || '—'}</div>
+        <div class="alert-card__league">
+          {#if leagueFlagUrl(a.league_name)}
+            <img class="country-flag" src={leagueFlagUrl(a.league_name)} alt="" loading="lazy" />
+          {/if}
+          {a.league_name || '—'}
+        </div>
       </div>
       <div class="alert-card__badges">
         <span class="alert-badge {confidenceClass(a.confidence)}">{confidenceLabel(a.confidence)}</span>
@@ -670,6 +676,17 @@
     font-size: 11px;
     color: var(--color-text-muted);
     margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .alert-card__league .country-flag {
+    width: 16px;
+    height: 12px;
+    object-fit: cover;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+    flex-shrink: 0;
   }
 
   .alert-card__badges {
