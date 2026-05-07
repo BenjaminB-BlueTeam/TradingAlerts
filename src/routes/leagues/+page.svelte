@@ -4,6 +4,7 @@
   import { statColor, fetchLeagues, loadAllStats } from '$lib/utils/leagueHelpers.js';
   import { supabase } from '$lib/api/supabase.js';
   import { fhgColor } from '$lib/utils/formatters.js';
+  import { flagUrl } from '$lib/utils/countryFlags.js';
 
   let apiLeagues = $state([]);
   let loading = $state(true);
@@ -193,6 +194,9 @@
               {/if}
             </div>
             <div class="league-item__meta">
+              {#if flagUrl(league.country)}
+                <img class="country-flag" src={flagUrl(league.country)} alt="" loading="lazy" />
+              {/if}
               {league.country}
               {#if league.year} · {league.year}{/if}
               {#if stats} · {stats.matchesPlayed}/{stats.totalMatches} matchs{/if}
@@ -333,6 +337,17 @@
     font-size: 11px;
     color: var(--color-text-muted);
     margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .country-flag {
+    width: 18px;
+    height: 13px;
+    object-fit: cover;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+    flex-shrink: 0;
   }
   .league-item__stats {
     display: flex;

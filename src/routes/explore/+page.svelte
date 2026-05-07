@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { apiConnected } from '$lib/stores/appStore.js';
   import { statColor, fetchLeagues, loadAllStats, toggleExpandLeague } from '$lib/utils/leagueHelpers.js';
+  import { flagUrl } from '$lib/utils/countryFlags.js';
 
   let allLeagues = $state([]);
   let loading = $state(true);
@@ -104,6 +105,9 @@
   {#each grouped as [country, leagues]}
     <div class="explore-country">
       <div class="explore-country__header">
+        {#if flagUrl(country)}
+          <img class="country-flag" src={flagUrl(country)} alt="" loading="lazy" />
+        {/if}
         {country} <span class="explore-country__count">({leagues.length})</span>
       </div>
       <div class="explore-leagues-grid">
@@ -217,6 +221,17 @@
     border-bottom: 1px solid var(--color-border);
     margin-bottom: 10px;
     color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .country-flag {
+    width: 22px;
+    height: 16px;
+    object-fit: cover;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+    flex-shrink: 0;
   }
   .explore-country__count {
     font-weight: 400;
