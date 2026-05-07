@@ -181,6 +181,40 @@
   let searchError = $state('');
   let searchDebounce;
 
+  // Panneau équipe — matchs saison en cours
+  let teamContext = $state('home');
+
+  let teamMatches = $derived.by(() => {
+    if (!selectedTeam) return [];
+    return getTeamMatches(selectedTeam.id, teamContext);
+  });
+
+  $effect(() => {
+    if (!selectedTeam) return;
+    loadTeamMatches(selectedTeam.id, 'home');
+    loadTeamMatches(selectedTeam.id, 'away');
+  });
+
+  function teamMatchOpponent(match, teamId) {
+    // h2h_matches Supabase : home_id / away_id, home_team_name / away_team_name, home_goals / away_goals
+    const isHome = match.home_id === teamId || match.homeID === teamId;
+    const opponentName = isHome
+      ? (match.away_team_name || match.away_name || match.awayTeam || '—')
+      : (match.home_team_name || match.home_name || match.homeTeam || '—');
+    let score = '—';
+    if (match.home_goals !== undefined && match.away_goals !== undefined) {
+      score = isHome ? `${match.home_goals}-${match.away_goals}` : `${match.away_goals}-${match.home_goals}`;
+    } else if (match.homeGoalCount !== undefined) {
+      score = isHome ? `${match.homeGoalCount}-${match.awayGoalCount}` : `${match.awayGoalCount}-${match.homeGoalCount}`;
+    }
+    return { isHome, opponent: opponentName, score };
+  }
+
+  function hasGoal3145(match, isHome) {
+    const events = Array.isArray(match.goal_events) ? match.goal_events : [];
+    return events.some(e => e.min >= 31 && e.min <= 45 && e.home === isHome);
+  }
+
   // La dropdown s'affiche dès qu'il y a des suggestions et que la query n'a pas
   // été matérialisée comme une sélection (selectedTeam null + texte ne matche pas
   // exactement le nom sélectionné). Pas de dépendance fragile à un focus state.
@@ -301,6 +335,39 @@
 
 {#if error}
   <p class="error-msg">{error}</p>
+{/if}
+
+{#if selectedTeam}
+  <div class="team-panel">
+    <div class="team-panel__header">
+      <span class="team-panel__name">{selectedTeam.name}</span>
+      <div class="team-panel__ctx-btns">
+        <button class="ctx-btn" class:ctx-btn--active={teamContext === 'home'} onclick={() => teamContext = 'home'}>Domicile</button>
+        <button class="ctx-btn" class:ctx-btn--active={teamContext === 'away'} onclick={() => teamContext = 'away'}>Extérieur</button>
+      </div>
+      <span class="team-panel__count">{teamMatches.length} match{teamMatches.length !== 1 ? 's' : ''}</span>
+    </div>
+
+    {#if teamMatches.length === 0}
+      <div class="team-panel__empty">Aucun match en base pour ce contexte</div>
+    {:else}
+      <div class="team-panel__list">
+        {#each teamMatches as m (m.id ?? m.match_id)}
+          {@const info = teamMatchOpponent(m, selectedTeam.id)}
+          {@const goal = hasGoal3145(m, info.isHome)}
+          {@const dateStr = m.date_unix
+            ? new Date(m.date_unix * 1000).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+            : (m.match_date ?? '—')}
+          <div class="team-panel__row" class:team-panel__row--goal={goal}>
+            <span class="team-panel__date">{dateStr}</span>
+            <span class="team-panel__opponent">{info.opponent || '—'}</span>
+            <span class="team-panel__score">{info.score}</span>
+            <span class="team-panel__goal-dot" title={goal ? 'But 31-45' : 'Pas de but 31-45'}>{goal ? '●' : '—'}</span>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
 {/if}
 
 <!-- LISTE -->
@@ -505,6 +572,66 @@
   @media (max-width: 768px) {
     .match-card__header { flex-wrap: wrap; }
   }
+
+  /* Panneau équipe */
+  .team-panel {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .team-panel__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-border);
+    flex-wrap: wrap;
+  }
+  .team-panel__name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    flex: 1;
+  }
+  .team-panel__ctx-btns { display: flex; gap: 4px; }
+  .ctx-btn {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    transition: all var(--transition-fast);
+  }
+  .ctx-btn--active {
+    background: rgba(29,158,117,0.15);
+    border-color: rgba(29,158,117,0.5);
+    color: var(--color-accent-green);
+  }
+  .team-panel__count { font-size: 11px; color: var(--color-text-muted); }
+  .team-panel__empty { padding: 16px 14px; font-size: 12px; color: var(--color-text-muted); }
+  .team-panel__list { max-height: 320px; overflow-y: auto; }
+  .team-panel__row {
+    display: grid;
+    grid-template-columns: 48px 1fr 60px 24px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 12px;
+    transition: background var(--transition-fast);
+  }
+  .team-panel__row:last-child { border-bottom: none; }
+  .team-panel__row:hover { background: rgba(255,255,255,0.03); }
+  .team-panel__row--goal { background: rgba(29,158,117,0.04); }
+  .team-panel__date { color: var(--color-text-muted); font-size: 11px; white-space: nowrap; }
+  .team-panel__opponent { color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .team-panel__score { color: var(--color-text-secondary); font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+  .team-panel__goal-dot { text-align: center; color: var(--color-accent-green); font-size: 10px; }
 
   /* Recherche équipe */
   .team-search-wrapper {
