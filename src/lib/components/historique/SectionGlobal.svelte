@@ -2,8 +2,11 @@
   import { onMount, onDestroy } from 'svelte';
   import { Chart } from 'chart.js';
   import { strategyOf } from '$lib/utils/historyFilters.js';
+  import { fetchAlertTrades } from '$lib/api/supabase.js';
 
   let { alerts = [], strategy = 'FHG' } = $props();
+
+  let trades = $state([]);
 
   // ---------- Filtrage interne ----------
   let fortAlerts = $derived(
@@ -163,8 +166,41 @@
     if (open && canvas) draw();
   });
 
-  onMount(() => { if (open) draw(); });
+  onMount(async () => {
+    trades = await fetchAlertTrades();
+    if (open) draw();
+  });
   onDestroy(() => { if (chart) chart.destroy(); });
+
+  // ---------- P&L réel (depuis alert_trades) ----------
+  let realPnl = $derived.by(() => {
+    let totalPnl = 0;
+    let totalMise = 0;
+    let hasData = false;
+    const terminated = new Set(fortAlerts.filter(a => ['validated','lost'].includes(a.status)).map(a => a.match_id + ':' + a.signal_type));
+    for (const t of trades) {
+      if (!t.mise) continue;
+      const key = t.match_id + ':' + t.signal_type;
+      if (!terminated.has(key)) continue;
+      const alert = fortAlerts.find(a => a.match_id === t.match_id && a.signal_type === t.signal_type);
+      if (!alert) continue;
+      hasData = true;
+      totalMise += +t.mise;
+      if (alert.status === 'validated') totalPnl += +t.mise * (+t.cote - 1);
+      else if (alert.status === 'lost') totalPnl -= +t.mise;
+    }
+    if (!hasData) return null;
+    return { pnl: +totalPnl.toFixed(2), mise: +totalMise.toFixed(2), roi: totalMise > 0 ? +(totalPnl / totalMise * 100).toFixed(1) : null };
+  });
+
+  function formatPnl(val) {
+    if (val === null) return '—';
+    return (val >= 0 ? '+' : '') + val.toFixed(2) + '€';
+  }
+  function pnlColor(val) {
+    if (val === null) return 'var(--color-text-muted)';
+    return val >= 0 ? 'var(--color-accent-green)' : 'var(--color-danger)';
+  }
 
   // ---------- Tabs ----------
   let activeTab = $state('ligue');
@@ -268,6 +304,28 @@
           {:else}
             <span class="kpi-badge__value" style:color="var(--color-text-muted)">—</span>
             <span class="kpi-badge__sub">min 3 alertes/ligue</span>
+          {/if}
+        </div>
+
+        <div class="kpi-badge">
+          <span class="kpi-badge__label">P&amp;L réel</span>
+          {#if realPnl !== null}
+            <span class="kpi-badge__value" style:color={pnlColor(realPnl.pnl)}>{formatPnl(realPnl.pnl)}</span>
+            <span class="kpi-badge__sub">{realPnl.mise.toFixed(2)}€ misés</span>
+          {:else}
+            <span class="kpi-badge__value" style:color="var(--color-text-muted)">—</span>
+            <span class="kpi-badge__sub">aucune mise saisie</span>
+          {/if}
+        </div>
+
+        <div class="kpi-badge">
+          <span class="kpi-badge__label">ROI réel</span>
+          {#if realPnl?.roi !== null && realPnl !== null}
+            <span class="kpi-badge__value" style:color={pnlColor(realPnl.roi)}>{realPnl.roi >= 0 ? '+' : ''}{realPnl.roi}%</span>
+            <span class="kpi-badge__sub">sur mise totale</span>
+          {:else}
+            <span class="kpi-badge__value" style:color="var(--color-text-muted)">—</span>
+            <span class="kpi-badge__sub">aucune mise saisie</span>
           {/if}
         </div>
       </div>

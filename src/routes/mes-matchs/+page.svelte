@@ -404,16 +404,16 @@
           type="text"
           inputmode="decimal"
           placeholder="Cote*"
-          value={formCote[cardId] ?? ''}
-          oninput={(e) => { formCote[cardId] = e.currentTarget.value; formError[cardId] = ''; }}
+          bind:value={formCote[cardId]}
+          oninput={() => { formError[cardId] = ''; }}
         />
         <input
           class="trade-input trade-input--mise"
           type="text"
           inputmode="decimal"
           placeholder="Mise (opt.)"
-          value={formMise[cardId] ?? ''}
-          oninput={(e) => { formMise[cardId] = e.currentTarget.value; formError[cardId] = ''; }}
+          bind:value={formMise[cardId]}
+          oninput={() => { formError[cardId] = ''; }}
         />
         <button
           class="btn btn--sm btn--primary trade-add-btn"
