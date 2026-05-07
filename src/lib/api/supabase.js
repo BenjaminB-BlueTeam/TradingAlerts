@@ -276,3 +276,30 @@ export async function getSelectedAlerts() {
   if (error) { console.error('getSelectedAlerts:', error); return [] }
   return data || []
 }
+
+// ============================================================
+// AUTH
+// ============================================================
+
+export async function signIn(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    const msg = error.message?.toLowerCase().includes('invalid')
+      ? 'Email ou mot de passe incorrect'
+      : (error.message || 'Erreur de connexion');
+    return { user: null, error: msg };
+  }
+  return { user: data.user, error: null };
+}
+
+export async function signOut() {
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
+  if (error) console.error('signOut:', error);
+  return !error;
+}
+
+export async function getCurrentUser() {
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data?.user) return null;
+  return data.user;
+}
