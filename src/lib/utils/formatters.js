@@ -57,11 +57,11 @@ export function isInPlay(a) {
 }
 
 /**
- * Returns a CSS color variable based on FHG percentage.
+ * Returns a CSS color variable based on LG1 percentage.
  * @param {number} pct
  * @returns {string}
  */
-export function fhgColor(pct) {
+export function lg1Color(pct) {
   if (pct >= 65) return 'var(--color-accent-green)';
   if (pct >= 50) return 'var(--color-signal-moyen)';
   return 'var(--color-text-muted)';

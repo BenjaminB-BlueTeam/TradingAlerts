@@ -1,9 +1,9 @@
 /* ================================================
    cache.js — Mise en cache localStorage avec TTL
-   FHG Tracker
+   Late Goal Tracker
    ================================================ */
 
-const CACHE_PREFIX = 'fhg_cache_';
+const CACHE_PREFIX = 'lg1_cache_';
 const DEFAULT_TTL  = 15 * 60 * 1000; // 15 minutes
 
 export function cacheGet(key) {

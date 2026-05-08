@@ -19,7 +19,7 @@ Refondre la page `/historique` pour passer d'une vue liste + KPIs à un **dashbo
 ┌── H1 Historique ────────────────────────────────────────┐
 │ FiltersBar (sticky top)                                  │
 │  - Date range picker + presets 7j/30j/90j/1an/Tout       │
-│  - Stratégie : Tous / FHG / LG2                          │
+│  - Stratégie : Tous / LG1 / LG2                          │
 │  - Confidence : Tous / fort / moyen / fort        │
 │  - Équipe : dropdown search                              │
 │  - Ligue  : dropdown search                              │
@@ -47,7 +47,7 @@ Combinaison **AND stricte** : tous les filtres actifs s'additionnent. Les graphi
 let filters = $state({
   dateFrom: null,        // ISO YYYY-MM-DD ou null
   dateTo: null,
-  strategy: 'tous',      // tous | fhg | lg2
+  strategy: 'tous',      // tous | lg1 | lg2
   confidence: 'tous',    // tous | fort | moyen | fort
   team: null,            // team_id
   league: null,          // league_name
@@ -71,16 +71,16 @@ Rendus via composants isolés dans `src/lib/components/historique/`. Chacun reç
 ### Chart A — Évolution du taux
 - Line chart, X = dates (jour/mois/année selon granularité), Y = taux %
 - **Hybride** :
-  - si `filters.strategy === 'tous'` : 2 courbes FHG (vert), LG2 (orange)
+  - si `filters.strategy === 'tous'` : 2 courbes LG1 (vert), LG2 (orange)
   - sinon : 1 courbe unique de la stratégie active
 - Sélecteur Jour/Mois/Année au-dessus (change `filters.evolutionGranularity`)
 - Tooltip : "X validés / Y terminés (Z%)" pour le point pointé
 
 ### Chart B — Stacked stratégie
-- Bar chart vertical empilé, X = FHG / LG2 (ou un seul si filtré)
+- Bar chart vertical empilé, X = LG1 / LG2 (ou un seul si filtré)
 - Empilement vert (validés) + rouge (perdus)
 - Label data sur chaque segment : chiffre exact
-- Tooltip : "FHG — 45 validés / 18 perdus (71,4%)" ou "LG2 — N validés / M perdus"
+- Tooltip : "LG1 — 45 validés / 18 perdus (71,4%)" ou "LG2 — N validés / M perdus"
 
 ### Chart C — Top 10 équipes
 - Horizontal bar chart
@@ -118,7 +118,7 @@ Batch de **50 lignes**, incrémenté par `IntersectionObserver` sur un sentinel 
 Clic sur une ligne insère une `<tr>` sous cette ligne contenant :
 - Le header `home_team_name vs away_team_name`, score final, score HT
 - Une **goal-bar** (réutilise `goalBar()` existant de `teamData.js`) avec les buts de ce match positionnés à leur minute
-- Markers HT (50%), 80' (89%), FT (98%) — 80' visible pour les alertes LG2, 45' par défaut pour FHG
+- Markers HT (50%), 80' (89%), FT (98%) — 80' visible pour les alertes LG2, 45' par défaut pour LG1
 - Dots verts = buts équipe DOM, dots rouges = buts équipe EXT
 - Tooltip sur chaque but : "Joueur N' (home/away)"
 
@@ -127,7 +127,7 @@ Un seul expand ouvert à la fois : ouvrir une autre ligne ferme la précédente.
 ## 6. Blocs conservés
 
 ### "Mes trades vs Global" (`TradesVsGlobal.svelte`)
-- Se met à jour avec les filtres actifs (ex : taux trade FHG Real Madrid vs taux global filtré)
+- Se met à jour avec les filtres actifs (ex : taux trade LG1 Real Madrid vs taux global filtré)
 - Rendu sous le tableau, wrappé dans un `<details>` fermé par défaut
 - Contenu : Global % / Mes trades % / Écart, avec couleur verte ou rouge selon signe
 
@@ -175,7 +175,7 @@ applyFilters(alerts, filters) → alerts[]
 
 // Agrégations pour chaque graphique, calculées sur alerts filtrées
 aggregateByStrategy(alerts) → {
-  FHG: { validated, lost, total, pct },
+  LG1: { validated, lost, total, pct },
   LG2: { validated, lost, total, pct },
 }
 
@@ -188,7 +188,7 @@ aggregateByLeague(alerts, minMatches = 3, topN = 10) → [
 ]
 
 aggregateByDate(alerts, granularity) → [
-  { date, FHG: { v, t }, LG2: { v, t } }, ...
+  { date, LG1: { v, t }, LG2: { v, t } }, ...
 ]
 // granularity : jour → match_date ; mois → YYYY-MM ; année → YYYY
 ```

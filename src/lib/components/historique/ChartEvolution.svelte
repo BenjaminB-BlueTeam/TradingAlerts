@@ -14,7 +14,7 @@
   let canvas;
   let chart;
 
-  const STRAT_COLOR = { FHG: '#1D9E75', LG2: '#E24B4A' };
+  const STRAT_COLOR = { LG1: '#1D9E75', LG2: '#E24B4A' };
 
   function buildDatasets(buckets, visibleStrategies) {
     return visibleStrategies.map(s => ({
@@ -34,7 +34,7 @@
     const buckets = aggregateByDate(alerts, granularity);
     const labels = buckets.map(b => b.bucket);
     const visible = strategy === 'tous'
-      ? ['FHG', 'LG2']
+      ? ['LG1', 'LG2']
       : [strategy.toUpperCase()];
     const datasets = buildDatasets(buckets, visible);
     chart = makeLineChart(canvas, { labels, datasets });

@@ -8,7 +8,7 @@ import {
 function a(overrides = {}) {
   return {
     match_date: '2026-04-20',
-    signal_type: 'FHG_A',
+    signal_type: 'LG1_A',
     confidence: 'fort',
     status: 'validated',
     home_team_id: 1, home_team_name: 'Alpha',
@@ -19,9 +19,9 @@ function a(overrides = {}) {
 }
 
 describe('strategyOf', () => {
-  it('FHG pour chaque type FHG_*', () => {
-    ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D'].forEach(t =>
-      expect(strategyOf({ signal_type: t })).toBe('FHG')
+  it('LG1 pour chaque type LG1_*', () => {
+    ['LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D'].forEach(t =>
+      expect(strategyOf({ signal_type: t })).toBe('LG1')
     );
   });
   it('LG2 pour LG2_*', () => {
@@ -39,11 +39,11 @@ describe('strategyOf', () => {
 
 describe('applyFilters', () => {
   const base = [
-    a({ match_date: '2026-04-18', signal_type: 'FHG_A', confidence: 'fort', status: 'validated', league_name: 'L1' }),
+    a({ match_date: '2026-04-18', signal_type: 'LG1_A', confidence: 'fort', status: 'validated', league_name: 'L1' }),
     a({ match_date: '2026-04-19', signal_type: 'LG2_B', confidence: 'moyen', status: 'lost',     league_name: 'L2' }),
     a({ match_date: '2026-04-20', signal_type: 'LG2_A', confidence: 'moyen', status: 'validated', league_name: 'L1' }),
-    a({ match_date: '2026-04-21', signal_type: 'FHG_B', confidence: 'moyen', status: 'pending',  league_name: 'L1' }),
-    a({ match_date: '2026-04-22', signal_type: 'FHG_A', confidence: 'moyen', status: 'validated', league_name: 'L1' }),
+    a({ match_date: '2026-04-21', signal_type: 'LG1_B', confidence: 'moyen', status: 'pending',  league_name: 'L1' }),
+    a({ match_date: '2026-04-22', signal_type: 'LG1_A', confidence: 'moyen', status: 'validated', league_name: 'L1' }),
   ];
 
   it('retourne tout si filtres tous par défaut (sauf statut terminees)', () => {
@@ -51,10 +51,10 @@ describe('applyFilters', () => {
     expect(r.length).toBe(4); // exclut le pending
   });
 
-  it('filtre par stratégie FHG', () => {
-    const r = applyFilters(base, { strategy: 'fhg', status: 'tous' });
+  it('filtre par stratégie LG1', () => {
+    const r = applyFilters(base, { strategy: 'lg1', status: 'tous' });
     expect(r.length).toBe(3);
-    expect(r.every(x => strategyOf(x) === 'FHG')).toBe(true);
+    expect(r.every(x => strategyOf(x) === 'LG1')).toBe(true);
   });
 
   it('filtre par stratégie LG2', () => {
@@ -87,7 +87,7 @@ describe('applyFilters', () => {
   });
 
   it('AND strict : stratégie + confidence + ligue + statut', () => {
-    const r = applyFilters(base, { strategy: 'fhg', confidence: 'fort', league: 'L1', status: 'validated' });
+    const r = applyFilters(base, { strategy: 'lg1', confidence: 'fort', league: 'L1', status: 'validated' });
     expect(r.length).toBe(1);
     expect(r[0].match_date).toBe('2026-04-18');
   });
@@ -107,28 +107,28 @@ describe('applyFilters', () => {
 describe('aggregateByStrategy', () => {
   it('compte validés/perdus par stratégie et calcule pct', () => {
     const alerts = [
-      a({ signal_type: 'FHG_A', status: 'validated' }),
-      a({ signal_type: 'FHG_B', status: 'validated' }),
-      a({ signal_type: 'FHG_A', status: 'lost' }),
+      a({ signal_type: 'LG1_A', status: 'validated' }),
+      a({ signal_type: 'LG1_B', status: 'validated' }),
+      a({ signal_type: 'LG1_A', status: 'lost' }),
       a({ signal_type: 'LG2_A', status: 'validated' }),
       a({ signal_type: 'LG2_B', status: 'lost' }),
     ];
     const r = aggregateByStrategy(alerts);
-    expect(r.FHG).toEqual({ validated: 2, lost: 1, total: 3, pct: 67 });
+    expect(r.LG1).toEqual({ validated: 2, lost: 1, total: 3, pct: 67 });
     expect(r.LG2).toEqual({ validated: 1, lost: 1, total: 2, pct: 50 });
     expect(r.DC).toBeUndefined();
   });
 
   it('pct=null si total=0', () => {
     const r = aggregateByStrategy([]);
-    expect(r.FHG.pct).toBeNull();
+    expect(r.LG1.pct).toBeNull();
     expect(r.LG2.pct).toBeNull();
     expect(r.DC).toBeUndefined();
   });
 
   it('ignore les pending', () => {
     const r = aggregateByStrategy([a({ status: 'pending' })]);
-    expect(r.FHG.total).toBe(0);
+    expect(r.LG1.total).toBe(0);
   });
 });
 
@@ -213,36 +213,36 @@ describe('aggregateByLeague', () => {
 describe('aggregateByDate', () => {
   it('bucket par jour', () => {
     const alerts = [
-      a({ match_date: '2026-04-20', signal_type: 'FHG_A', status: 'validated' }),
+      a({ match_date: '2026-04-20', signal_type: 'LG1_A', status: 'validated' }),
       a({ match_date: '2026-04-20', signal_type: 'LG2_A', status: 'lost' }),
-      a({ match_date: '2026-04-21', signal_type: 'FHG_A', status: 'validated' }),
+      a({ match_date: '2026-04-21', signal_type: 'LG1_A', status: 'validated' }),
     ];
     const r = aggregateByDate(alerts, 'jour');
     expect(r.length).toBe(2);
     expect(r[0].bucket).toBe('2026-04-20');
-    expect(r[0].FHG).toEqual({ v: 1, t: 1 });
+    expect(r[0].LG1).toEqual({ v: 1, t: 1 });
     expect(r[0].LG2).toEqual({ v: 0, t: 1 });
     expect(r[0].DC).toBeUndefined();
-    expect(r[1].FHG).toEqual({ v: 1, t: 1 });
+    expect(r[1].LG1).toEqual({ v: 1, t: 1 });
   });
 
   it('bucket par mois', () => {
     const alerts = [
-      a({ match_date: '2026-04-05', signal_type: 'FHG_A', status: 'validated' }),
-      a({ match_date: '2026-04-25', signal_type: 'FHG_A', status: 'lost' }),
-      a({ match_date: '2026-05-10', signal_type: 'FHG_A', status: 'validated' }),
+      a({ match_date: '2026-04-05', signal_type: 'LG1_A', status: 'validated' }),
+      a({ match_date: '2026-04-25', signal_type: 'LG1_A', status: 'lost' }),
+      a({ match_date: '2026-05-10', signal_type: 'LG1_A', status: 'validated' }),
     ];
     const r = aggregateByDate(alerts, 'mois');
     expect(r.length).toBe(2);
     expect(r[0].bucket).toBe('2026-04');
-    expect(r[0].FHG).toEqual({ v: 1, t: 2 });
+    expect(r[0].LG1).toEqual({ v: 1, t: 2 });
     expect(r[1].bucket).toBe('2026-05');
   });
 
   it('bucket par annee', () => {
     const alerts = [
-      a({ match_date: '2025-12-31', signal_type: 'FHG_A', status: 'validated' }),
-      a({ match_date: '2026-01-01', signal_type: 'FHG_A', status: 'validated' }),
+      a({ match_date: '2025-12-31', signal_type: 'LG1_A', status: 'validated' }),
+      a({ match_date: '2026-01-01', signal_type: 'LG1_A', status: 'validated' }),
     ];
     const r = aggregateByDate(alerts, 'annee');
     expect(r.length).toBe(2);
@@ -252,9 +252,9 @@ describe('aggregateByDate', () => {
 
   it('trié ascendant', () => {
     const alerts = [
-      a({ match_date: '2026-04-22', signal_type: 'FHG_A', status: 'validated' }),
-      a({ match_date: '2026-04-20', signal_type: 'FHG_A', status: 'validated' }),
-      a({ match_date: '2026-04-21', signal_type: 'FHG_A', status: 'validated' }),
+      a({ match_date: '2026-04-22', signal_type: 'LG1_A', status: 'validated' }),
+      a({ match_date: '2026-04-20', signal_type: 'LG1_A', status: 'validated' }),
+      a({ match_date: '2026-04-21', signal_type: 'LG1_A', status: 'validated' }),
     ];
     const r = aggregateByDate(alerts, 'jour');
     expect(r.map(x => x.bucket)).toEqual(['2026-04-20', '2026-04-21', '2026-04-22']);
@@ -269,14 +269,14 @@ describe('aggregateByDate', () => {
 describe('rateForBuckets', () => {
   it('pct calculé par bucket et stratégie', () => {
     const buckets = [
-      { bucket: '2026-04-20', FHG: { v: 2, t: 3 }, LG2: { v: 0, t: 0 } },
+      { bucket: '2026-04-20', LG1: { v: 2, t: 3 }, LG2: { v: 0, t: 0 } },
     ];
-    const r = rateForBuckets(buckets, 'FHG');
+    const r = rateForBuckets(buckets, 'LG1');
     expect(r[0]).toEqual({ bucket: '2026-04-20', pct: 67, v: 2, t: 3 });
   });
 
   it('pct=null si t=0', () => {
-    const buckets = [{ bucket: '2026-04-20', FHG: { v: 0, t: 0 }, LG2: { v: 0, t: 0 } }];
-    expect(rateForBuckets(buckets, 'FHG')[0].pct).toBeNull();
+    const buckets = [{ bucket: '2026-04-20', LG1: { v: 0, t: 0 }, LG2: { v: 0, t: 0 } }];
+    expect(rateForBuckets(buckets, 'LG1')[0].pct).toBeNull();
   });
 });

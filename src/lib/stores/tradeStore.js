@@ -1,12 +1,12 @@
 /* ================================================
    tradeStore.js — Trade CRUD operations (Supabase + localStorage)
-   FHG Tracker
+   Late Goal Tracker
    ================================================ */
 
 import { get } from 'svelte/store';
 import { trades } from './appStore.js';
 
-const STORAGE_KEY_TRADES = 'fhg_trades';
+const STORAGE_KEY_TRADES = 'lg1_trades';
 
 export async function addTrade(trade) {
   const tempId = Date.now();

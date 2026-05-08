@@ -62,10 +62,10 @@ describe('addTrade', () => {
 
   it('adds trade optimistically to store', async () => {
     mockInsertTrade.mockResolvedValue({ id: 999 });
-    const trade = { match: 'A vs B', type: 'FHG' };
+    const trade = { match: 'A vs B', type: 'LG1' };
     const result = await addTrade(trade);
 
-    expect(result).toMatchObject({ match: 'A vs B', type: 'FHG' });
+    expect(result).toMatchObject({ match: 'A vs B', type: 'LG1' });
     expect(result.id).toBeDefined();
   });
 
@@ -73,7 +73,7 @@ describe('addTrade', () => {
     mockInsertTrade.mockResolvedValue({ id: 100 });
     await addTrade({ match: 'X vs Y' });
 
-    const saved = JSON.parse(storage['fhg_trades']);
+    const saved = JSON.parse(storage['lg1_trades']);
     expect(saved).toHaveLength(1);
     expect(saved[0].match).toBe('X vs Y');
   });
@@ -120,7 +120,7 @@ describe('updateTrade', () => {
 
   it('persists update to localStorage', () => {
     updateTrade(1, { status: 'lost' });
-    const saved = JSON.parse(storage['fhg_trades']);
+    const saved = JSON.parse(storage['lg1_trades']);
     expect(saved[0].status).toBe('lost');
   });
 
@@ -155,7 +155,7 @@ describe('deleteTrade', () => {
 
   it('persists deletion to localStorage', () => {
     deleteTrade(1);
-    const saved = JSON.parse(storage['fhg_trades']);
+    const saved = JSON.parse(storage['lg1_trades']);
     expect(saved).toHaveLength(1);
     expect(saved[0].id).toBe(2);
   });
@@ -182,7 +182,7 @@ describe('loadTradesFromSupabase', () => {
     await loadTradesFromSupabase();
 
     expect(mockTrades._get()).toEqual(remoteTrades);
-    const saved = JSON.parse(storage['fhg_trades']);
+    const saved = JSON.parse(storage['lg1_trades']);
     expect(saved).toEqual(remoteTrades);
   });
 

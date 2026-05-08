@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getDateStr, formatDate, formatTime, isInPlay, fhgColor, defeatColor, addDays, dateLabelNav } from './formatters.js';
+import { getDateStr, formatDate, formatTime, isInPlay, lg1Color, defeatColor, addDays, dateLabelNav } from './formatters.js';
 
 describe('getDateStr', () => {
   it('returns today in YYYY-MM-DD format when offset is 0', () => {
@@ -91,20 +91,20 @@ describe('isInPlay', () => {
   });
 });
 
-describe('fhgColor', () => {
+describe('lg1Color', () => {
   it('returns green for pct >= 65', () => {
-    expect(fhgColor(65)).toBe('var(--color-accent-green)');
-    expect(fhgColor(95)).toBe('var(--color-accent-green)');
+    expect(lg1Color(65)).toBe('var(--color-accent-green)');
+    expect(lg1Color(95)).toBe('var(--color-accent-green)');
   });
 
   it('returns moyen color for pct >= 50 and < 65', () => {
-    expect(fhgColor(50)).toBe('var(--color-signal-moyen)');
-    expect(fhgColor(64)).toBe('var(--color-signal-moyen)');
+    expect(lg1Color(50)).toBe('var(--color-signal-moyen)');
+    expect(lg1Color(64)).toBe('var(--color-signal-moyen)');
   });
 
   it('returns muted color for pct < 50', () => {
-    expect(fhgColor(49)).toBe('var(--color-text-muted)');
-    expect(fhgColor(0)).toBe('var(--color-text-muted)');
+    expect(lg1Color(49)).toBe('var(--color-text-muted)');
+    expect(lg1Color(0)).toBe('var(--color-text-muted)');
   });
 });
 

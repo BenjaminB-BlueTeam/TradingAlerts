@@ -1,6 +1,6 @@
 /* ================================================
    tradeStats.js — Trade statistics calculation (pure computation)
-   FHG Tracker
+   Late Goal Tracker
    ================================================ */
 
 import { get } from 'svelte/store';

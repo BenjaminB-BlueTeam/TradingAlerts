@@ -1,9 +1,9 @@
 /* ================================================
-   netlify/functions/compute-team-fhg.js
-   Tache planifiee — calcul FHG% par equipe par saison.
+   netlify/functions/compute-team-lg1.js
+   Tache planifiee — calcul LG1% par equipe par saison.
    Lit h2h_matches (saison courante), calcule le % de matchs
    ou chaque equipe a marque en 0-45 min (stoppage compris),
-   et upserte dans team_fhg_cache.
+   et upserte dans team_lg1_cache.
    Tourne 1x/jour a 7h UTC via Netlify Scheduled Functions.
    ================================================ */
 
@@ -52,7 +52,7 @@ async function fetchMatches(seasonStart) {
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
-      throw new Error(`[compute-team-fhg] Supabase fetch error: HTTP ${res.status} — ${txt.slice(0, 200)}`);
+      throw new Error(`[compute-team-lg1] Supabase fetch error: HTTP ${res.status} — ${txt.slice(0, 200)}`);
     }
     const batch = await res.json();
     if (!Array.isArray(batch) || batch.length === 0) break;
@@ -67,7 +67,7 @@ async function upsertCache(rows) {
   const BATCH = 500;
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH);
-    const url = `${SUPABASE_URL}/rest/v1/team_fhg_cache?on_conflict=season_id,team_id`;
+    const url = `${SUPABASE_URL}/rest/v1/team_lg1_cache?on_conflict=season_id,team_id`;
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -81,7 +81,7 @@ async function upsertCache(rows) {
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
-      throw new Error(`[compute-team-fhg] upsert error: HTTP ${res.status} — ${txt.slice(0, 200)}`);
+      throw new Error(`[compute-team-lg1] upsert error: HTTP ${res.status} — ${txt.slice(0, 200)}`);
     }
   }
 }
@@ -97,22 +97,22 @@ exports.handler = async function(event) {
 
   try {
     const seasonStart = getCurrentSeasonStart();
-    console.log(`[compute-team-fhg] Saison courante depuis ${seasonStart}`);
+    console.log(`[compute-team-lg1] Saison courante depuis ${seasonStart}`);
 
     const matches = await fetchMatches(seasonStart);
-    console.log(`[compute-team-fhg] ${matches.length} matchs charges`);
+    console.log(`[compute-team-lg1] ${matches.length} matchs charges`);
 
     if (matches.length === 0) {
       return { statusCode: 200, headers: cors, body: 'Aucun match — rien a calculer.' };
     }
 
-    // Agregation : { "season_id:team_id" -> { season_id, team_id, team_name, total, fhg } }
+    // Agregation : { "season_id:team_id" -> { season_id, team_id, team_name, total, lg1 } }
     const stats = new Map();
 
     function addMatch(seasonId, teamId, teamName, isHome, goalEvents) {
       if (!seasonId || !teamId) return;
       const key = `${seasonId}:${teamId}`;
-      if (!stats.has(key)) stats.set(key, { season_id: seasonId, team_id: teamId, team_name: teamName, total: 0, fhg: 0 });
+      if (!stats.has(key)) stats.set(key, { season_id: seasonId, team_id: teamId, team_name: teamName, total: 0, lg1: 0 });
       const s = stats.get(key);
       s.total++;
       const events = Array.isArray(goalEvents) ? goalEvents : [];
@@ -120,7 +120,7 @@ exports.handler = async function(event) {
         const isTeamGoal = isHome ? g.home === true : g.home === false;
         return isTeamGoal && isFirstHalfGoal(g);
       });
-      if (scored1MT) s.fhg++;
+      if (scored1MT) s.lg1++;
     }
 
     for (const m of matches) {
@@ -135,15 +135,15 @@ exports.handler = async function(event) {
         season_id:     s.season_id,
         team_id:       s.team_id,
         team_name:     s.team_name,
-        fhg_pct:       Math.round(s.fhg / s.total * 100),
+        lg1_pct:       Math.round(s.lg1 / s.total * 100),
         matches_count: s.total,
         updated_at:    new Date().toISOString(),
       });
     }
 
-    console.log(`[compute-team-fhg] ${rows.length} equipes a upsert`);
+    console.log(`[compute-team-lg1] ${rows.length} equipes a upsert`);
     await upsertCache(rows);
-    console.log(`[compute-team-fhg] Done.`);
+    console.log(`[compute-team-lg1] Done.`);
 
     return {
       statusCode: 200,
@@ -151,7 +151,7 @@ exports.handler = async function(event) {
       body: JSON.stringify({ teams: rows.length, matches: matches.length }),
     };
   } catch (err) {
-    console.error('[compute-team-fhg] Erreur:', err.message);
+    console.error('[compute-team-lg1] Erreur:', err.message);
     return { statusCode: 500, headers: cors, body: err.message };
   }
 };

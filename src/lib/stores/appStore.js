@@ -1,20 +1,20 @@
 /* ================================================
    appStore.js — Stores Svelte (remplace store.js)
-   FHG Tracker
+   Late Goal Tracker
    ================================================ */
 
 import { writable } from 'svelte/store';
 
 const STORAGE_KEYS = {
-  CONFIG:        'fhg_config',
-  TRADES:        'fhg_trades',
-  LEAGUES:       'fhg_leagues',
-  PREFERENCES:   'fhg_prefs',
+  CONFIG:        'lg1_config',
+  TRADES:        'lg1_trades',
+  LEAGUES:       'lg1_leagues',
+  PREFERENCES:   'lg1_prefs',
 };
 
 // ---- Valeurs par défaut ----
 export const defaultConfig = {
-  seuilFHG:         75,
+  seuilLG1:         75,
   seuil5Matchs:     3,
   ignoreDebutSaison:true,
   seuilMatchsMin:   8,
@@ -52,8 +52,27 @@ export const apiRequestsRemaining = writable(null); // Requêtes API restantes (
 
 // ---- Persistance localStorage ----
 
+// One-shot migration : ancien rebrand FHG → LG1 (2026-05-08).
+// Recopie les anciennes clés `fhg_*` vers `lg1_*` puis supprime l'origine.
+function migrateLegacyKeysOnce() {
+  const map = [
+    ['fhg_config',  'lg1_config'],
+    ['fhg_trades',  'lg1_trades'],
+    ['fhg_leagues', 'lg1_leagues'],
+    ['fhg_prefs',   'lg1_prefs'],
+  ];
+  for (const [oldKey, newKey] of map) {
+    const oldVal = localStorage.getItem(oldKey);
+    if (oldVal !== null && localStorage.getItem(newKey) === null) {
+      localStorage.setItem(newKey, oldVal);
+    }
+    if (oldVal !== null) localStorage.removeItem(oldKey);
+  }
+}
+
 export function loadFromStorage() {
   try {
+    migrateLegacyKeysOnce();
     const savedConfig  = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONFIG)      || 'null');
     const savedTrades  = JSON.parse(localStorage.getItem(STORAGE_KEYS.TRADES)      || '[]');
     const savedLeagues = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAGUES)     || 'null');

@@ -3,15 +3,15 @@
   import { leagues, saveLeagues, apiConnected } from '$lib/stores/appStore.js';
   import { statColor, fetchLeagues, loadAllStats } from '$lib/utils/leagueHelpers.js';
   import { supabase } from '$lib/api/supabase.js';
-  import { fhgColor } from '$lib/utils/formatters.js';
+  import { lg1Color } from '$lib/utils/formatters.js';
   import { flagUrl } from '$lib/utils/countryFlags.js';
 
   let apiLeagues = $state([]);
   let loading = $state(true);
   let searchQuery = $state('');
   let expandedLeague = $state(null);
-  let fhgTeams = $state(null);   // Array<{team_name, fhg_pct, matches_count}> | null
-  let fhgLoading = $state(false);
+  let lg1Teams = $state(null);   // Array<{team_name, lg1_pct, matches_count}> | null
+  let lg1Loading = $state(false);
   let loaded = $state(false);
 
   // Stats par ligue (season_id → stats)
@@ -131,19 +131,19 @@
   async function toggleExpand(seasonId) {
     if (expandedLeague === seasonId) {
       expandedLeague = null;
-      fhgTeams = null;
+      lg1Teams = null;
       return;
     }
     expandedLeague = seasonId;
-    fhgTeams = null;
-    fhgLoading = true;
+    lg1Teams = null;
+    lg1Loading = true;
     const { data } = await supabase
-      .from('team_fhg_cache')
-      .select('team_name, fhg_pct, matches_count')
+      .from('team_lg1_cache')
+      .select('team_name, lg1_pct, matches_count')
       .eq('season_id', seasonId)
-      .order('fhg_pct', { ascending: false });
-    fhgTeams = data || [];
-    fhgLoading = false;
+      .order('lg1_pct', { ascending: false });
+    lg1Teams = data || [];
+    lg1Loading = false;
   }
 
   onMount(() => {
@@ -205,9 +205,9 @@
 
           {#if stats}
             <div class="league-item__stats">
-              <div class="league-stat-pill" title="But en 1MT (Over 0.5 FHG)">
+              <div class="league-stat-pill" title="But en 1MT (Over 0.5 LG1)">
                 <span class="league-stat-pill__label">1MT</span>
-                <span class="league-stat-pill__value" style:color={statColor(stats.over05FHG, 75, 60)}>{stats.over05FHG}%</span>
+                <span class="league-stat-pill__value" style:color={statColor(stats.over05LG1, 75, 60)}>{stats.over05LG1}%</span>
               </div>
               <div class="league-stat-pill" title="Moyenne buts/match">
                 <span class="league-stat-pill__label">Avg</span>
@@ -233,27 +233,27 @@
 
         {#if expandedLeague === league.id}
           <div class="league-item__table">
-            {#if fhgLoading}
+            {#if lg1Loading}
               <div class="league-item__loading">Chargement...</div>
-            {:else if fhgTeams && fhgTeams.length > 0}
-              <table class="data-table data-table--compact fhg-table">
+            {:else if lg1Teams && lg1Teams.length > 0}
+              <table class="data-table data-table--compact lg1-table">
                 <thead>
                   <tr>
                     <th>#</th>
                     <th>Equipe</th>
-                    <th title="But marque en 0-45 min (stoppage compris)">FHG 0-45</th>
+                    <th title="But marque en 0-45 min (stoppage compris)">LG1 0-45</th>
                     <th>J</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {#each fhgTeams as t, i}
+                  {#each lg1Teams as t, i}
                     <tr>
-                      <td class="fhg-table__rank">{i + 1}</td>
+                      <td class="lg1-table__rank">{i + 1}</td>
                       <td class="league-table__team">{t.team_name || '—'}</td>
-                      <td class="fhg-table__pct">
-                        <strong style:color={fhgColor(t.fhg_pct)}>{t.fhg_pct ?? '—'}%</strong>
+                      <td class="lg1-table__pct">
+                        <strong style:color={lg1Color(t.lg1_pct)}>{t.lg1_pct ?? '—'}%</strong>
                       </td>
-                      <td class="fhg-table__matches">{t.matches_count ?? '—'}</td>
+                      <td class="lg1-table__matches">{t.matches_count ?? '—'}</td>
                     </tr>
                   {/each}
                 </tbody>
@@ -421,16 +421,16 @@
     font-weight: 500;
     max-width: 200px;
   }
-  .fhg-table__rank {
+  .lg1-table__rank {
     color: var(--color-text-muted);
     width: 28px;
     font-size: 11px;
   }
-  .fhg-table__pct {
+  .lg1-table__pct {
     width: 70px;
     font-size: 13px;
   }
-  .fhg-table__matches {
+  .lg1-table__matches {
     color: var(--color-text-muted);
     font-size: 11px;
     width: 36px;

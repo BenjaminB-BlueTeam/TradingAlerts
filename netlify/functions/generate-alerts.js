@@ -1,12 +1,12 @@
 /* ================================================
    netlify/functions/generate-alerts.js
-   Tâche planifiée — génère les alertes FHG et LG2
+   Tâche planifiée — génère les alertes LG1 et LG2
    pour les 3 prochains jours.
    Tourne toutes les 12h via Netlify Scheduled Functions.
    ================================================ */
 
 const { footyRequest, supabaseQuery } = require('./lib/api');
-const { analyzeStreakAlert } = require('./lib/analysis.cjs');
+const { analyzeStreakAlert } = require('./lib/lg1.cjs');
 const { analyzeLG2 } = require('./lib/lg2.cjs');
 const { requireAuth } = require('./lib/auth.cjs');
 const { corsHeaders, handlePreflight } = require('./lib/cors.cjs');
@@ -18,7 +18,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABA
 
 async function supabaseDelete(matchIds) {
   if (!matchIds.length) return true;
-  const url = `${SUPABASE_URL}/rest/v1/alerts?match_id=in.(${matchIds.join(',')})&signal_type=in.(FHG_DOM,FHG_EXT,FHG)`;
+  const url = `${SUPABASE_URL}/rest/v1/alerts?match_id=in.(${matchIds.join(',')})&signal_type=in.(LG1_A,LG1_B,LG1_A+B,LG1_C,LG1_D)`;
   const res = await fetch(url, {
     method: 'DELETE',
     headers: {
@@ -89,9 +89,9 @@ exports.handler = async (event) => {
     return { statusCode: 503, headers: cors, body: JSON.stringify({ error: 'Supabase non configuré' }) };
   }
 
-  // Paramètre optionnel : ?type=FHG | LG2 pour filtrer le type d'alerte
+  // Paramètre optionnel : ?type=LG1 | LG2 pour filtrer le type d'alerte
   const typeFilter = (event.queryStringParameters?.type || '').toUpperCase();
-  const doFHG = !typeFilter || typeFilter === 'FHG';
+  const doLG1 = !typeFilter || typeFilter === 'LG1';
   const doLG2 = !typeFilter || typeFilter === 'LG2';
 
   const results = { type: typeFilter || 'ALL', analyzed: 0, alerts_created: 0, errors: [] };
@@ -129,12 +129,12 @@ exports.handler = async (event) => {
     }
 
     // Récupérer les alertes existantes pour ne pas dupliquer, scopées aux types qu'on génère
-    // (FHG ne bloque pas LG2 ; idem symétriquement)
+    // (LG1 ne bloque pas LG2 ; idem symétriquement)
     const matchIds = allMatches.map(m => m.id).filter(Boolean);
-    const fhgTypes = 'FHG_A,FHG_B,FHG_A%2BB,FHG_C,FHG_D';
+    const lg1Types = 'LG1_A,LG1_B,LG1_A%2BB,LG1_C,LG1_D';
     const lg2Types = 'LG2_A,LG2_B,LG2_A%2BB';
     const blockParts = [];
-    if (doFHG) blockParts.push(fhgTypes);
+    if (doLG1) blockParts.push(lg1Types);
     if (doLG2) blockParts.push(lg2Types);
     const blockTypes = blockParts.join(',');
     // Map match_id → Set des signal_types existants (pour décider, type par type, s'il faut recalculer)
@@ -149,12 +149,12 @@ exports.handler = async (event) => {
       }
     }
     // Un match est "entièrement existant" si toutes les familles actives ont au moins un type déjà présent
-    const hasFHGAlready = (set) => set && ['FHG_A','FHG_B','FHG_A+B','FHG_C','FHG_D'].some(t => set.has(t));
+    const hasLG1Already = (set) => set && ['LG1_A','LG1_B','LG1_A+B','LG1_C','LG1_D'].some(t => set.has(t));
     const hasLG2Already = (set) => set && ['LG2_A','LG2_B','LG2_A+B'].some(t => set.has(t));
     function matchFullyCovered(mid) {
       const s = existingByMatch.get(mid);
       if (!s) return false;
-      if (doFHG && !hasFHGAlready(s)) return false;
+      if (doLG1 && !hasLG1Already(s)) return false;
       if (doLG2 && !hasLG2Already(s)) return false;
       return true;
     }
@@ -181,10 +181,10 @@ exports.handler = async (event) => {
           getRecentMatches(m.homeID, 'home', 5),    // adversaire joue dom
         ]);
 
-        let bestFHG = null;
-        if (doFHG) {
-          const fhgHome = analyzeStreakAlert(homeMatches, m.homeID, oppMatchesForHome, m.awayID, h2h, true);   // équipe joue dom
-          const fhgAway = analyzeStreakAlert(awayMatches, m.awayID, oppMatchesForAway, m.homeID, h2h, false);  // équipe joue ext
+        let bestLG1 = null;
+        if (doLG1) {
+          const lg1Home = analyzeStreakAlert(homeMatches, m.homeID, oppMatchesForHome, m.awayID, h2h, true);   // équipe joue dom
+          const lg1Away = analyzeStreakAlert(awayMatches, m.awayID, oppMatchesForAway, m.homeID, h2h, false);  // équipe joue ext
 
           // Debug sample : 5 premiers matchs
           if (results.debug_sample.length < 5) {
@@ -195,22 +195,22 @@ exports.handler = async (event) => {
               h2h: h2h.length,
               oppForHome: oppMatchesForHome.length,
               oppForAway: oppMatchesForAway.length,
-              fhgHome: { isAlert: fhgHome?.isAlert, conf: fhgHome?.confidence, block: fhgHome?.cleanSheetBlock },
-              fhgAway: { isAlert: fhgAway?.isAlert, conf: fhgAway?.confidence, block: fhgAway?.cleanSheetBlock },
+              lg1Home: { isAlert: lg1Home?.isAlert, conf: lg1Home?.confidence, block: lg1Home?.cleanSheetBlock },
+              lg1Away: { isAlert: lg1Away?.isAlert, conf: lg1Away?.confidence, block: lg1Away?.cleanSheetBlock },
               // lg2 n'est pas encore calculé à ce stade, ajouté plus bas dans les logs si besoin
             });
           }
 
           // Hiérarchie de confidence : fort > moyen
           const priority = { fort: 2, moyen: 1 };
-          const scoreHome = fhgHome?.isAlert ? (priority[fhgHome.confidence] || 0) : 0;
-          const scoreAway = fhgAway?.isAlert ? (priority[fhgAway.confidence] || 0) : 0;
+          const scoreHome = lg1Home?.isAlert ? (priority[lg1Home.confidence] || 0) : 0;
+          const scoreAway = lg1Away?.isAlert ? (priority[lg1Away.confidence] || 0) : 0;
           if (scoreHome === 0 && scoreAway === 0) {
-            bestFHG = null;
+            bestLG1 = null;
           } else if (scoreHome >= scoreAway) {
-            bestFHG = { ...fhgHome, team: 'home', teamId: m.homeID, teamName: m.home_name };
+            bestLG1 = { ...lg1Home, team: 'home', teamId: m.homeID, teamName: m.home_name };
           } else {
-            bestFHG = { ...fhgAway, team: 'away', teamId: m.awayID, teamName: m.away_name };
+            bestLG1 = { ...lg1Away, team: 'away', teamId: m.awayID, teamName: m.away_name };
           }
         }
 
@@ -219,9 +219,9 @@ exports.handler = async (event) => {
           lg2 = analyzeLG2(homeMatches, awayMatches);
         }
 
-        const hasFHG = bestFHG !== null;
+        const hasLG1 = bestLG1 !== null;
         const hasLG2 = lg2?.isAlert === true;
-        if (!hasFHG && !hasLG2) return null;
+        if (!hasLG1 && !hasLG2) return null;
 
         const baseFields = {
           match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : getDateStr(0),
@@ -236,21 +236,21 @@ exports.handler = async (event) => {
         };
 
         const alerts = [];
-        if (hasFHG) {
+        if (hasLG1) {
           alerts.push({
             ...baseFields,
             match_id: m.id,
-            signal_type: bestFHG.signalType,         // FHG_A | FHG_B | FHG_A+B
-            fhg_pct: null,                           // obsolete avec streak v2
-            fhg_confidence: bestFHG.confidence,      // moyen | fort
-            fhg_factors: {                           // jsonb avec streak, rates, samples + team
-              ...bestFHG.factors,
-              team: bestFHG.team,
-              teamId: bestFHG.teamId,
-              teamName: bestFHG.teamName,
+            signal_type: bestLG1.signalType,         // LG1_A | LG1_B | LG1_A+B
+            lg1_pct: null,                           // obsolete avec streak v2
+            lg1_confidence: bestLG1.confidence,      // moyen | fort
+            lg1_factors: {                           // jsonb avec streak, rates, samples + team
+              ...bestLG1.factors,
+              team: bestLG1.team,
+              teamId: bestLG1.teamId,
+              teamName: bestLG1.teamName,
             },
-            confidence: bestFHG.confidence,
-            algo_version: 'v2',
+            confidence: bestLG1.confidence,
+            algo_version: 'lg1_v2',
           });
         }
         if (hasLG2) {
@@ -258,9 +258,9 @@ exports.handler = async (event) => {
             ...baseFields,
             match_id: m.id,
             signal_type: lg2.signalType,          // LG2_A | LG2_B | LG2_A+B
-            fhg_pct: null,
-            fhg_confidence: null,
-            fhg_factors: lg2.factors,             // { streakHome, streakAway }
+            lg1_pct: null,
+            lg1_confidence: null,
+            lg1_factors: lg2.factors,             // { streakHome, streakAway }
             confidence: lg2.confidence,            // moyen | fort
             algo_version: 'lg2_v1',
           });
@@ -282,7 +282,7 @@ exports.handler = async (event) => {
     console.log(`[generate-alerts] Analysis done — ${results.analyzed} matches analyzed, ${newAlerts.length} new alerts to insert`);
     results.newAlerts = newAlerts.length;
     if (newAlerts.length > 0) {
-      // Supprimer les vieilles alertes FHG_DOM/FHG_EXT/FHG avant insert (évite les conflits match_id)
+      // Supprimer les vieilles alertes LG1_A/B/A+B/C/D avant insert (évite les conflits match_id)
       const matchIdsToClean = newAlerts.map(a => a.match_id);
       if (matchIdsToClean.length > 0) {
         await supabaseDelete(matchIdsToClean);

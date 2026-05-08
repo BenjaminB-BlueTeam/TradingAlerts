@@ -57,21 +57,21 @@
 </script>
 
 <h1 class="page-title">Alertes & Configuration</h1>
-<p class="page-subtitle">Parametrez les seuils de la strategie FHG</p>
+<p class="page-subtitle">Parametrez les seuils de la strategie LG1</p>
 
-<!-- BLOC FHG -->
+<!-- BLOC LG1 -->
 <div class="settings-block">
-  <div class="settings-block__title">⚡ Criteres FHG principaux</div>
+  <div class="settings-block__title">⚡ Criteres LG1 principaux</div>
 
   <div class="slider-row mb-16">
     <div class="slider-header">
-      <span class="slider-label">Seuil FHG 31-45min saison N</span>
-      <span class="slider-value">{cfg.seuilFHG}%</span>
+      <span class="slider-label">Seuil LG1 31-45min saison N</span>
+      <span class="slider-value">{cfg.seuilLG1}%</span>
     </div>
     <input type="range" class="form-input"
-      min="60" max="90" value={cfg.seuilFHG}
-      onchange={e => setConfig('seuilFHG', parseInt(e.target.value))}
-      oninput={e => config.update(c => ({...c, seuilFHG: parseInt(e.target.value)}))} />
+      min="60" max="90" value={cfg.seuilLG1}
+      onchange={e => setConfig('seuilLG1', parseInt(e.target.value))}
+      oninput={e => config.update(c => ({...c, seuilLG1: parseInt(e.target.value)}))} />
   </div>
 
   <div class="slider-row mb-16">
@@ -184,7 +184,7 @@
   {#if !cfg.filtreH2HActif}
     <div class="danger-box mt-8">
       🚫 Desactiver ce filtre va a l'encontre de la regle fondamentale de la methode.
-      La recurrence prime sur tout. Un FHG de 90% ne justifie pas de prendre un match
+      La recurrence prime sur tout. Un LG1 de 90% ne justifie pas de prendre un match
       ou l'equipe n'a jamais marque en 1MT contre cet adversaire. Zero exception.
     </div>
   {/if}
@@ -359,7 +359,7 @@
             <tr>
               <td>{t.date || '—'}</td>
               <td style="font-size:12px;">{t.match || '—'}</td>
-              <td>{t.fhgPct ? t.fhgPct + '%' : '—'}</td>
+              <td>{t.lg1Pct ? t.lg1Pct + '%' : '—'}</td>
               <td>
                 {#if t.badge1MT}
                   <span class="badge badge--1mt">★</span>

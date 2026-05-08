@@ -1,6 +1,6 @@
 /* ================================================
    filters.js — Filtres et tris des signaux
-   FHG Tracker
+   Late Goal Tracker
    ================================================ */
 
 export function isWindowActive(matchTime) {

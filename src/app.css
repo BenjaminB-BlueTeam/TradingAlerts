@@ -1,5 +1,5 @@
 /* ================================================
-   app.css — Styles globaux FHG Tracker (Svelte)
+   app.css — Styles globaux Late Goal Tracker (Svelte)
    Merge: main.css + components.css + responsive.css
    ================================================ */
 
@@ -455,7 +455,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 
 /* ---- ALERT BADGES (shared across pages) ---- */
 .alert-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
-.alert-badge--fhg { background: rgba(29, 158, 117, 0.15); color: var(--color-accent-green); }
+.alert-badge--lg1 { background: rgba(29, 158, 117, 0.15); color: var(--color-accent-green); }
 .alert-badge--fort { background: rgba(29, 158, 117, 0.15); color: var(--color-accent-green); }
 .alert-badge--moyen { background: rgba(239, 159, 39, 0.15); color: var(--color-signal-moyen); }
 .alert-badge--validated { background: rgba(29, 158, 117, 0.2); color: var(--color-accent-green); }

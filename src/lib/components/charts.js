@@ -1,6 +1,6 @@
 /* ================================================
    charts.js — Wrappers Chart.js
-   FHG Tracker
+   Late Goal Tracker
    ================================================ */
 
 import {

@@ -1,6 +1,6 @@
 /* ================================================
    footystats.js — Appels via le proxy Netlify
-   FHG Tracker
+   Late Goal Tracker
    ================================================ */
 
 import { cacheGet, cacheSet, cacheKey } from './cache.js';
@@ -132,8 +132,8 @@ export async function getLeagueSeason(seasonId) {
     avgGoals: d.seasonAVG_overall || 0,
     btts: d.seasonBTTSPercentage || 0,
     cs: d.seasonCSPercentage || 0,
-    over05FHG: d.over05_fhg_percentage || 0,
-    over15FHG: d.over15_fhg_percentage || 0,
+    over05LG1: d.over05_lg1_percentage || 0,
+    over15LG1: d.over15_lg1_percentage || 0,
     over25: d.seasonOver25Percentage_overall || 0,
     over05: d.seasonOver05Percentage_overall || 0,
     over05_2HG: d.over05_2hg_percentage || 0,

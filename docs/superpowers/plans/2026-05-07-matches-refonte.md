@@ -154,7 +154,7 @@ Remplace le dropdown `<select>` de plage par une barre `← date →` et intègr
 Remplacer la ligne d'import de formatters :
 
 ```js
-import { getDateStr, formatDate, formatTime, fhgColor, addDays, dateLabelNav } from '$lib/utils/formatters.js';
+import { getDateStr, formatDate, formatTime, lg1Color, addDays, dateLabelNav } from '$lib/utils/formatters.js';
 import { cacheGet, cacheSet } from '$lib/api/cache.js';
 ```
 
@@ -195,10 +195,10 @@ async function loadMatches(dateStr) {
   if (cached) {
     allMatches = cached;
     loading = false;
-    // charger FHG stats en background (déjà en cache si visité)
+    // charger LG1 stats en background (déjà en cache si visité)
     const teamPairs = cached.filter(m => m.homeID && m.awayID);
     for (let i = 0; i < teamPairs.length; i += 10) {
-      await Promise.all(teamPairs.slice(i, i + 10).map(m => loadFhgStats(m.homeID, m.awayID)));
+      await Promise.all(teamPairs.slice(i, i + 10).map(m => loadLg1Stats(m.homeID, m.awayID)));
     }
     return;
   }
@@ -218,7 +218,7 @@ async function loadMatches(dateStr) {
 
     const teamPairs = unique.filter(m => m.homeID && m.awayID);
     for (let i = 0; i < teamPairs.length; i += 10) {
-      await Promise.all(teamPairs.slice(i, i + 10).map(m => loadFhgStats(m.homeID, m.awayID)));
+      await Promise.all(teamPairs.slice(i, i + 10).map(m => loadLg1Stats(m.homeID, m.awayID)));
     }
   } catch (e) {
     console.error('loadMatches error:', e);

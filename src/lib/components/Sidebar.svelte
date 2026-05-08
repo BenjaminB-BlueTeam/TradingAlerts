@@ -16,7 +16,7 @@
 
   const navItems = [
     { href: '/',              icon: '📊', label: 'Dashboard'          },
-    { href: '/alerts',        icon: '⚡', label: 'Sélection FHG'      },
+    { href: '/alerts-lg1',        icon: '⚡', label: 'Sélection LG1'      },
     { href: '/alerts-lg2',    icon: '⏱️', label: 'Sélection LG2'      },
     { href: '/mes-matchs',    icon: '⭐', label: 'Mes matchs'         },
     { href: '/historique',    icon: '📈', label: 'Historique'         },
@@ -76,7 +76,7 @@
   <div class="sidebar__header">
     <div class="sidebar__logo">
       <span class="sidebar__logo-icon">⚽</span>
-      <span class="sidebar__logo-text">FHG Tracker</span>
+      <span class="sidebar__logo-text">Late Goal Tracker</span>
     </div>
     <button class="sidebar__close-btn" onclick={() => sidebarOpen = false} aria-label="Fermer">✕</button>
   </div>
@@ -98,7 +98,7 @@
       >
         <span class="sidebar__nav-icon">{item.icon}</span>
         <span class="sidebar__nav-label">{item.label}</span>
-        {#if (item.href === '/alerts' || item.href === '/alerts-lg2') && alertsBadgeCount > 0}
+        {#if (item.href === '/alerts-lg1' || item.href === '/alerts-lg2') && alertsBadgeCount > 0}
           <span class="sidebar__badge">{alertsBadgeCount}</span>
         {/if}
       </a>

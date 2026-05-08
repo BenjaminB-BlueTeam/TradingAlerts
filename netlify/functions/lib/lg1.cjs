@@ -1,11 +1,11 @@
 /* ================================================
-   netlify/functions/lib/analysis.cjs
-   Fonctions d'analyse FHG streak v2.
+   netlify/functions/lib/lg1.cjs
+   Fonctions d'analyse LG1 streak v2.
    Utilisé par generate-alerts.js et testable indépendamment.
    ================================================ */
 
 // ============================================================
-// ALGO FHG v2 — Logique streak
+// ALGO LG1 v2 — Logique streak
 // ============================================================
 
 const STREAK_FORT = 3;
@@ -185,7 +185,7 @@ function analyzeScenarioB(opponentMatches, opponentId, teamMatches, teamId) {
 // --- Orchestration ---
 
 /**
- * Analyse streak FHG pour une équipe ciblée.
+ * Analyse streak LG1 pour une équipe ciblée.
  * Retourne { isAlert, signalType, confidence, factors, cleanSheetBlock }.
  *
  * @param {Array}   teamMatches      matchs de l'équipe dans le contexte (home OU away), triés DESC
@@ -210,7 +210,7 @@ function analyzeStreakAlert(teamMatches, teamId, opponentMatches, opponentId, h2
   if (aActive && bActive) {
     return {
       isAlert: true,
-      signalType: 'FHG_A+B',
+      signalType: 'LG1_A+B',
       confidence: 'fort',
       factors: { scenarioA: a, scenarioB: b },
     };
@@ -220,7 +220,7 @@ function analyzeStreakAlert(teamMatches, teamId, opponentMatches, opponentId, h2
     const best = aActive ? a : b;
     return {
       isAlert: true,
-      signalType: best.scenario === 'A' ? 'FHG_A' : 'FHG_B',
+      signalType: best.scenario === 'A' ? 'LG1_A' : 'LG1_B',
       confidence: best.confidence,
       factors: best,
     };
@@ -236,7 +236,7 @@ function analyzeStreakAlert(teamMatches, teamId, opponentMatches, opponentId, h2
     const best = cActive ? c : d;
     return {
       isAlert: true,
-      signalType: best.scenario === 'C' ? 'FHG_C' : 'FHG_D',
+      signalType: best.scenario === 'C' ? 'LG1_C' : 'LG1_D',
       confidence: best.confidence,
       factors: best,
     };
@@ -246,7 +246,7 @@ function analyzeStreakAlert(teamMatches, teamId, opponentMatches, opponentId, h2
 }
 
 module.exports = {
-  // FHG streak v2
+  // LG1 streak v2
   analyzeStreakAlert,
   analyzeScenarioA,
   analyzeScenarioB,

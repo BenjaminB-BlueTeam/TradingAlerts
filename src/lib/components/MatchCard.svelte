@@ -3,7 +3,7 @@
   import GoalTimeline from './GoalTimeline.svelte';
   import { createGoalDistChart } from '$lib/components/charts.js';
   import { formaterH2HTimeline } from '$lib/core/h2h.js';
-  import { getTimerConseille } from '$lib/core/scoring.js';
+  import { getTimerConseille } from '$lib/core/lg1.js';
   import { config } from '$lib/stores/appStore.js';
   import { isWindowActive } from '$lib/core/filters.js';
 
@@ -17,12 +17,12 @@
   let chartInstance = $state(null);
 
   // Streak v2 : extraire les factors du scoreChoisi
-  let streakA    = $derived(sc.signalType === 'FHG_A+B' ? sc.factors?.scenarioA : (sc.signalType === 'FHG_A' ? sc.factors : null));
-  let streakB    = $derived(sc.signalType === 'FHG_A+B' ? sc.factors?.scenarioB : (sc.signalType === 'FHG_B' ? sc.factors : null));
+  let streakA    = $derived(sc.signalType === 'LG1_A+B' ? sc.factors?.scenarioA : (sc.signalType === 'LG1_A' ? sc.factors : null));
+  let streakB    = $derived(sc.signalType === 'LG1_A+B' ? sc.factors?.scenarioB : (sc.signalType === 'LG1_B' ? sc.factors : null));
   let streakPrincipal = $derived(streakA?.streakScored ?? streakB?.streakConceded ?? 0);
   let confirmRate = $derived(streakA?.oppConcedesRate ?? streakB?.teamScoresRate ?? 0);
   let scoreClass = $derived(sc.confidence === 'fort' ? 'green' : sc.confidence === 'moyen' ? 'orange' : 'grey');
-  let fhgColor   = $derived(streakPrincipal >= 3 ? 'green' : streakPrincipal >= 2 ? 'orange' : 'grey');
+  let lg1Color   = $derived(streakPrincipal >= 3 ? 'green' : streakPrincipal >= 2 ? 'orange' : 'grey');
   let advColor   = $derived(confirmRate >= 60 ? 'green' : confirmRate >= 40 ? 'orange' : 'grey');
   let windowActive = $derived(isWindowActive(m.time));
   let h2hTimeline = $derived(formaterH2HTimeline(m.h2h || [], m.equipeSignal || ''));
@@ -105,7 +105,7 @@
     <!-- BADGES -->
     <div class="match-card__badges">
       {#if sc.isAlert}
-        <span class="badge badge--1mt">{sc.signalType || 'ALERTE FHG'}</span>
+        <span class="badge badge--1mt">{sc.signalType || 'ALERTE LG1'}</span>
       {/if}
       {#if sc.cleanSheetBlock}
         <span class="badge badge--exclu">✗ Clean Sheet H2H</span>
@@ -122,11 +122,11 @@
           <span class="stat-row__label">Streak A (marque 31-45)</span>
           <div class="stat-row__bar">
             <div class="progress-bar">
-              <div class="progress-bar__fill progress-bar__fill--{fhgColor}"
+              <div class="progress-bar__fill progress-bar__fill--{lg1Color}"
                 style="width:{Math.min((streakA.streakScored / 5) * 100, 100)}%"></div>
             </div>
           </div>
-          <span class="stat-row__value {fhgColor}">{streakA.streakScored} match{streakA.streakScored > 1 ? 's' : ''}</span>
+          <span class="stat-row__value {lg1Color}">{streakA.streakScored} match{streakA.streakScored > 1 ? 's' : ''}</span>
         </div>
         <div class="stat-row">
           <span class="stat-row__label">Adv. encaisse 1MT (A)</span>
@@ -144,11 +144,11 @@
           <span class="stat-row__label">Streak B (adv. encaisse 31-45)</span>
           <div class="stat-row__bar">
             <div class="progress-bar">
-              <div class="progress-bar__fill progress-bar__fill--{fhgColor}"
+              <div class="progress-bar__fill progress-bar__fill--{lg1Color}"
                 style="width:{Math.min((streakB.streakConceded / 5) * 100, 100)}%"></div>
             </div>
           </div>
-          <span class="stat-row__value {fhgColor}">{streakB.streakConceded} match{streakB.streakConceded > 1 ? 's' : ''}</span>
+          <span class="stat-row__value {lg1Color}">{streakB.streakConceded} match{streakB.streakConceded > 1 ? 's' : ''}</span>
         </div>
         <div class="stat-row">
           <span class="stat-row__label">Équipe marque 1MT (B)</span>
@@ -199,8 +199,8 @@
           <div class="detail-section" style="margin-bottom:20px;">
             <div class="detail-section__title">🎯 Détail streak</div>
             <div class="dc-indicator">
-              {#if sc.signalType === 'FHG_A' || sc.signalType === 'FHG_A+B'}
-                {@const fA = sc.signalType === 'FHG_A+B' ? sc.factors.scenarioA : sc.factors}
+              {#if sc.signalType === 'LG1_A' || sc.signalType === 'LG1_A+B'}
+                {@const fA = sc.signalType === 'LG1_A+B' ? sc.factors.scenarioA : sc.factors}
                 <div>
                   <div class="dc-indicator__label">Streak A (marque 31-45)</div>
                   <div class="dc-indicator__value">{fA?.streakScored ?? '—'} matchs</div>
@@ -210,8 +210,8 @@
                   <div class="dc-indicator__value">{fA?.oppConcedesRate ?? '—'}% ({fA?.oppConcedesSample ?? '—'})</div>
                 </div>
               {/if}
-              {#if sc.signalType === 'FHG_B' || sc.signalType === 'FHG_A+B'}
-                {@const fB = sc.signalType === 'FHG_A+B' ? sc.factors.scenarioB : sc.factors}
+              {#if sc.signalType === 'LG1_B' || sc.signalType === 'LG1_A+B'}
+                {@const fB = sc.signalType === 'LG1_A+B' ? sc.factors.scenarioB : sc.factors}
                 <div>
                   <div class="dc-indicator__label">Streak B (adv. encaisse 31-45)</div>
                   <div class="dc-indicator__value">{fB?.streakConceded ?? '—'} matchs</div>

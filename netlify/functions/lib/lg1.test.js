@@ -6,7 +6,7 @@ const {
   analyzeStreakAlert, analyzeScenarioA, analyzeScenarioB, analyzeScenarioC, analyzeScenarioD,
   computeStreak, confirmationRate, isH2HCleanSheetFirstHalf,
   teamScored31to45, teamConceded31to45, teamScoredInFirstHalf, teamConcededInFirstHalf,
-} = require('./analysis.cjs');
+} = require('./lg1.cjs');
 
 // --- Helper factories ---
 
@@ -388,15 +388,15 @@ describe('analyzeStreakAlert', () => {
     expect(r.cleanSheetBlock).toBe(true);
   });
 
-  it('A seul → FHG_A avec la bonne confidence', () => {
+  it('A seul → LG1_A avec la bonne confidence', () => {
     const { teamMatches, oppMatches, h2h } = buildAlertA();
     const r = analyzeStreakAlert(teamMatches, 100, oppMatches, 200, h2h);
     expect(r.isAlert).toBe(true);
-    expect(r.signalType).toBe('FHG_A');
+    expect(r.signalType).toBe('LG1_A');
     expect(['moyen', 'fort']).toContain(r.confidence);
   });
 
-  it('B seul → FHG_B', () => {
+  it('B seul → LG1_B', () => {
     // Aucun streak A (équipe ne marque pas en 31-45)
     const teamMatches = Array(4).fill(null).map(() => makeMatch({ goalEvents: [] }));
     // Adversaire (id=200) encaisse 31-45 en streak : makeMatch default home=100, 200 encaisse si goal home:true
@@ -414,10 +414,10 @@ describe('analyzeStreakAlert', () => {
     // B : streakConceded de 200 dans oppMatches → goal(35, true), home_team_id=100, 200 n'est pas home → e.home !== false → true → encaisse → streak 4
     //     confirmation B : teamScoredInFirstHalf de 100 dans teamMatchesConf → goal(20,true), min<=45, home===true → true → 5/5 ≥ 60% ✓
     expect(r.isAlert).toBe(true);
-    expect(r.signalType).toBe('FHG_B');
+    expect(r.signalType).toBe('LG1_B');
   });
 
-  it('A+B actifs → FHG_A+B avec fort', () => {
+  it('A+B actifs → LG1_A+B avec fort', () => {
     // A : teamMatches avec streak 31-45 de 100
     const teamMatches = homeMatches31to45(4); // goal(35,true) → streak 31-45 home ✓
     // B : oppMatches où 200 encaisse 31-45 → goal(35,true) dans match home=100 → 200 encaisse
@@ -426,7 +426,7 @@ describe('analyzeStreakAlert', () => {
     // Confirmation B : teamScoredInFirstHalf de 100 dans teamMatches → goal(35,true), min<=45, e.home===true → true → 4/4 ≥ 60% ✓
     const r = analyzeStreakAlert(teamMatches, 100, oppMatches, 200, []);
     expect(r.isAlert).toBe(true);
-    expect(r.signalType).toBe('FHG_A+B');
+    expect(r.signalType).toBe('LG1_A+B');
     expect(r.confidence).toBe('fort');
     expect(r.factors).toHaveProperty('scenarioA');
     expect(r.factors).toHaveProperty('scenarioB');
@@ -440,17 +440,17 @@ describe('analyzeStreakAlert', () => {
     expect(r.cleanSheetBlock).toBeUndefined();
   });
 
-  it('C seul → signalType FHG_C si A et B null', () => {
+  it('C seul → signalType LG1_C si A et B null', () => {
     // streak=2 + adversaire encaisse 3/3
     const team = [...homeMatches31to45(2), makeMatch({ goalEvents: [] })];
     const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
     const r = analyzeStreakAlert(team, 100, opp, 200, []);
     expect(r.isAlert).toBe(true);
-    expect(r.signalType).toBe('FHG_C');
+    expect(r.signalType).toBe('LG1_C');
     expect(r.confidence).toBe('moyen');
   });
 
-  it('D seul → signalType FHG_D si A, B et C null', () => {
+  it('D seul → signalType LG1_D si A, B et C null', () => {
     const team = [
       makeMatch({ goalEvents: [goal(35, true), goal(38, false)] }),
       makeMatch({ goalEvents: [] }),
@@ -464,7 +464,7 @@ describe('analyzeStreakAlert', () => {
     ];
     const r = analyzeStreakAlert(team, 100, opp, 200, []);
     expect(r.isAlert).toBe(true);
-    expect(r.signalType).toBe('FHG_D');
+    expect(r.signalType).toBe('LG1_D');
     expect(r.confidence).toBe('moyen');
   });
 
@@ -472,7 +472,7 @@ describe('analyzeStreakAlert', () => {
     const team = homeMatches31to45(3);
     const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
     const r = analyzeStreakAlert(team, 100, opp, 200, []);
-    expect(r.signalType).toBe('FHG_A');
+    expect(r.signalType).toBe('LG1_A');
   });
 });
 

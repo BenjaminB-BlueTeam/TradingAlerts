@@ -69,7 +69,7 @@
     try {
       // Cas 4a : désélectionner toutes les variantes du match avant exclusion
       const set = get(selectedKeys);
-      const allSignals = ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'LG2_A', 'LG2_B', 'LG2_A+B'];
+      const allSignals = ['LG1', 'LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D', 'LG2_A', 'LG2_B', 'LG2_A+B'];
       for (const sig of allSignals) {
         if (isSelected(set, excludeModalAlert.match_id, sig)) {
           await unselect(excludeModalAlert.match_id, sig);

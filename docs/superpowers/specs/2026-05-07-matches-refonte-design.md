@@ -98,8 +98,8 @@ Un seul fichier modifié : `+page.svelte`.
 - Filtre ligue (dropdown)
 - Autocomplete équipe (recherche Supabase `teams`)
 - Cards matchs expandables + goal bars H2H
-- Stats FHG 31-45 par équipe dans les cards
-- FHG streak affiché dans les cards
+- Stats LG1 31-45 par équipe dans les cards
+- LG1 streak affiché dans les cards
 
 ---
 

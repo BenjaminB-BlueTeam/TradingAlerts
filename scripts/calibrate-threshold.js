@@ -1,9 +1,14 @@
 /**
  * calibrate-threshold.js — streak v2
  *
- * Analyse les alertes terminées (algo v2) et produit :
- *   1. Tableau par signal_type (FHG_DOM, FHG_EXT)
- *   2. Tableau par confiance (fort, fort, moyen)
+ * ⚠️  OBSOLÈTE après le rebrand FHG → LG1 (2026-05-08).
+ *     Le script référence encore les anciens signal_type LG1_DOM / LG1_EXT
+ *     qui n'existent plus dans la nouvelle nomenclature (LG1_A/B/A+B/C/D).
+ *     À réécrire avant la prochaine campagne de calibration (cf roadmap CLAUDE.md).
+ *
+ * Analyse les alertes terminées et produit :
+ *   1. Tableau par signal_type
+ *   2. Tableau par confiance
  *   3. Cross-tab signal_type × confiance
  *   4. Recommandations sur les seuils de streak
  *
@@ -32,7 +37,7 @@ async function fetchAlerts() {
   // Récupère toutes les alertes terminées (inclut v1 + v2 pour comparaison)
   const url = `${SUPABASE_URL}/rest/v1/alerts`
     + `?status=in.(validated,lost)`
-    + `&select=signal_type,fhg_pct,confidence,status,algo_version,user_excluded`
+    + `&select=signal_type,lg1_pct,confidence,status,algo_version,user_excluded`
     + `&order=kickoff_unix.desc`;
 
   const res = await fetch(url, {
@@ -112,8 +117,8 @@ async function main() {
   console.log(`${all.length} alertes terminées au total.`);
 
   // Séparer v1 vs v2
-  const v2 = all.filter(a => a.algo_version === 'v2' && !a.user_excluded);
-  const v1 = all.filter(a => a.algo_version !== 'v2');
+  const v2 = all.filter(a => a.algo_version === 'lg1_v2' && !a.user_excluded);
+  const v1 = all.filter(a => a.algo_version !== 'lg1_v2');
 
   console.log(`  v1 (ancien algo) : ${v1.length}`);
   console.log(`  v2 (streak)      : ${v2.length}`);
@@ -131,23 +136,23 @@ async function main() {
   // ── 1. Par signal_type ──────────────────────────────────────
   header(`Par signal_type  (v2, n=${v2.length})`);
 
-  const sigTypes = ['FHG_DOM', 'FHG_EXT'];
+  const sigTypes = ['LG1_DOM', 'LG1_EXT'];
   const sigStats = {};
   for (const sig of sigTypes) {
     sigStats[sig] = stats(v2.filter(a => a.signal_type === sig));
     printRow(sig, sigStats[sig]);
   }
-  const fhgAll = v2.filter(a => ['FHG_DOM', 'FHG_EXT'].includes(a.signal_type));
-  printRow('FHG (tous)', stats(fhgAll));
+  const lg1All = v2.filter(a => ['LG1_DOM', 'LG1_EXT'].includes(a.signal_type));
+  printRow('LG1 (tous)', stats(lg1All));
   printRow('Global v2', stats(v2));
 
   // ── 2. Par confiance ────────────────────────────────────────
-  header(`Par confiance  (v2 FHG, n=${fhgAll.length})`);
+  header(`Par confiance  (v2 LG1, n=${lg1All.length})`);
 
   const confLevels = ['fort', 'fort', 'moyen'];
   const confStats = {};
   for (const conf of confLevels) {
-    confStats[conf] = stats(fhgAll.filter(a => a.confidence === conf));
+    confStats[conf] = stats(lg1All.filter(a => a.confidence === conf));
     printRow(conf, confStats[conf]);
   }
 
@@ -158,7 +163,7 @@ async function main() {
   console.log(`  ${''.padEnd(12)} ${'fort'.padStart(13)} ${'fort'.padStart(13)} ${'moyen'.padStart(13)}`);
   console.log(`  ${'-'.repeat(54)}`);
 
-  for (const sig of ['FHG_DOM', 'FHG_EXT']) {
+  for (const sig of ['LG1_DOM', 'LG1_EXT']) {
     const row = v2.filter(a => a.signal_type === sig);
     const cells = confLevels.map(conf => {
       const s = stats(row.filter(a => a.confidence === conf));
@@ -179,23 +184,23 @@ async function main() {
 
   console.log();
 
-  // Comparaison FHG_DOM vs FHG_EXT
-  const sDom = sigStats['FHG_DOM'];
-  const sExt = sigStats['FHG_EXT'];
+  // Comparaison LG1_DOM vs LG1_EXT
+  const sDom = sigStats['LG1_DOM'];
+  const sExt = sigStats['LG1_EXT'];
   if (sDom && sDom.n >= 5 && sExt && sExt.n >= 5) {
     const diff = sDom.pct - sExt.pct;
     if (Math.abs(diff) >= 10) {
-      const better = diff > 0 ? 'FHG_DOM' : 'FHG_EXT';
-      const worse  = diff > 0 ? 'FHG_EXT' : 'FHG_DOM';
+      const better = diff > 0 ? 'LG1_DOM' : 'LG1_EXT';
+      const worse  = diff > 0 ? 'LG1_EXT' : 'LG1_DOM';
       console.log(`  ⚡ ${better} surperforme ${worse} de ${Math.abs(diff)}% — envisager de relever le seuil pour ${worse}.`);
     } else {
-      console.log(`  ~ FHG_DOM et FHG_EXT ont des performances similaires (écart ${Math.abs(diff)}%).`);
+      console.log(`  ~ LG1_DOM et LG1_EXT ont des performances similaires (écart ${Math.abs(diff)}%).`);
     }
   }
 
   // fort vs standalone
-  const sDouble     = stats(fhgAll.filter(a => a.confidence === 'fort'));
-  const sStandalone = stats(fhgAll.filter(a => a.confidence !== 'fort'));
+  const sDouble     = stats(lg1All.filter(a => a.confidence === 'fort'));
+  const sStandalone = stats(lg1All.filter(a => a.confidence !== 'fort'));
   if (sDouble && sDouble.n >= 5 && sStandalone && sStandalone.n >= 5) {
     const diff = sDouble.pct - sStandalone.pct;
     console.log(`  ${diff >= 5 ? '✓' : '~'} fort : ${sDouble.pct}% vs autres : ${sStandalone.pct}% (écart ${diff > 0 ? '+' : ''}${diff}%)`);
@@ -205,7 +210,7 @@ async function main() {
   }
 
   console.log(`\n  Seuils actuels : STREAK_FORT=${STREAK_FORT}, STREAK_MOYEN=${STREAK_MOYEN}, CONFIRM_MIN_RATE=${CONFIRM_MIN_RATE}, CONFIRM_MIN_SAMPLE=${CONFIRM_MIN_SAMPLE}`);
-  console.log(`  Pour modifier : netlify/functions/lib/analysis.cjs + src/lib/core/scoring.js\n`);
+  console.log(`  Pour modifier : netlify/functions/lib/lg1.cjs + src/lib/core/lg1.js\n`);
 }
 
 main().catch(e => {

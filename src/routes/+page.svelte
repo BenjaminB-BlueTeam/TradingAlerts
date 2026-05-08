@@ -19,19 +19,19 @@
   let taux7jLoading = $state(true);
 
   // Santé crons
-  let lastFhgTs = $state(null);    // MAX(created_at) alertes FHG (algo_version='v2')
+  let lastLg1Ts = $state(null);    // MAX(created_at) alertes LG1 (algo_version='lg1_v2')
   let lastLg2Ts = $state(null);    // MAX(created_at) alertes LG2 (algo_version='lg2_v1')
   let pendingOld = $state(null);   // count pending + match_date < J-2
   let cronsLoading = $state(true);
 
-  let fhgAlerts = $derived(
-    alerts.filter(a => ['FHG_A', 'FHG_B', 'FHG_A+B'].includes(a.signal_type) && !a.user_excluded)
+  let lg1Alerts = $derived(
+    alerts.filter(a => ['LG1_A', 'LG1_B', 'LG1_A+B'].includes(a.signal_type) && !a.user_excluded)
   );
   let lg2Alerts = $derived(
     alerts.filter(a => ['LG2_A', 'LG2_B', 'LG2_A+B'].includes(a.signal_type) && !a.user_excluded)
   );
-  let fhgFortToday = $derived(
-    fhgAlerts.filter(a => a.confidence === 'fort')
+  let lg1FortToday = $derived(
+    lg1Alerts.filter(a => a.confidence === 'fort')
   );
   let lg2FortToday = $derived(
     lg2Alerts.filter(a => a.confidence === 'fort')
@@ -79,7 +79,7 @@
     if (h < 25) return 'orange';
     return 'red';
   }
-  let fhgColorClass = $derived(cronColorClass(lastFhgTs));
+  let lg1ColorClass = $derived(cronColorClass(lastLg1Ts));
   let lg2ColorClass = $derived(cronColorClass(lastLg2Ts));
   let pendingOldColorClass = $derived(pendingOld === 0 ? 'green' : pendingOld === null ? 'red' : 'red');
 
@@ -274,13 +274,13 @@
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 2);
     const cutoffStr = cutoff.toISOString().split('T')[0];
 
-    const [fhgRes, lg2Res, pendingRes] = await Promise.all([
-      supabase.from('alerts').select('created_at').eq('algo_version', 'v2').order('created_at', { ascending: false }).limit(1),
+    const [lg1Res, lg2Res, pendingRes] = await Promise.all([
+      supabase.from('alerts').select('created_at').eq('algo_version', 'lg1_v2').order('created_at', { ascending: false }).limit(1),
       supabase.from('alerts').select('created_at').eq('algo_version', 'lg2_v1').order('created_at', { ascending: false }).limit(1),
       supabase.from('alerts').select('id', { count: 'exact', head: true }).eq('status', 'pending').lt('match_date', cutoffStr),
     ]);
 
-    if (!fhgRes.error && fhgRes.data?.length > 0) lastFhgTs = fhgRes.data[0].created_at;
+    if (!lg1Res.error && lg1Res.data?.length > 0) lastLg1Ts = lg1Res.data[0].created_at;
     if (!lg2Res.error && lg2Res.data?.length > 0) lastLg2Ts = lg2Res.data[0].created_at;
     if (!pendingRes.error) pendingOld = pendingRes.count ?? 0;
 
@@ -355,24 +355,24 @@
 
     <div
       class="metric-card"
-      class:metric-card--ok={fhgColorClass === 'green'}
-      class:metric-card--warn={fhgColorClass === 'orange'}
-      class:metric-card--error={fhgColorClass === 'red'}
+      class:metric-card--ok={lg1ColorClass === 'green'}
+      class:metric-card--warn={lg1ColorClass === 'orange'}
+      class:metric-card--error={lg1ColorClass === 'red'}
     >
-      <div class="metric-card__label">Génération FHG</div>
+      <div class="metric-card__label">Génération LG1</div>
       {#if cronsLoading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">chargement…</div>
       {:else}
         <div
           class="metric-card__value"
-          class:green={fhgColorClass === 'green'}
-          class:orange={fhgColorClass === 'orange'}
-          class:red={fhgColorClass === 'red'}
+          class:green={lg1ColorClass === 'green'}
+          class:orange={lg1ColorClass === 'orange'}
+          class:red={lg1ColorClass === 'red'}
         >
-          {hoursLabel(lastFhgTs)}
+          {hoursLabel(lastLg1Ts)}
         </div>
-        <div class="metric-card__sub">dernière alerte FHG créée · cron 12h</div>
+        <div class="metric-card__sub">dernière alerte LG1 créée · cron 12h</div>
       {/if}
     </div>
 
@@ -425,14 +425,14 @@
   <div class="section-label">Alertes du jour</div>
   <div class="metric-grid metric-grid--3">
 
-    <a href="/alerts?day=0" class="metric-card metric-card--link">
-      <div class="metric-card__label">FHG Fort — aujourd'hui</div>
+    <a href="/alerts-lg1?day=0" class="metric-card metric-card--link">
+      <div class="metric-card__label">LG1 Fort — aujourd'hui</div>
       {#if loading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">&nbsp;</div>
       {:else}
-        <div class="metric-card__value green">{fhgFortToday.length}</div>
-        <div class="metric-card__sub">sur {fhgAlerts.length} alerte{fhgAlerts.length > 1 ? 's' : ''} FHG</div>
+        <div class="metric-card__value green">{lg1FortToday.length}</div>
+        <div class="metric-card__sub">sur {lg1Alerts.length} alerte{lg1Alerts.length > 1 ? 's' : ''} LG1</div>
       {/if}
     </a>
 

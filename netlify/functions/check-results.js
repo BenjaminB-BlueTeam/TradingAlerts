@@ -40,7 +40,7 @@ function parseGoalMinutes(matchData) {
   return minutes;
 }
 
-function evaluateFHG(matchData) {
+function evaluateLG1(matchData) {
   const goalMinutes = parseGoalMinutes(matchData);
   if (goalMinutes.length > 0) {
     const hasGoal3145 = goalMinutes.some(m => m >= 31 && m <= 45);
@@ -108,10 +108,10 @@ exports.handler = async (event) => {
         const signalType = alert.signal_type;
         let newStatus;
 
-        const FHG_TYPES = ['FHG', 'FHG_DOM', 'FHG_EXT', 'FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D'];
+        const LG1_TYPES = ['LG1', 'LG1_DOM', 'LG1_EXT', 'LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D'];
         const LG2_TYPES = ['LG2_A', 'LG2_B', 'LG2_A+B'];
-        if (FHG_TYPES.includes(signalType)) {
-          newStatus = evaluateFHG(matchData);
+        if (LG1_TYPES.includes(signalType)) {
+          newStatus = evaluateLG1(matchData);
         } else if (LG2_TYPES.includes(signalType)) {
           newStatus = evaluateLG2(matchData);
         } else {
