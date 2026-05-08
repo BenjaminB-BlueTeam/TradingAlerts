@@ -1,9 +1,14 @@
 /**
  * calibrate-threshold.js — streak v2
  *
- * Analyse les alertes terminées (algo v2) et produit :
- *   1. Tableau par signal_type (LG1_DOM, LG1_EXT)
- *   2. Tableau par confiance (fort, fort, moyen)
+ * ⚠️  OBSOLÈTE après le rebrand FHG → LG1 (2026-05-08).
+ *     Le script référence encore les anciens signal_type LG1_DOM / LG1_EXT
+ *     qui n'existent plus dans la nouvelle nomenclature (LG1_A/B/A+B/C/D).
+ *     À réécrire avant la prochaine campagne de calibration (cf roadmap CLAUDE.md).
+ *
+ * Analyse les alertes terminées et produit :
+ *   1. Tableau par signal_type
+ *   2. Tableau par confiance
  *   3. Cross-tab signal_type × confiance
  *   4. Recommandations sur les seuils de streak
  *

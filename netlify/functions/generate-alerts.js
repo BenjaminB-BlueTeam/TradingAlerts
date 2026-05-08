@@ -18,7 +18,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABA
 
 async function supabaseDelete(matchIds) {
   if (!matchIds.length) return true;
-  const url = `${SUPABASE_URL}/rest/v1/alerts?match_id=in.(${matchIds.join(',')})&signal_type=in.(LG1_DOM,LG1_EXT,LG1)`;
+  const url = `${SUPABASE_URL}/rest/v1/alerts?match_id=in.(${matchIds.join(',')})&signal_type=in.(LG1_A,LG1_B,LG1_A+B,LG1_C,LG1_D)`;
   const res = await fetch(url, {
     method: 'DELETE',
     headers: {
@@ -282,7 +282,7 @@ exports.handler = async (event) => {
     console.log(`[generate-alerts] Analysis done — ${results.analyzed} matches analyzed, ${newAlerts.length} new alerts to insert`);
     results.newAlerts = newAlerts.length;
     if (newAlerts.length > 0) {
-      // Supprimer les vieilles alertes LG1_DOM/LG1_EXT/LG1 avant insert (évite les conflits match_id)
+      // Supprimer les vieilles alertes LG1_A/B/A+B/C/D avant insert (évite les conflits match_id)
       const matchIdsToClean = newAlerts.map(a => a.match_id);
       if (matchIdsToClean.length > 0) {
         await supabaseDelete(matchIdsToClean);
