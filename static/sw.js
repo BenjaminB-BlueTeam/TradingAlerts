@@ -1,4 +1,4 @@
-const CACHE = 'lg1-v1';
+const CACHE = 'lg1-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => {
