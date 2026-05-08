@@ -29,9 +29,19 @@
   function isTerminated(a) { return ['validated', 'lost', 'expired'].includes(a.status); }
   function isActive(a) { return !isTerminated(a); }
 
-  // ---- Reactive: visible alerts filtered by selected keys ----
+  // ---- Reactive: union des clés sélectionnées + clés ayant un trade ----
+  // Permet d'afficher une alerte même si elle n'a pas de selected_alert (ex: saisie via Rattrapage)
+  let displayedKeys = $derived.by(() => {
+    const set = new Set($selectedKeys);
+    for (const t of allTrades) {
+      set.add(t.match_id + ':' + t.signal_type);
+    }
+    return set;
+  });
+
+  // ---- Reactive: visible alerts filtered by displayedKeys ----
   let visibleAlerts = $derived(
-    allAlerts.filter(a => $selectedKeys.has(keyOf(a.match_id, a.signal_type)))
+    allAlerts.filter(a => displayedKeys.has(keyOf(a.match_id, a.signal_type)))
   );
 
   let today = $derived(getDateStr(0));
@@ -159,10 +169,10 @@
   }
 
   // ---- Data loading ----
-  async function loadAlertsForSelections() {
+  async function loadAlertsForDisplayedKeys() {
     loading = true;
     error = '';
-    const set = $selectedKeys;
+    const set = displayedKeys;
 
     if (set.size === 0) {
       allAlerts = [];
@@ -204,11 +214,12 @@
 
   onMount(() => { loadTrades(); loadCatchupAlerts(); });
 
-  // Recharge les alertes dès que selectedKeys change (fixe la race condition
-  // avec loadSelections() du layout qui se termine après le mount de la page)
+  // Recharge les alertes dès que displayedKeys change :
+  // - quand selectedKeys change (sélection/désélection d'alerte)
+  // - quand allTrades change (ajout d'un trade via Rattrapage → alerte sans selected_alert)
   $effect(() => {
-    void ($selectedKeys);  // établit la dépendance réactive
-    loadAlertsForSelections();
+    void displayedKeys;  // établit la dépendance réactive sur l'union selectedKeys + trades
+    loadAlertsForDisplayedKeys();
   });
 
   // Rattrapage : alertes des 7 derniers jours SANS trade enregistré (sélectionnées ou non)
@@ -415,6 +426,11 @@
         </div>
       </div>
       <div class="alert-card__badges">
+        {#if isFHG(a.signal_type)}
+          <span class="strategy-badge strategy-badge--fhg">FHG</span>
+        {:else if isLG2(a.signal_type)}
+          <span class="strategy-badge strategy-badge--lg2">LG2</span>
+        {/if}
         <span class="alert-badge {confidenceClass(a.confidence)}">{confidenceLabel(a.confidence)}</span>
         {#if badge}
           <span class="alert-badge {badge.cls}">{badge.label}</span>
@@ -723,7 +739,7 @@
     flex-wrap: wrap;
   }
 
-  /* Signal type badge */
+  /* Signal type badge (legacy, non utilisé) */
   .signal-type-badge {
     background: rgba(55, 138, 221, 0.15);
     color: var(--color-accent-blue);
@@ -732,6 +748,24 @@
     padding: 3px 8px;
     border-radius: 4px;
     text-transform: uppercase;
+  }
+
+  /* Strategy badge FHG / LG2 */
+  .strategy-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .strategy-badge--fhg {
+    background: rgba(29, 158, 117, 0.18);
+    color: var(--color-accent-green);
+  }
+  .strategy-badge--lg2 {
+    background: rgba(127, 119, 221, 0.18);
+    color: var(--color-badge-violet);
   }
 
   /* ---- Trade section ---- */
