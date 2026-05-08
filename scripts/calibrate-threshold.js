@@ -113,7 +113,7 @@ async function main() {
 
   // Séparer v1 vs v2
   const v2 = all.filter(a => a.algo_version === 'lg1_v2' && !a.user_excluded);
-  const v1 = all.filter(a => a.algo_version !== 'v2');
+  const v1 = all.filter(a => a.algo_version !== 'lg1_v2');
 
   console.log(`  v1 (ancien algo) : ${v1.length}`);
   console.log(`  v2 (streak)      : ${v2.length}`);

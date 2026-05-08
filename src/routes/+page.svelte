@@ -19,7 +19,7 @@
   let taux7jLoading = $state(true);
 
   // Santé crons
-  let lastLg1Ts = $state(null);    // MAX(created_at) alertes LG1 (algo_version='v2')
+  let lastLg1Ts = $state(null);    // MAX(created_at) alertes LG1 (algo_version='lg1_v2')
   let lastLg2Ts = $state(null);    // MAX(created_at) alertes LG2 (algo_version='lg2_v1')
   let pendingOld = $state(null);   // count pending + match_date < J-2
   let cronsLoading = $state(true);
@@ -275,7 +275,7 @@
     const cutoffStr = cutoff.toISOString().split('T')[0];
 
     const [lg1Res, lg2Res, pendingRes] = await Promise.all([
-      supabase.from('alerts').select('created_at').eq('algo_version', 'v2').order('created_at', { ascending: false }).limit(1),
+      supabase.from('alerts').select('created_at').eq('algo_version', 'lg1_v2').order('created_at', { ascending: false }).limit(1),
       supabase.from('alerts').select('created_at').eq('algo_version', 'lg2_v1').order('created_at', { ascending: false }).limit(1),
       supabase.from('alerts').select('id', { count: 'exact', head: true }).eq('status', 'pending').lt('match_date', cutoffStr),
     ]);
