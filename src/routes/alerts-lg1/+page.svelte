@@ -68,7 +68,7 @@
     try {
       // Cas 4a : désélectionner toutes les variantes du match avant exclusion
       const set = get(selectedKeys);
-      const allSignals = ['FHG', 'FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D', 'LG2_A', 'LG2_B', 'LG2_A+B'];
+      const allSignals = ['LG1', 'LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D', 'LG2_A', 'LG2_B', 'LG2_A+B'];
       for (const sig of allSignals) {
         if (isSelected(set, excludeModalAlert.match_id, sig)) {
           await unselect(excludeModalAlert.match_id, sig);
@@ -94,15 +94,15 @@
     generating = true;
     genMessage = '';
     try {
-      const res = await callFunction('/.netlify/functions/generate-alerts?type=FHG');
+      const res = await callFunction('/.netlify/functions/generate-alerts?type=LG1');
       const data = await res.json();
       if (data.error) {
         genMessage = `Erreur : ${data.error}`;
       } else if (data.alerts_created > 0) {
-        genMessage = `${data.alerts_created} alerte${data.alerts_created > 1 ? 's' : ''} FHG créée${data.alerts_created > 1 ? 's' : ''}`;
+        genMessage = `${data.alerts_created} alerte${data.alerts_created > 1 ? 's' : ''} LG1 créée${data.alerts_created > 1 ? 's' : ''}`;
         await loadAlerts(); // Recharger
       } else {
-        genMessage = `Aucune alerte FHG — ${data.analyzed} matchs analysés, aucun ne correspond`;
+        genMessage = `Aucune alerte LG1 — ${data.analyzed} matchs analysés, aucun ne correspond`;
       }
     } catch (e) {
       genMessage = `Erreur : ${e.message}`;
@@ -118,12 +118,12 @@
       .select('*')
       .gte('match_date', getDateStr(-3))
       .lte('match_date', getDateStr(2))
-      .in('signal_type', ['FHG_A', 'FHG_B', 'FHG_A+B', 'FHG_C', 'FHG_D'])
+      .in('signal_type', ['LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D'])
       .order('match_date', { ascending: false })
       .order('kickoff_unix', { ascending: true });
     if (dbError) {
       console.error('loadAlerts error:', dbError);
-      error = 'Impossible de charger les alertes FHG.';
+      error = 'Impossible de charger les alertes LG1.';
       alerts = [];
     } else {
       alerts = data || [];
@@ -235,9 +235,9 @@
 
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
   <div>
-    <h1 class="page-title">⚡ Sélection FHG</h1>
+    <h1 class="page-title">⚡ Sélection LG1</h1>
     <p class="page-subtitle">
-      {alerts.length} signal{alerts.length > 1 ? 's' : ''} FHG — 3 derniers jours + à venir
+      {alerts.length} signal{alerts.length > 1 ? 's' : ''} LG1 — 3 derniers jours + à venir
     </p>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -316,7 +316,7 @@
       Les alertes sont générées automatiquement toutes les 12h
     </div>
     <button class="btn btn--primary" style="margin-top:12px;" onclick={handleGenerate} disabled={generating}>
-      {generating ? '⏳ Analyse en cours...' : '⚡ Lancer l\'analyse FHG maintenant'}
+      {generating ? '⏳ Analyse en cours...' : '⚡ Lancer l\'analyse LG1 maintenant'}
     </button>
     {#if genMessage}
       <div style="font-size:12px;margin-top:8px;color:var(--color-text-muted);">{genMessage}</div>

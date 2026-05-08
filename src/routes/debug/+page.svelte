@@ -134,7 +134,7 @@
   }
 
   // --- Génération alertes manuelle ---
-  let genRunning = $state(null); // 'FHG' | 'ALL' | null
+  let genRunning = $state(null); // 'LG1' | 'ALL' | null
   let genResult = $state(null);
 
   async function handleGenerate(type) {
@@ -153,8 +153,8 @@
   }
 
   // --- Auth token (pour seed + backfill protégés) ---
-  let seedToken = $state(localStorage.getItem('fhg_seed_token') || '');
-  function saveSeedToken() { localStorage.setItem('fhg_seed_token', seedToken); }
+  let seedToken = $state(localStorage.getItem('lg1_seed_token') || '');
+  function saveSeedToken() { localStorage.setItem('lg1_seed_token', seedToken); }
 
   // --- Backfill (rattrapage matchs manquants) ---
   let backfillFrom = $state('');
@@ -216,7 +216,7 @@
       fn: 'generate-alerts.js',
       schedule: '0 */12 * * *',
       human: 'Tous les jours à 0h et 12h UTC',
-      desc: 'Génère les alertes FHG/LG2 pour J, J+1, J+2 depuis h2h_matches + team_seasons.',
+      desc: 'Génère les alertes LG1/LG2 pour J, J+1, J+2 depuis h2h_matches + team_seasons.',
     },
     {
       id: 'check-results',
@@ -235,12 +235,12 @@
       desc: 'Seed dans h2h_matches les matchs joués hier (goal_events inclus).',
     },
     {
-      id: 'compute-team-fhg',
-      label: 'FHG% équipes',
-      fn: 'compute-team-fhg.js',
+      id: 'compute-team-lg1',
+      label: 'LG1% équipes',
+      fn: 'compute-team-lg1.js',
       schedule: '0 7 * * *',
       human: 'Tous les jours à 7h UTC',
-      desc: 'Calcule le % de matchs avec un but 0-45 min (stoppage compris) par équipe, upsert dans team_fhg_cache.',
+      desc: 'Calcule le % de matchs avec un but 0-45 min (stoppage compris) par équipe, upsert dans team_lg1_cache.',
     },
   ];
 
@@ -276,20 +276,20 @@
     return '—';
   }
 
-  // --- FHG Cache trigger ---
-  let fhgCacheRunning = $state(false);
-  let fhgCacheResult = $state(null);
+  // --- LG1 Cache trigger ---
+  let lg1CacheRunning = $state(false);
+  let lg1CacheResult = $state(null);
 
-  async function handleComputeFhg() {
-    fhgCacheRunning = true;
-    fhgCacheResult = null;
+  async function handleComputeLg1() {
+    lg1CacheRunning = true;
+    lg1CacheResult = null;
     try {
-      const res = await callFunction('/.netlify/functions/compute-team-fhg');
-      fhgCacheResult = await res.json();
+      const res = await callFunction('/.netlify/functions/compute-team-lg1');
+      lg1CacheResult = await res.json();
     } catch (e) {
-      fhgCacheResult = { error: e.message };
+      lg1CacheResult = { error: e.message };
     }
-    fhgCacheRunning = false;
+    lg1CacheRunning = false;
   }
 
   // --- Testeur API brut ---
@@ -387,14 +387,14 @@
         <div class="cron-item__fn">{cron.fn}</div>
         <div class="cron-item__schedule">{cron.human}</div>
         <div class="cron-item__desc">{cron.desc}</div>
-        {#if cron.id === 'compute-team-fhg'}
+        {#if cron.id === 'compute-team-lg1'}
           <div style="margin-top:8px;">
-            <button class="btn btn--secondary btn--sm" onclick={handleComputeFhg} disabled={fhgCacheRunning}>
-              {fhgCacheRunning ? '⏳ Calcul...' : '▶ Lancer maintenant'}
+            <button class="btn btn--secondary btn--sm" onclick={handleComputeLg1} disabled={lg1CacheRunning}>
+              {lg1CacheRunning ? '⏳ Calcul...' : '▶ Lancer maintenant'}
             </button>
-            {#if fhgCacheResult}
-              <span class="debug-result" class:success={!fhgCacheResult.error} class:error={fhgCacheResult.error} style="margin-left:8px;display:inline-block;padding:3px 8px;font-size:11px;">
-                {fhgCacheResult.error ? '✗ ' + fhgCacheResult.error : `✓ ${fhgCacheResult.teams ?? '?'} équipes, ${fhgCacheResult.matches ?? '?'} matchs`}
+            {#if lg1CacheResult}
+              <span class="debug-result" class:success={!lg1CacheResult.error} class:error={lg1CacheResult.error} style="margin-left:8px;display:inline-block;padding:3px 8px;font-size:11px;">
+                {lg1CacheResult.error ? '✗ ' + lg1CacheResult.error : `✓ ${lg1CacheResult.teams ?? '?'} équipes, ${lg1CacheResult.matches ?? '?'} matchs`}
               </span>
             {/if}
           </div>
@@ -448,8 +448,8 @@
     Lance l'analyse manuellement au lieu d'attendre le cron (8h/20h).
   </p>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <button class="btn btn--primary" onclick={() => handleGenerate('FHG')} disabled={genRunning}>
-      {genRunning === 'FHG' ? '⏳ Analyse FHG...' : '⚡ Sélection FHG'}
+    <button class="btn btn--primary" onclick={() => handleGenerate('LG1')} disabled={genRunning}>
+      {genRunning === 'LG1' ? '⏳ Analyse LG1...' : '⚡ Sélection LG1'}
     </button>
     <button class="btn btn--secondary" onclick={() => handleGenerate('ALL')} disabled={genRunning}>
       {genRunning === 'ALL' ? '⏳ Analyse complète...' : '🔄 Toutes les alertes'}
@@ -477,8 +477,8 @@
             {#each genResult.debug_sample as s}
               <div style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.1);padding-top:4px;">
                 {s.match} — homeM:{s.homeMatches} awayM:{s.awayMatches} h2h:{s.h2h} oppH:{s.oppForHome} oppA:{s.oppForAway}
-                <br/>FHG Dom: alert={s.fhgHome.isAlert} conf={s.fhgHome.conf} block={s.fhgHome.block}
-                / FHG Ext: alert={s.fhgAway.isAlert} conf={s.fhgAway.conf} block={s.fhgAway.block}
+                <br/>LG1 Dom: alert={s.lg1Home.isAlert} conf={s.lg1Home.conf} block={s.lg1Home.block}
+                / LG1 Ext: alert={s.lg1Away.isAlert} conf={s.lg1Away.conf} block={s.lg1Away.block}
               </div>
             {/each}
           </div>

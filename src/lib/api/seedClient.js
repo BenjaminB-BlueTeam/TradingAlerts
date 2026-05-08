@@ -16,7 +16,7 @@ async function seedRequest(params) {
   Object.entries(params).forEach(([k, v]) => {
     if (v != null) url.searchParams.set(k, String(v));
   });
-  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('fhg_seed_token') : null;
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('lg1_seed_token') : null;
   const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
   const res = await fetch(url.toString(), { headers });
   return await res.json();

@@ -14,7 +14,7 @@ Tu es un explorateur **read-only** du projet TradingAlerts.
 - **Stack** : SvelteKit 2 + Svelte 5 (runes) + Vite 6 + Netlify Functions + Supabase + Chart.js 4.4
 - **Source de données** : FootyStats API (Hobby plan)
 - **Repo** : `BenjaminB-BlueTeam/TradingAlerts`
-- **Domaine métier** : signaux de trading sportif football, stratégie FHG (First Half Goal entre 31e et 45e minute)
+- **Domaine métier** : signaux de trading sportif football, stratégie LG1 (First Half Goal entre 31e et 45e minute)
 
 ## Structure attendue du repo
 
@@ -23,7 +23,7 @@ src/
 ├── lib/
 │   ├── components/        # Composants Svelte réutilisables (Modal, Toast, MatchCard, etc.)
 │   ├── api/               # Helpers FootyStats, cache, client Supabase
-│   ├── core/              # Logique FHG (scoring.js), LG2 (lg2.js), H2H (h2h.js)
+│   ├── core/              # Logique LG1 (scoring.js), LG2 (lg2.js), H2H (h2h.js)
 │   ├── stores/            # Stores Svelte (appStore, tradeStore, tradeStats)
 │   └── utils/             # Utilitaires divers (formatters, teamData, leagueHelpers)
 ├── routes/                # Pages SvelteKit

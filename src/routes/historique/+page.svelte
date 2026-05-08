@@ -168,9 +168,9 @@
 
   <!-- SECTIONS ANALYTIQUES -->
   {#if viewMode === 'active'}
-    <SectionGlobal strategy="FHG" alerts={allAlerts} />
+    <SectionGlobal strategy="LG1" alerts={allAlerts} />
     <SectionGlobal strategy="LG2" alerts={allAlerts} />
-    <SectionMesPositions strategy="FHG" alerts={allAlerts} />
+    <SectionMesPositions strategy="LG1" alerts={allAlerts} />
     <SectionMesPositions strategy="LG2" alerts={allAlerts} />
   {/if}
 {/if}

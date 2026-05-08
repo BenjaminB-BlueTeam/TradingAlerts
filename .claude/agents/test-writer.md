@@ -73,7 +73,7 @@ describe('fonctionATester', () => {
 - ROI négatif géré
 - Mise engagée = 0 → 0 ou null
 
-### Scoring FHG
+### Scoring LG1
 
 - **H2H Clean Sheet (3+ matchs sans but 1MT)** → exclusion totale (null ou 0, pas une pénalité)
 - Formule B respectée : 60% saison actuelle / 25% précédente / 15% forme

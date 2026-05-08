@@ -1,7 +1,7 @@
 {
-  "name": "FHG Tracker",
-  "short_name": "FHG",
-  "description": "Signaux trading football — FHG & LG2",
+  "name": "Late Goal Tracker",
+  "short_name": "Late Goal",
+  "description": "Signaux trading football — LG1 & LG2",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0D1117",

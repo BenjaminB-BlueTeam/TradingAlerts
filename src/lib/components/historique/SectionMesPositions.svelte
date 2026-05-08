@@ -7,7 +7,7 @@
   import { fetchAlertTrades, insertAlertTrade, deleteAlertTrade } from '$lib/api/supabase.js';
   import { strategyOf } from '$lib/utils/historyFilters.js';
 
-  let { alerts = [], strategy = 'FHG' } = $props();
+  let { alerts = [], strategy = 'LG1' } = $props();
 
   // ---------- Etat ----------
   let trades = $state([]);
@@ -69,7 +69,7 @@
   // ---------- ROI chart ----------
   const COTES = Array.from({ length: 19 }, (_, i) => +(1.20 + i * 0.10).toFixed(2));
   const COTE_LABELS = COTES.map(c => c.toFixed(2));
-  const STRATEGY_COLOR = { FHG: '#1D9E75', LG2: '#E24B4A' };
+  const STRATEGY_COLOR = { LG1: '#1D9E75', LG2: '#E24B4A' };
   const color = STRATEGY_COLOR[strategy] || '#1D9E75';
 
   let targetCote = $state(2.00);
@@ -269,7 +269,7 @@
         <p class="empty-state-msg">
           Aucune alerte {strategy} fort selectionnee.
           Selectionne des alertes depuis
-          <a href={strategy === 'FHG' ? '/alerts' : '/alerts-lg2'} class="link-inline">{strategy === 'FHG' ? '/alerts' : '/alerts-lg2'}</a>.
+          <a href={strategy === 'LG1' ? '/alerts-lg1' : '/alerts-lg2'} class="link-inline">{strategy === 'LG1' ? '/alerts-lg1' : '/alerts-lg2'}</a>.
         </p>
       {:else}
 

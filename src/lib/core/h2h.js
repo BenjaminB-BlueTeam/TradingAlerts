@@ -1,6 +1,6 @@
 /* ================================================
    h2h.js — Analyse Head-to-Head et filtre Clean Sheet
-   FHG Tracker
+   Late Goal Tracker
    ================================================ */
 
 export function analyserH2H(h2h = [], equipeNom = '', minH2H = 3) {

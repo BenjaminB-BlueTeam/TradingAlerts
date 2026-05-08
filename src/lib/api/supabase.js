@@ -1,6 +1,6 @@
 /* ================================================
    supabase.js — Client Supabase + CRUD trades
-   FHG Tracker
+   Late Goal Tracker
    ================================================ */
 
 import { createClient } from '@supabase/supabase-js'
@@ -22,8 +22,8 @@ function toRow(trade) {
     date:        trade.date        || null,
     match:       trade.match       || null,
     ligue:       trade.ligue       || null,
-    fhg_pct:     trade.fhgPct      || null,
-    strategie:   trade.strategie   || 'fhg',
+    lg1_pct:     trade.lg1Pct      || null,
+    strategie:   trade.strategie   || 'lg1',
     badge_1mt:   !!trade.badge1MT,
     h2h:         trade.h2h         || 'insuffisant',
     timer:       trade.timer       || null,
@@ -41,7 +41,7 @@ function fromRow(row) {
     date:        row.date,
     match:       row.match,
     ligue:       row.ligue,
-    fhgPct:      row.fhg_pct,
+    lg1Pct:      row.lg1_pct,
     strategie:   row.strategie,
     badge1MT:    row.badge_1mt,
     h2h:         row.h2h,
@@ -252,7 +252,7 @@ export async function updateAlertStatus(id, status) {
 // ============================================================
 
 /**
- * Sélectionner manuellement une alerte (FHG/DC/LG2).
+ * Sélectionner manuellement une alerte (LG1/DC/LG2).
  */
 export async function selectAlert(matchId, signalType, note = null) {
   const { error } = await supabase.from('selected_alerts').insert({

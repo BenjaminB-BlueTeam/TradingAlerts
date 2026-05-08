@@ -24,7 +24,7 @@
   let resultBusy = $state({});   // { [alertId]: boolean }
 
   // ---- Helpers: signal classification ----
-  function isFHG(signal_type) { return signal_type?.startsWith('FHG'); }
+  function isLG1(signal_type) { return signal_type?.startsWith('LG1'); }
   function isLG2(signal_type) { return signal_type?.startsWith('LG2'); }
   function isTerminated(a) { return ['validated', 'lost', 'expired'].includes(a.status); }
   function isActive(a) { return !isTerminated(a); }
@@ -68,20 +68,20 @@
   // ---- Derived sections ----
   let sections = $derived.by(() => {
     // Past matches (date < today) are considered played/done regardless of status
-    const fhgActive = visibleAlerts.filter(a => isFHG(a.signal_type) && isActive(a) && a.match_date >= today);
+    const lg1Active = visibleAlerts.filter(a => isLG1(a.signal_type) && isActive(a) && a.match_date >= today);
     const lg2Active = visibleAlerts.filter(a => isLG2(a.signal_type) && isActive(a) && a.match_date >= today);
     const terminated = visibleAlerts.filter(a => isTerminated(a) || a.match_date < today);
 
-    const fhgToday = sortActive(fhgActive.filter(a => a.match_date === today));
-    const fhgComing = sortActive(fhgActive.filter(a => a.match_date > today));
+    const lg1Today = sortActive(lg1Active.filter(a => a.match_date === today));
+    const lg1Coming = sortActive(lg1Active.filter(a => a.match_date > today));
 
     const lg2Today = sortActive(lg2Active.filter(a => a.match_date === today));
     const lg2Coming = sortActive(lg2Active.filter(a => a.match_date > today));
 
     return {
-      fhgToday, fhgComing,
+      lg1Today, lg1Coming,
       lg2Today, lg2Coming,
-      fhgCount: fhgActive.length,
+      lg1Count: lg1Active.length,
       lg2Count: lg2Active.length,
       terminated: sortTerminated(terminated),
     };
@@ -257,7 +257,7 @@
 <div class="page-header">
   <h1 class="page-title">Mes matchs</h1>
   <p class="page-subtitle">
-    {visibleAlerts.length} alerte{visibleAlerts.length !== 1 ? 's' : ''} sélectionnée{visibleAlerts.length !== 1 ? 's' : ''} — FHG &amp; LG2
+    {visibleAlerts.length} alerte{visibleAlerts.length !== 1 ? 's' : ''} sélectionnée{visibleAlerts.length !== 1 ? 's' : ''} — LG1 &amp; LG2
   </p>
 </div>
 
@@ -276,7 +276,7 @@
     <div class="empty-state__icon">⭐</div>
     <div class="empty-state__title">Aucune alerte sélectionnée</div>
     <div class="empty-state__desc">
-      Va sur <a href="/alerts">Sélection FHG</a> ou <a href="/alerts-lg2">Sélection LG2</a> pour faire ta première sélection.
+      Va sur <a href="/alerts-lg1">Sélection LG1</a> ou <a href="/alerts-lg2">Sélection LG2</a> pour faire ta première sélection.
     </div>
   </div>
 
@@ -284,28 +284,28 @@
   <div class="mes-matchs-sections">
 
     <!-- ============================================================
-         SECTION FHG
+         SECTION LG1
     ============================================================ -->
-    {#if sections.fhgCount > 0}
+    {#if sections.lg1Count > 0}
       <section class="mes-section">
         <h2 class="mes-section__title">
-          <span class="mes-section__badge mes-section__badge--fhg">{sections.fhgCount}</span>
-          FHG
+          <span class="mes-section__badge mes-section__badge--lg1">{sections.lg1Count}</span>
+          LG1
         </h2>
 
-        {#if sections.fhgToday.length > 0}
+        {#if sections.lg1Today.length > 0}
           <div class="subsection-label">Aujourd'hui</div>
           <div class="alerts-list">
-            {#each sections.fhgToday as a (a.id)}
+            {#each sections.lg1Today as a (a.id)}
               {@render alertCard(a)}
             {/each}
           </div>
         {/if}
 
-        {#if sections.fhgComing.length > 0}
-          <div class="subsection-label" class:subsection-label--mt={sections.fhgToday.length > 0}>A venir</div>
+        {#if sections.lg1Coming.length > 0}
+          <div class="subsection-label" class:subsection-label--mt={sections.lg1Today.length > 0}>A venir</div>
           <div class="alerts-list">
-            {#each sections.fhgComing as a (a.id)}
+            {#each sections.lg1Coming as a (a.id)}
               {@render alertCard(a)}
             {/each}
           </div>
@@ -426,8 +426,8 @@
         </div>
       </div>
       <div class="alert-card__badges">
-        {#if isFHG(a.signal_type)}
-          <span class="strategy-badge strategy-badge--fhg">FHG</span>
+        {#if isLG1(a.signal_type)}
+          <span class="strategy-badge strategy-badge--lg1">LG1</span>
         {:else if isLG2(a.signal_type)}
           <span class="strategy-badge strategy-badge--lg2">LG2</span>
         {/if}
@@ -623,7 +623,7 @@
     padding: 0 6px;
   }
 
-  .mes-section__badge--fhg {
+  .mes-section__badge--lg1 {
     background: rgba(29, 158, 117, 0.18);
     color: var(--color-accent-green);
   }
@@ -750,7 +750,7 @@
     text-transform: uppercase;
   }
 
-  /* Strategy badge FHG / LG2 */
+  /* Strategy badge LG1 / LG2 */
   .strategy-badge {
     font-size: 10px;
     font-weight: 700;
@@ -759,7 +759,7 @@
     text-transform: uppercase;
     letter-spacing: 0.4px;
   }
-  .strategy-badge--fhg {
+  .strategy-badge--lg1 {
     background: rgba(29, 158, 117, 0.18);
     color: var(--color-accent-green);
   }

@@ -1,20 +1,20 @@
 /* ================================================
    appStore.js — Stores Svelte (remplace store.js)
-   FHG Tracker
+   Late Goal Tracker
    ================================================ */
 
 import { writable } from 'svelte/store';
 
 const STORAGE_KEYS = {
-  CONFIG:        'fhg_config',
-  TRADES:        'fhg_trades',
-  LEAGUES:       'fhg_leagues',
-  PREFERENCES:   'fhg_prefs',
+  CONFIG:        'lg1_config',
+  TRADES:        'lg1_trades',
+  LEAGUES:       'lg1_leagues',
+  PREFERENCES:   'lg1_prefs',
 };
 
 // ---- Valeurs par défaut ----
 export const defaultConfig = {
-  seuilFHG:         75,
+  seuilLG1:         75,
   seuil5Matchs:     3,
   ignoreDebutSaison:true,
   seuilMatchsMin:   8,

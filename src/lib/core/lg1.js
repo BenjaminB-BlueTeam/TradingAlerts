@@ -1,10 +1,10 @@
 /* ================================================
-   scoring.js — Logique FHG streak v2 (ESM) + timer
-   FHG Tracker — miroir ESM de analysis.cjs côté backend
+   lg1.js — Logique LG1 streak v2 (ESM) + timer
+   Late Goal Tracker — miroir ESM de lg1.cjs côté backend
    ================================================ */
 
 // ============================================================
-// ALGO FHG v2 — Logique streak (ESM, miroir de analysis.cjs)
+// ALGO LG1 v2 — Logique streak (ESM, miroir de lg1.cjs)
 // ============================================================
 
 export const STREAK_FORT = 3;
@@ -178,7 +178,7 @@ export function analyzeScenarioB(opponentMatches, opponentId, teamMatches, teamI
 }
 
 /**
- * Analyse streak FHG pour une équipe ciblée.
+ * Analyse streak LG1 pour une équipe ciblée.
  *
  * @param {Array}        teamMatches      matchs de l'équipe dans son contexte (triés DESC)
  * @param {number}       teamId           id de l'équipe ciblée
@@ -188,7 +188,7 @@ export function analyzeScenarioB(opponentMatches, opponentId, teamMatches, teamI
  * @param {boolean|null} teamIsHome       true=dom, false=ext — filtre le veto H2H par config
  * @returns {{ isAlert, signalType, confidence, factors, cleanSheetBlock }}
  */
-export function analyserStreakFHG(teamMatches, teamId, opponentMatches, opponentId, h2h = [], teamIsHome = null) {
+export function analyserStreakLG1(teamMatches, teamId, opponentMatches, opponentId, h2h = [], teamIsHome = null) {
   if (isH2HCleanSheetFirstHalf(h2h, teamId, teamIsHome)) {
     return { isAlert: false, cleanSheetBlock: true };
   }
@@ -202,7 +202,7 @@ export function analyserStreakFHG(teamMatches, teamId, opponentMatches, opponent
   if (aActive && bActive) {
     return {
       isAlert: true,
-      signalType: 'FHG_A+B',
+      signalType: 'LG1_A+B',
       confidence: 'fort',
       factors: { scenarioA: a, scenarioB: b },
     };
@@ -212,7 +212,7 @@ export function analyserStreakFHG(teamMatches, teamId, opponentMatches, opponent
     const best = aActive ? a : b;
     return {
       isAlert: true,
-      signalType: best.scenario === 'A' ? 'FHG_A' : 'FHG_B',
+      signalType: best.scenario === 'A' ? 'LG1_A' : 'LG1_B',
       confidence: best.confidence,
       factors: best,
     };
@@ -228,7 +228,7 @@ export function analyserStreakFHG(teamMatches, teamId, opponentMatches, opponent
     const best = cActive ? c : d;
     return {
       isAlert: true,
-      signalType: best.scenario === 'C' ? 'FHG_C' : 'FHG_D',
+      signalType: best.scenario === 'C' ? 'LG1_C' : 'LG1_D',
       confidence: best.confidence,
       factors: best,
     };

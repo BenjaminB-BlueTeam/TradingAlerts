@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
-  analyserStreakFHG,
+  analyserStreakLG1,
   analyzeScenarioA, analyzeScenarioB, analyzeScenarioC, analyzeScenarioD,
   computeStreak, confirmationRate, isH2HCleanSheetFirstHalf,
   teamScored31to45, teamConceded31to45, teamScoredInFirstHalf, teamConcededInFirstHalf,
   getTimerConseille,
   STREAK_FORT, STREAK_MOYEN, CONFIRM_WINDOW, CONFIRM_MIN_COUNT, STREAK_MIN_MATCHES,
-} from './scoring.js';
+} from './lg1.js';
 
 // --- Factory helpers ---
 
@@ -326,59 +326,59 @@ describe('analyzeScenarioD (ESM)', () => {
 });
 
 // =============================================================
-// analyserStreakFHG (ESM) — orchestration
+// analyserStreakLG1 (ESM) — orchestration
 // =============================================================
 
-describe('analyserStreakFHG (ESM)', () => {
+describe('analyserStreakLG1 (ESM)', () => {
   it('veto H2H — retourne isAlert false si cleanSheetBlock', () => {
     const h2h = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(35, false)] }));
-    const r = analyserStreakFHG(homeMatches31to45(4), 100, [], 200, h2h);
+    const r = analyserStreakLG1(homeMatches31to45(4), 100, [], 200, h2h);
     expect(r.isAlert).toBe(false);
     expect(r.cleanSheetBlock).toBe(true);
   });
 
-  it('A seul → signalType FHG_A', () => {
+  it('A seul → signalType LG1_A', () => {
     const teamMatches = homeMatches31to45(4);
     const opp = Array(5).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
-    const r = analyserStreakFHG(teamMatches, 100, opp, 200, []);
+    const r = analyserStreakLG1(teamMatches, 100, opp, 200, []);
     expect(r.isAlert).toBe(true);
-    expect(r.signalType).toBe('FHG_A');
+    expect(r.signalType).toBe('LG1_A');
   });
 
-  it('A+B actifs → FHG_A+B avec fort', () => {
+  it('A+B actifs → LG1_A+B avec fort', () => {
     const teamMatches = homeMatches31to45(4);
     const oppMatches = Array(4).fill(null).map(() => makeMatch({ goalEvents: [goal(35, true)] }));
-    const r = analyserStreakFHG(teamMatches, 100, oppMatches, 200, []);
+    const r = analyserStreakLG1(teamMatches, 100, oppMatches, 200, []);
     // A : streakScored=4 ✓, confirmation (200 encaisse en 1MT) = oppMatches goal(35,true) -> 200 n'est pas home -> e.home !== false -> true -> 4/4 ✓
     // B : countConceded=4 (200 encaisse en 31-45 dans oppMatches) ✓, confirmation (100 marque en 1MT) = teamMatches goal(35,true) -> 4/4 ✓
     expect(r.isAlert).toBe(true);
-    expect(r.signalType).toBe('FHG_A+B');
+    expect(r.signalType).toBe('LG1_A+B');
     expect(r.confidence).toBe('fort');
   });
 
   it('rien d\'actif → isAlert false', () => {
     const teamMatches = Array(4).fill(null).map(() => makeMatch({ goalEvents: [] }));
     const oppMatches = Array(4).fill(null).map(() => makeMatch({ goalEvents: [] }));
-    const r = analyserStreakFHG(teamMatches, 100, oppMatches, 200, []);
+    const r = analyserStreakLG1(teamMatches, 100, oppMatches, 200, []);
     expect(r.isAlert).toBe(false);
   });
 
   it('retourne cleanSheetBlock undefined si pas de veto', () => {
-    const r = analyserStreakFHG([], 100, [], 200, []);
+    const r = analyserStreakLG1([], 100, [], 200, []);
     expect(r.cleanSheetBlock).toBeUndefined();
   });
 
-  it('C seul → signalType FHG_C si A et B null', () => {
+  it('C seul → signalType LG1_C si A et B null', () => {
     // streak=2 + adversaire encaisse 3/3
     const team = [...homeMatches31to45(2), makeMatch({ goalEvents: [] })];
     const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
-    const r = analyserStreakFHG(team, 100, opp, 200, []);
+    const r = analyserStreakLG1(team, 100, opp, 200, []);
     expect(r.isAlert).toBe(true);
-    expect(r.signalType).toBe('FHG_C');
+    expect(r.signalType).toBe('LG1_C');
     expect(r.confidence).toBe('moyen');
   });
 
-  it('D seul → signalType FHG_D si A, B et C null', () => {
+  it('D seul → signalType LG1_D si A, B et C null', () => {
     // équipe marque ET concède en 31-45 sur 1/3 + opp marque en 1MT
     const team = [
       makeMatch({ goalEvents: [goal(35, true), goal(38, false)] }),
@@ -391,9 +391,9 @@ describe('analyserStreakFHG (ESM)', () => {
       makeMatch({ goalEvents: [] }),
       makeMatch({ goalEvents: [] }),
     ];
-    const r = analyserStreakFHG(team, 100, opp, 200, []);
+    const r = analyserStreakLG1(team, 100, opp, 200, []);
     expect(r.isAlert).toBe(true);
-    expect(r.signalType).toBe('FHG_D');
+    expect(r.signalType).toBe('LG1_D');
     expect(r.confidence).toBe('moyen');
   });
 
@@ -401,8 +401,8 @@ describe('analyserStreakFHG (ESM)', () => {
     // streak=3 (A active) + opp encaisse 3/3 (C aussi eligible, mais A prioritaire)
     const team = homeMatches31to45(3);
     const opp = Array(3).fill(null).map(() => makeMatch({ goalEvents: [goal(20, true)] }));
-    const r = analyserStreakFHG(team, 100, opp, 200, []);
-    expect(r.signalType).toBe('FHG_A');
+    const r = analyserStreakLG1(team, 100, opp, 200, []);
+    expect(r.signalType).toBe('LG1_A');
   });
 });
 

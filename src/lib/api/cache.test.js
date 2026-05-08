@@ -62,30 +62,30 @@ describe('cacheSet / cacheGet', () => {
   it('returns null for expired entry', () => {
     cacheSet('expired', 'data', 1); // 1ms TTL
     // Simulate expiration by manipulating stored data
-    const raw = JSON.parse(storage['fhg_cache_expired']);
+    const raw = JSON.parse(storage['lg1_cache_expired']);
     raw.expires = Date.now() - 1000;
-    storage['fhg_cache_expired'] = JSON.stringify(raw);
+    storage['lg1_cache_expired'] = JSON.stringify(raw);
     expect(cacheGet('expired')).toBeNull();
   });
 
   it('returns null and removes expired entry from storage', () => {
     cacheSet('expired2', 'data', 1);
-    const raw = JSON.parse(storage['fhg_cache_expired2']);
+    const raw = JSON.parse(storage['lg1_cache_expired2']);
     raw.expires = Date.now() - 1000;
-    storage['fhg_cache_expired2'] = JSON.stringify(raw);
+    storage['lg1_cache_expired2'] = JSON.stringify(raw);
     cacheGet('expired2');
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith('fhg_cache_expired2');
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith('lg1_cache_expired2');
   });
 
   it('returns null when stored value is not valid JSON', () => {
-    storage['fhg_cache_bad'] = 'not json{{{';
+    storage['lg1_cache_bad'] = 'not json{{{';
     expect(cacheGet('bad')).toBeNull();
   });
 
   it('uses default TTL of 15 minutes', () => {
     const before = Date.now();
     cacheSet('ttl-test', 'data');
-    const raw = JSON.parse(storage['fhg_cache_ttl-test']);
+    const raw = JSON.parse(storage['lg1_cache_ttl-test']);
     // expires should be roughly 15 min in the future
     expect(raw.expires).toBeGreaterThanOrEqual(before + 15 * 60 * 1000 - 100);
     expect(raw.expires).toBeLessThanOrEqual(Date.now() + 15 * 60 * 1000 + 100);
@@ -94,7 +94,7 @@ describe('cacheSet / cacheGet', () => {
   it('stores cachedAt timestamp', () => {
     const before = Date.now();
     cacheSet('ts-test', 'data');
-    const raw = JSON.parse(storage['fhg_cache_ts-test']);
+    const raw = JSON.parse(storage['lg1_cache_ts-test']);
     expect(raw.cachedAt).toBeGreaterThanOrEqual(before);
     expect(raw.cachedAt).toBeLessThanOrEqual(Date.now());
   });
@@ -111,7 +111,7 @@ describe('cacheInvalidate', () => {
     cacheSet('to-remove', 'data');
     expect(cacheGet('to-remove')).toBe('data');
     cacheInvalidate('to-remove');
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith('fhg_cache_to-remove');
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith('lg1_cache_to-remove');
   });
 });
 
@@ -127,8 +127,8 @@ describe('cacheClear', () => {
     cacheSet('b', 2);
     storage['other_key'] = 'keep';
     cacheClear();
-    expect(storage['fhg_cache_a']).toBeUndefined();
-    expect(storage['fhg_cache_b']).toBeUndefined();
+    expect(storage['lg1_cache_a']).toBeUndefined();
+    expect(storage['lg1_cache_b']).toBeUndefined();
     expect(storage['other_key']).toBe('keep');
   });
 
@@ -156,9 +156,9 @@ describe('cacheStats', () => {
     cacheSet('active2', 'data');
     cacheSet('old', 'data');
     // Expire one entry
-    const raw = JSON.parse(storage['fhg_cache_old']);
+    const raw = JSON.parse(storage['lg1_cache_old']);
     raw.expires = Date.now() - 1000;
-    storage['fhg_cache_old'] = JSON.stringify(raw);
+    storage['lg1_cache_old'] = JSON.stringify(raw);
 
     const stats = cacheStats();
     expect(stats.total).toBe(3);
@@ -167,7 +167,7 @@ describe('cacheStats', () => {
   });
 
   it('handles unparseable entries gracefully', () => {
-    storage['fhg_cache_broken'] = 'not json';
+    storage['lg1_cache_broken'] = 'not json';
     cacheSet('good', 'data');
     // The broken entry will throw in try/catch and not be counted
     const stats = cacheStats();
@@ -185,19 +185,19 @@ describe('cacheEvict', () => {
   it('removes expired entries', () => {
     cacheSet('fresh', 'data');
     cacheSet('stale', 'data');
-    const raw = JSON.parse(storage['fhg_cache_stale']);
+    const raw = JSON.parse(storage['lg1_cache_stale']);
     raw.expires = Date.now() - 5000;
-    storage['fhg_cache_stale'] = JSON.stringify(raw);
+    storage['lg1_cache_stale'] = JSON.stringify(raw);
 
     cacheEvict();
-    expect(storage['fhg_cache_stale']).toBeUndefined();
-    expect(storage['fhg_cache_fresh']).toBeDefined();
+    expect(storage['lg1_cache_stale']).toBeUndefined();
+    expect(storage['lg1_cache_fresh']).toBeDefined();
   });
 
   it('removes unparseable entries', () => {
-    storage['fhg_cache_broken'] = 'not json!!!';
+    storage['lg1_cache_broken'] = 'not json!!!';
     cacheEvict();
-    expect(storage['fhg_cache_broken']).toBeUndefined();
+    expect(storage['lg1_cache_broken']).toBeUndefined();
   });
 
   it('evicts oldest entries when over 3MB', () => {
@@ -207,13 +207,13 @@ describe('cacheEvict', () => {
     cacheSet('old2', bigData);
 
     // Make old1 older
-    const raw1 = JSON.parse(storage['fhg_cache_old1']);
+    const raw1 = JSON.parse(storage['lg1_cache_old1']);
     raw1.cachedAt = 1000;
-    storage['fhg_cache_old1'] = JSON.stringify(raw1);
+    storage['lg1_cache_old1'] = JSON.stringify(raw1);
 
-    const raw2 = JSON.parse(storage['fhg_cache_old2']);
+    const raw2 = JSON.parse(storage['lg1_cache_old2']);
     raw2.cachedAt = 2000;
-    storage['fhg_cache_old2'] = JSON.stringify(raw2);
+    storage['lg1_cache_old2'] = JSON.stringify(raw2);
 
     cacheEvict();
     // At least the oldest should have been removed if over 3MB

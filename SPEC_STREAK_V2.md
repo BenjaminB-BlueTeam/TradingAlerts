@@ -1,4 +1,4 @@
-# SPEC Streak v2 — Algo FHG
+# SPEC Streak v2 — Algo LG1
 
 > Validée avec Benjamin le 2026-04-23 (Phase 0).
 > Référence technique pendant l'implémentation.
@@ -7,11 +7,11 @@
 
 ## Contexte
 
-L'app TradingAlerts génère des alertes FHG (First Half Goal, fenêtre 31-45 min) pour le live trading football.  
+L'app TradingAlerts génère des alertes LG1 (Late Goal 1ère mi-temps, fenêtre 31-45 min) pour le live trading football.  
 Benjamin entre en position à 31-35' quand la cote "but avant MT" monte ≥ 2.10.  
 **Seul KPI = % de réussite. Pas de cotes / ROI dans l'app.**
 
-Cette spec remplace l'ancien algorithme FHG composite (score 0-100 avec coefficients 0.50/0.25/0.15/0.10) par une **logique streak** à deux scénarios indépendants.
+Cette spec remplace l'ancien algorithme LG1 composite (score 0-100 avec coefficients 0.50/0.25/0.15/0.10) par une **logique streak** à deux scénarios indépendants.
 
 ---
 
@@ -20,15 +20,15 @@ Cette spec remplace l'ancien algorithme FHG composite (score 0-100 avec coeffici
 - [ARCHIVÉ 2026-05-07] La logique DC a été supprimée de l'app. Les colonnes `dc_*` et les données historiques sont conservées en BDD sans modification du schéma.
 - Pas de migration TypeScript — reste JS/ESM + CommonJS selon contexte.
 - Pas de cotes / ROI / ML / IA prédictive.
-- Confirmation Benjamin requise avant : SQL en prod Supabase, suppression fichier, modif `analysis.cjs`.
+- Confirmation Benjamin requise avant : SQL en prod Supabase, suppression fichier, modif `lg1.cjs`.
 
 ---
 
-## Quatre scénarios FHG
+## Quatre scénarios LG1
 
 Les scénarios sont évalués sur **chaque équipe** du match (home ciblée ET away ciblée). La meilleure confidence est retenue.
 
-**Priorité d'évaluation** : A et B sont évalués en premier. C et D ne s'évaluent que si A **et** B sont tous les deux inactifs (fallback). Si C et D sont tous les deux actifs, C prend la priorité — il n'existe pas de signal `FHG_C+D`.
+**Priorité d'évaluation** : A et B sont évalués en premier. C et D ne s'évaluent que si A **et** B sont tous les deux inactifs (fallback). Si C et D sont tous les deux actifs, C prend la priorité — il n'existe pas de signal `LG1_C+D`.
 
 ### Scénario A — Offensif
 
@@ -55,7 +55,7 @@ Fallback activé uniquement si A et B sont tous deux inactifs.
 - **Confidence** : `moyen`
 - **Contexte** : même filtrage dom/ext que A (teamMatches déjà filtrés par contexte). Veto H2H appliqué.
 
-Exemple : équipe marqué en 31-45 lors de ses 2 derniers matchs à dom, et l'adversaire a encaissé en 1MT lors de ses 3 derniers matchs ext → `FHG_C` moyen.
+Exemple : équipe marqué en 31-45 lors de ses 2 derniers matchs à dom, et l'adversaire a encaissé en 1MT lors de ses 3 derniers matchs ext → `LG1_C` moyen.
 
 ### Scénario D — Double activité 31-45
 
@@ -68,7 +68,7 @@ Fallback activé uniquement si A et B sont tous deux inactifs. Si C est aussi ac
 - **Confidence** : `moyen`
 - **Contexte** : même filtrage dom/ext que A/B. Veto H2H appliqué. Requiert ≥ `STREAK_MIN_MATCHES` (3) matchs historiques pour les **deux** équipes.
 
-Exemple : équipe a marqué en 31-45 dans 2 de ses 3 derniers matchs à dom et encaissé en 31-45 dans 1 de ces 3 matchs, et l'adversaire a marqué en 1MT lors d'au moins 1 de ses 3 derniers matchs ext → `FHG_D` moyen.
+Exemple : équipe a marqué en 31-45 dans 2 de ses 3 derniers matchs à dom et encaissé en 31-45 dans 1 de ces 3 matchs, et l'adversaire a marqué en 1MT lors d'au moins 1 de ses 3 derniers matchs ext → `LG1_D` moyen.
 
 ---
 
@@ -117,11 +117,11 @@ Un signal est émis si :
 
 | Résultat | signal_type | confidence |
 |----------|-------------|------------|
-| A et B tous les deux actifs | `FHG_A+B` | `'fort'` |
-| A seul actif | `FHG_A` | `'fort'` |
-| B seul actif | `FHG_B` | `'moyen'` |
-| C seul actif (fallback, A et B inactifs) | `FHG_C` | `'moyen'` |
-| D seul actif (fallback, A, B et C inactifs) | `FHG_D` | `'moyen'` |
+| A et B tous les deux actifs | `LG1_A+B` | `'fort'` |
+| A seul actif | `LG1_A` | `'fort'` |
+| B seul actif | `LG1_B` | `'moyen'` |
+| C seul actif (fallback, A et B inactifs) | `LG1_C` | `'moyen'` |
+| D seul actif (fallback, A, B et C inactifs) | `LG1_D` | `'moyen'` |
 
 ### Hiérarchie des confidences (tri/filtres)
 
@@ -133,13 +133,13 @@ Un signal est émis si :
 
 | Valeur | Description |
 |--------|-------------|
-| `FHG_A` | Scénario A seul (streak offensif ≥ 3) |
-| `FHG_B` | Scénario B seul (streak défensif adversaire ≥ 3) |
-| `FHG_A+B` | A et B actifs simultanément → fort |
-| `FHG_C` | Scénario C (streak court = 2, confirmation 3/3) — fallback A/B inactifs |
-| `FHG_D` | Scénario D (double activité 31-45) — fallback A/B/C inactifs |
+| `LG1_A` | Scénario A seul (streak offensif ≥ 3) |
+| `LG1_B` | Scénario B seul (streak défensif adversaire ≥ 3) |
+| `LG1_A+B` | A et B actifs simultanément → fort |
+| `LG1_C` | Scénario C (streak court = 2, confirmation 3/3) — fallback A/B inactifs |
+| `LG1_D` | Scénario D (double activité 31-45) — fallback A/B/C inactifs |
 
-L'ancien `signal_type = 'FHG'` n'est plus émis. Il subsiste uniquement dans `alerts_v1_backup`.
+L'ancien `signal_type = 'LG1'` n'est plus émis. Il subsiste uniquement dans `alerts_v1_backup`.
 
 ---
 
@@ -153,7 +153,7 @@ L'ancien `signal_type = 'FHG'` n'est plus émis. Il subsiste uniquement dans `al
 | `user_exclusion_note` | `text` | Note libre |
 | `user_excluded_at` | `timestamptz` | Timestamp de l'exclusion |
 
-`fhg_pct` reste en base mais est `null` pour toutes les alertes v2 (score composite obsolète).
+`lg1_pct` reste en base mais est `null` pour toutes les alertes v2 (score composite obsolète).
 
 ---
 
@@ -161,11 +161,11 @@ L'ancien `signal_type = 'FHG'` n'est plus émis. Il subsiste uniquement dans `al
 
 | Fichier | Modification |
 |---------|-------------|
-| `netlify/functions/lib/analysis.cjs` | Ajout `analyzeStreakAlert` + helpers ; suppression `analyzeFHGFromMatches` (Phase 1.5) |
+| `netlify/functions/lib/lg1.cjs` | Ajout `analyzeStreakAlert` + helpers ; suppression `analyzeLG1FromMatches` (Phase 1.5) |
 | `netlify/functions/lib/analysis.test.js` | 25+ nouveaux tests streak |
-| `netlify/functions/generate-alerts.js` | Remplacement bloc FHG par `analyzeStreakAlert` |
-| `netlify/functions/check-results.js` | Extension switch pour `FHG_A`/`FHG_B`/`FHG_A+B` |
-| `src/lib/core/scoring.js` | Remplacement `calculerScoreFHG` par `analyserStreakFHG` (ESM) |
+| `netlify/functions/generate-alerts.js` | Remplacement bloc LG1 par `analyzeStreakAlert` |
+| `netlify/functions/check-results.js` | Extension switch pour `LG1_A`/`LG1_B`/`LG1_A+B` |
+| `src/lib/core/lg1.js` | Remplacement `calculerScoreLG1` par `analyserStreakLG1` (ESM) |
 | `src/lib/core/scoring.test.js` | 20+ tests streak ESM |
 | `src/lib/components/MatchCard.svelte` | Affichage factors streak (streak, rates) |
 | `src/lib/components/ExcludeAlertModal.svelte` | Nouveau composant exclusion manuelle |

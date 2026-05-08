@@ -1,6 +1,6 @@
-# FHG Tracker
+# Late Goal Tracker
 
-Application de **trading sportif football** qui identifie les matchs avec fort potentiel de but en fin de 1re mi-temps (fenetre 31-45 min, FHG = First Half Goal) et les opportunites de but tardif (LG2 = Late Goal, >= 80 min).
+Application de **trading sportif football** qui identifie les matchs avec fort potentiel de but en fin de 1re mi-temps (fenetre 31-45 min, LG1 = Late Goal 1ère mi-temps) et les opportunites de but tardif (LG2 = Late Goal, >= 80 min).
 
 **URL** : https://tradingfootalerts.netlify.app
 
@@ -21,24 +21,24 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 
 ### Alertes autonomes
 - Generation automatique toutes les 12h (`generate-alerts.js`) pour J, J+1, J+2
-- Tags **FHG_A**, **FHG_B**, **FHG_A+B** avec confiance fort/moyen
+- Tags **LG1_A**, **LG1_B**, **LG1_A+B** avec confiance fort/moyen
 - Tags **LG2_A**, **LG2_B**, **LG2_A+B** (but >= 80 min)
 - Verification auto des resultats toutes les heures (`check-results.js`)
-- Validation FHG : buts dans la fenetre 31-45 min (goal_events)
+- Validation LG1 : buts dans la fenetre 31-45 min (goal_events)
 - Validation LG2 : au moins un but >= 80 min
 - Cleanup automatique des alertes pending > 48h (status `expired`)
 
 ### Dashboard (`/`) — etat de sante prod
-- **7 KPIs** en 2 sections : "Santé infra" (API FootyStats, Ligues, Seed H2H, FHG Cache) et "Alertes du jour" (FHG Fort, LG2 Fort, Taux validées 7j)
+- **7 KPIs** en 2 sections : "Santé infra" (API FootyStats, Ligues, Seed H2H, LG1 Cache) et "Alertes du jour" (LG1 Fort, LG2 Fort, Taux validées 7j)
 - Seed H2H : derniere date seedee (filtrée <= aujourd'hui) + count total + heure du dernier seed
-- FHG Cache : date dernier `compute-team-fhg`, nombre d'equipes en cache
+- LG1 Cache : date dernier `compute-team-lg1`, nombre d'equipes en cache
 - Taux validées 7j : % validated/(validated+lost) sur 7 jours glissants
-- Couleurs : vert/orange/rouge selon ancienneté pour Seed et FHG Cache
+- Couleurs : vert/orange/rouge selon ancienneté pour Seed et LG1 Cache
 - Layout centre, max-width 960px, 2 grilles separees (4col + 3col)
 
-### Selection FHG (`/alerts`)
-- Alertes FHG_A/B/A+B avec filtres : jour (boutons), ligue (dropdown), confiance (dropdown Tout/Fort/Moyen)
-- Badges affiches : Fort/Moyen uniquement (plus de badge FHG_A/FHG_B etc.)
+### Selection LG1 (`/alerts`)
+- Alertes LG1_A/B/A+B avec filtres : jour (boutons), ligue (dropdown), confiance (dropdown Tout/Fort/Moyen)
+- Badges affiches : Fort/Moyen uniquement (plus de badge LG1_A/LG1_B etc.)
 - league_name correctement renseignee depuis league-list FootyStats
 - Expand detaille : 15 derniers matchs dom/ext par equipe
 - Barres de timing buts (minutes exactes), curseur interactif
@@ -52,7 +52,7 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 - Pills Dom/Ext affichant la longueur du streak
 
 ### Mes matchs (`/mes-matchs`)
-- Alertes selectionnees manuellement dans FHG et LG2 (via SelectAlertButton)
+- Alertes selectionnees manuellement dans LG1 et LG2 (via SelectAlertButton)
 - Sections : Actif (A venir / Aujourd'hui) + Termines (collapsible)
 - Saisie inline cote + mise → insert dans `alert_trades` (chips reactifs)
 - Boutons resultat manuel Gagne/Perdu par alerte
@@ -65,12 +65,12 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 
 ### Matchs a venir (`/matches`)
 - Matchs par date avec filtres ligue + recherche equipe (autocomplete)
-- Badge FHG 31-45% par equipe (saison en cours, contexte dom/ext)
+- Badge LG1 31-45% par equipe (saison en cours, contexte dom/ext)
 - Cards avec expand (barres timing buts, curseur minute)
 
 ### Autres pages
 - **Classements ligues** (`/explore`) — par pays (avec drapeaux), stats, classements
-- **Ligues actives** (`/leagues`) — 50 ligues, toggle actif/inactif, FHG% equipes (drapeau pays)
+- **Ligues actives** (`/leagues`) — 50 ligues, toggle actif/inactif, LG1% equipes (drapeau pays)
 - **Configuration** (`/config`) — config algo (Admin)
 - **Debug** (`/debug`) — tests API/Supabase, seed, panel crons (auth requise en prod)
 
@@ -81,7 +81,7 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 
 ---
 
-## Algorithme FHG — streak v2
+## Algorithme LG1 — streak v2
 
 Analyse de **recurrence comportementale par equipe** dans son contexte (domicile ou exterieur).
 
@@ -95,9 +95,9 @@ Analyse de **recurrence comportementale par equipe** dans son contexte (domicile
 
 | Signal | Description | Confidence |
 |--------|-------------|-----------|
-| `FHG_A` | Scenario A seul (streak >= 3) | `fort` |
-| `FHG_B` | Scenario B seul (count 3/5) | `moyen` |
-| `FHG_A+B` | A et B simultanes | `fort` |
+| `LG1_A` | Scenario A seul (streak >= 3) | `fort` |
+| `LG1_B` | Scenario B seul (count 3/5) | `moyen` |
+| `LG1_A+B` | A et B simultanes | `fort` |
 
 **Veto H2H** : >= 3 H2H sans but 1MT de l'equipe → exclusion totale.
 
@@ -122,24 +122,24 @@ Streak consecutif de matchs avec au moins un but apres la 80e minute, par equipe
     +-- Supabase JS client (authenticated, RLS) --> [Supabase PostgreSQL]
     |
 [Netlify Scheduled Functions (service_role)]
-    +-- generate-alerts.js   (cron 12h) --> FootyStats + Supabase (FHG + LG2)
+    +-- generate-alerts.js   (cron 12h) --> FootyStats + Supabase (LG1 + LG2)
     +-- check-results.js     (cron 1h)  --> FootyStats + Supabase (valide/perdu)
     +-- daily-seed.js        (cron 6h)  --> FootyStats + Supabase (rolling J-3→J-1)
-    +-- compute-team-fhg.js  (cron 7h)  --> Supabase team_fhg_cache
+    +-- compute-team-lg1.js  (cron 7h)  --> Supabase team_lg1_cache
 ```
 
 ### Tables Supabase (RLS actif sur toutes)
 
 | Table | Role | authenticated | anon |
 |-------|------|--------------|------|
-| `alerts` | Alertes FHG/LG2 (pending/validated/lost/expired) | SELECT + UPDATE | — |
+| `alerts` | Alertes LG1/LG2 (pending/validated/lost/expired) | SELECT + UPDATE | — |
 | `trades` | Journal des trades | ALL | — |
 | `h2h_matches` | 65k+ matchs avec goal_events (seed + daily) | SELECT | — |
 | `team_seasons` | Stats equipes par saison (legacy, non peuplee) | SELECT | — |
 | `seed_jobs` | Suivi progression seed | SELECT + INSERT + UPDATE | — |
-| `team_fhg_cache` | FHG% 0-45 min par (season_id, team_id) | SELECT | — |
+| `team_lg1_cache` | LG1% 0-45 min par (season_id, team_id) | SELECT | — |
 | `teams` | 1077 equipes (nom + team_id), autocomplete /matches | SELECT | SELECT |
-| `selected_alerts` | Selections manuelles FHG/LG2 | SELECT + INSERT + DELETE | — |
+| `selected_alerts` | Selections manuelles LG1/LG2 | SELECT + INSERT + DELETE | — |
 | `alert_trades` | Positions trading (cote + mise), plusieurs par match, P&L reel | ALL | ALL |
 | `leagues`, `api_cache`, `alerts_v1_backup` | Tables legacy | — | — |
 
@@ -190,19 +190,19 @@ Le seed quotidien (`daily-seed.js`, 6h UTC) rafraichit en fenetre glissante J-3�
 ```
 netlify/functions/
   lib/api.js           # helpers partages (footyRequest, supabaseQuery)
-  lib/analysis.cjs     # logique FHG streak v2 (server-side CJS)
+  lib/lg1.cjs     # logique LG1 streak v2 (server-side CJS)
   lib/lg2.cjs          # logique LG2 streak (server-side CJS)
   lib/auth.cjs         # requireAuth (FUNCTIONS_AUTH_TOKEN + bypass scheduled)
   lib/parseMatch.js    # parseMatchRow partage (seed-data + daily-seed)
 scripts/
   run-seed.mjs         # orchestre seed complet autonome (start_full + boucle seed_league)
-  calibrate-threshold.js # calibration seuils FHG (Wilson CI 95%)
+  calibrate-threshold.js # calibration seuils LG1 (Wilson CI 95%)
 src/lib/
-  core/scoring.js      # logique FHG streak v2 (client-side ESM, miroir analysis.cjs)
+  core/lg1.js      # logique LG1 streak v2 (client-side ESM, miroir lg1.cjs)
   core/lg2.js          # logique LG2 streak (client-side ESM, miroir lg2.cjs)
   utils/formatters.js  # formatDate, formatTime, isInPlay, etc.
   utils/teamData.js    # loadTeamMatches, computeTeamStats, goalBar
   stores/appStore.js   # stores Svelte + persistence localStorage
-  stores/selectionStore.js # selections FHG/LG2 (localStorage)
+  stores/selectionStore.js # selections LG1/LG2 (localStorage)
   stores/tradeStore.js # CRUD trades (Supabase)
 ```

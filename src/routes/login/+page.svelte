@@ -43,7 +43,7 @@
   <div class="login-card">
     <div class="login-card__header">
       <span class="login-card__logo-icon">⚽</span>
-      <h1 class="login-card__title">FHG Tracker</h1>
+      <h1 class="login-card__title">Late Goal Tracker</h1>
       <p class="login-card__subtitle">Connexion requise</p>
     </div>
 

@@ -4,7 +4,7 @@
   import { strategyOf } from '$lib/utils/historyFilters.js';
   import { fetchAlertTrades } from '$lib/api/supabase.js';
 
-  let { alerts = [], strategy = 'FHG' } = $props();
+  let { alerts = [], strategy = 'LG1' } = $props();
 
   let trades = $state([]);
 
@@ -58,7 +58,7 @@
   const COTES = Array.from({ length: 19 }, (_, i) => +(1.20 + i * 0.10).toFixed(2));
   const COTE_LABELS = COTES.map(c => c.toFixed(2));
 
-  const STRATEGY_COLOR = { FHG: '#1D9E75', LG2: '#E24B4A' };
+  const STRATEGY_COLOR = { LG1: '#1D9E75', LG2: '#E24B4A' };
 
   function roiData(t) {
     if (t === null) return COTES.map(() => null);

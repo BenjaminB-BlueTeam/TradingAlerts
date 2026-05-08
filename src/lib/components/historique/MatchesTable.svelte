@@ -124,10 +124,10 @@
   }
   function signalBadgeClass(sig) {
     if (strategyOf({ signal_type: sig }) === 'LG2') return 'badge--lg2';
-    if (sig === 'FHG_A+B') return 'badge--fhg-ab';
-    if (sig === 'FHG_A') return 'badge--fhg-dom';
-    if (sig === 'FHG_B') return 'badge--fhg-ext';
-    return 'badge--fhg';
+    if (sig === 'LG1_A+B') return 'badge--lg1-ab';
+    if (sig === 'LG1_A') return 'badge--lg1-dom';
+    if (sig === 'LG1_B') return 'badge--lg1-ext';
+    return 'badge--lg1';
   }
   function confBadgeClass(c) {
     if (c === 'fort') return 'badge--fort';
@@ -280,10 +280,10 @@
     font-weight: 600;
     white-space: nowrap;
   }
-  .badge--fhg { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
-  .badge--fhg-dom { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
-  .badge--fhg-ext { background: rgba(100,160,230,0.15); color: #7cb9f7; }
-  .badge--fhg-ab  { background: rgba(29,158,117,0.2); color: var(--color-accent-green); }
+  .badge--lg1 { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
+  .badge--lg1-dom { background: rgba(55,138,221,0.15); color: var(--color-accent-blue); }
+  .badge--lg1-ext { background: rgba(100,160,230,0.15); color: #7cb9f7; }
+  .badge--lg1-ab  { background: rgba(29,158,117,0.2); color: var(--color-accent-green); }
 
   .badge--lg2     { background: rgba(226,75,74,0.15); color: var(--color-danger); }
   .badge--fort-double { background: rgba(29,158,117,0.25); color: #fff; border: 1px solid var(--color-accent-green); }
