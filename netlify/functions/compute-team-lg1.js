@@ -9,6 +9,7 @@
 
 const { requireAuth } = require('./lib/auth.cjs');
 const { corsHeaders, handlePreflight } = require('./lib/cors.cjs');
+const { startCronRun, endCronRun } = require('./lib/cronLog.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -95,14 +96,17 @@ exports.handler = async function(event) {
   const auth = requireAuth(event, { allowScheduled: true });
   if (!auth.authorized) return { ...auth.response, headers: { ...(auth.response.headers || {}), ...cors } };
 
+  const seasonStart = getCurrentSeasonStart();
+  const runId = await startCronRun('compute-team-lg1', { season_start: seasonStart });
+
   try {
-    const seasonStart = getCurrentSeasonStart();
     console.log(`[compute-team-lg1] Saison courante depuis ${seasonStart}`);
 
     const matches = await fetchMatches(seasonStart);
     console.log(`[compute-team-lg1] ${matches.length} matchs charges`);
 
     if (matches.length === 0) {
+      await endCronRun(runId, { status: 'success', count_processed: 0, count_updated: 0 });
       return { statusCode: 200, headers: cors, body: 'Aucun match — rien a calculer.' };
     }
 
@@ -145,6 +149,12 @@ exports.handler = async function(event) {
     await upsertCache(rows);
     console.log(`[compute-team-lg1] Done.`);
 
+    await endCronRun(runId, {
+      status: 'success',
+      count_updated: rows.length,
+      count_processed: matches.length,
+    });
+
     return {
       statusCode: 200,
       headers: cors,
@@ -152,6 +162,7 @@ exports.handler = async function(event) {
     };
   } catch (err) {
     console.error('[compute-team-lg1] Erreur:', err.message);
+    await endCronRun(runId, { status: 'error', error_message: err.message });
     return { statusCode: 500, headers: cors, body: err.message };
   }
 };

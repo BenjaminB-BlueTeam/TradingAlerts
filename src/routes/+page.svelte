@@ -19,13 +19,13 @@
   let taux7jLoading = $state(true);
 
   // Santé crons
-  let lastLg1Ts = $state(null);    // MAX(created_at) alertes LG1 (algo_version='lg1_v2')
-  let lastLg2Ts = $state(null);    // MAX(created_at) alertes LG2 (algo_version='lg2_v1')
-  let pendingOld = $state(null);   // count pending + match_date < J-2
+  let lastGenerateTs = $state(null);  // dernier started_at de generate-alerts (cron_runs)
+  let lastCheckTs = $state(null);     // dernier started_at de check-results (cron_runs)
+  let pendingOld = $state(null);      // count pending + match_date < J-2
   let cronsLoading = $state(true);
 
   let lg1Alerts = $derived(
-    alerts.filter(a => ['LG1_A', 'LG1_B', 'LG1_A+B'].includes(a.signal_type) && !a.user_excluded)
+    alerts.filter(a => ['LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D'].includes(a.signal_type) && !a.user_excluded)
   );
   let lg2Alerts = $derived(
     alerts.filter(a => ['LG2_A', 'LG2_B', 'LG2_A+B'].includes(a.signal_type) && !a.user_excluded)
@@ -72,16 +72,17 @@
     return `${d}j`;
   }
 
-  function cronColorClass(isoTs) {
+  // freqHours = fréquence nominale du cron. Seuils : green < freq+1h, orange < 2*freq+1h, red sinon.
+  function cronColorClass(isoTs, freqHours) {
     const h = hoursAgo(isoTs);
     if (h === null) return 'red';
-    if (h < 13) return 'green';
-    if (h < 25) return 'orange';
+    if (h < freqHours + 1) return 'green';
+    if (h < 2 * freqHours + 1) return 'orange';
     return 'red';
   }
-  let lg1ColorClass = $derived(cronColorClass(lastLg1Ts));
-  let lg2ColorClass = $derived(cronColorClass(lastLg2Ts));
-  let pendingOldColorClass = $derived(pendingOld === 0 ? 'green' : pendingOld === null ? 'red' : 'red');
+  let generateColorClass = $derived(cronColorClass(lastGenerateTs, 12));
+  let checkColorClass = $derived(cronColorClass(lastCheckTs, 1));
+  let pendingOldColorClass = $derived(pendingOld === 0 ? 'green' : 'red');
 
   // Performances personnelles
   let perfLoading = $state(true);
@@ -274,14 +275,14 @@
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 2);
     const cutoffStr = cutoff.toISOString().split('T')[0];
 
-    const [lg1Res, lg2Res, pendingRes] = await Promise.all([
-      supabase.from('alerts').select('created_at').eq('algo_version', 'lg1_v2').order('created_at', { ascending: false }).limit(1),
-      supabase.from('alerts').select('created_at').eq('algo_version', 'lg2_v1').order('created_at', { ascending: false }).limit(1),
+    const [generateRes, checkRes, pendingRes] = await Promise.all([
+      supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'generate-alerts').order('started_at', { ascending: false }).limit(1),
+      supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'check-results').order('started_at', { ascending: false }).limit(1),
       supabase.from('alerts').select('id', { count: 'exact', head: true }).eq('status', 'pending').lt('match_date', cutoffStr),
     ]);
 
-    if (!lg1Res.error && lg1Res.data?.length > 0) lastLg1Ts = lg1Res.data[0].created_at;
-    if (!lg2Res.error && lg2Res.data?.length > 0) lastLg2Ts = lg2Res.data[0].created_at;
+    if (!generateRes.error && generateRes.data?.length > 0) lastGenerateTs = generateRes.data[0].started_at;
+    if (!checkRes.error && checkRes.data?.length > 0) lastCheckTs = checkRes.data[0].started_at;
     if (!pendingRes.error) pendingOld = pendingRes.count ?? 0;
 
     cronsLoading = false;
@@ -355,47 +356,47 @@
 
     <div
       class="metric-card"
-      class:metric-card--ok={lg1ColorClass === 'green'}
-      class:metric-card--warn={lg1ColorClass === 'orange'}
-      class:metric-card--error={lg1ColorClass === 'red'}
+      class:metric-card--ok={generateColorClass === 'green'}
+      class:metric-card--warn={generateColorClass === 'orange'}
+      class:metric-card--error={generateColorClass === 'red'}
     >
-      <div class="metric-card__label">Génération LG1</div>
+      <div class="metric-card__label">Génération alertes</div>
       {#if cronsLoading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">chargement…</div>
       {:else}
         <div
           class="metric-card__value"
-          class:green={lg1ColorClass === 'green'}
-          class:orange={lg1ColorClass === 'orange'}
-          class:red={lg1ColorClass === 'red'}
+          class:green={generateColorClass === 'green'}
+          class:orange={generateColorClass === 'orange'}
+          class:red={generateColorClass === 'red'}
         >
-          {hoursLabel(lastLg1Ts)}
+          {hoursLabel(lastGenerateTs)}
         </div>
-        <div class="metric-card__sub">dernière alerte LG1 créée · cron 12h</div>
+        <div class="metric-card__sub">dernier run · cron 12h</div>
       {/if}
     </div>
 
     <div
       class="metric-card"
-      class:metric-card--ok={lg2ColorClass === 'green'}
-      class:metric-card--warn={lg2ColorClass === 'orange'}
-      class:metric-card--error={lg2ColorClass === 'red'}
+      class:metric-card--ok={checkColorClass === 'green'}
+      class:metric-card--warn={checkColorClass === 'orange'}
+      class:metric-card--error={checkColorClass === 'red'}
     >
-      <div class="metric-card__label">Génération LG2</div>
+      <div class="metric-card__label">Vérification résultats</div>
       {#if cronsLoading}
         <div class="metric-card__value muted">—</div>
         <div class="metric-card__sub">chargement…</div>
       {:else}
         <div
           class="metric-card__value"
-          class:green={lg2ColorClass === 'green'}
-          class:orange={lg2ColorClass === 'orange'}
-          class:red={lg2ColorClass === 'red'}
+          class:green={checkColorClass === 'green'}
+          class:orange={checkColorClass === 'orange'}
+          class:red={checkColorClass === 'red'}
         >
-          {hoursLabel(lastLg2Ts)}
+          {hoursLabel(lastCheckTs)}
         </div>
-        <div class="metric-card__sub">dernière alerte LG2 créée · cron 12h</div>
+        <div class="metric-card__sub">dernier run · cron 1h</div>
       {/if}
     </div>
 
