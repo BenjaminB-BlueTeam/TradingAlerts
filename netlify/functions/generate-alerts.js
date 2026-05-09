@@ -10,6 +10,7 @@ const { analyzeStreakAlert } = require('./lib/lg1.cjs');
 const { analyzeLG2 } = require('./lib/lg2.cjs');
 const { requireAuth } = require('./lib/auth.cjs');
 const { corsHeaders, handlePreflight } = require('./lib/cors.cjs');
+const { startCronRun, endCronRun } = require('./lib/cronLog.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -95,6 +96,7 @@ exports.handler = async (event) => {
   const doLG2 = !typeFilter || typeFilter === 'LG2';
 
   const results = { type: typeFilter || 'ALL', analyzed: 0, alerts_created: 0, errors: [] };
+  const runId = await startCronRun('generate-alerts', { type: typeFilter || 'ALL' });
 
   try {
     // Charger les matchs des 3 prochains jours
@@ -300,6 +302,16 @@ exports.handler = async (event) => {
     console.error(`[generate-alerts] FATAL: ${e.message}`);
     results.errors.push(e.message);
   }
+
+  const runStatus = results.errors.length === 0
+    ? 'success'
+    : (results.alerts_created > 0 ? 'partial' : 'error');
+  await endCronRun(runId, {
+    status: runStatus,
+    count_created: results.alerts_created,
+    count_processed: results.analyzed,
+    error_message: results.errors.length ? results.errors.join(' | ') : null,
+  });
 
   return {
     statusCode: 200,

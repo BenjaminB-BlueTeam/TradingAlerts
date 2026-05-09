@@ -10,6 +10,7 @@ const { footyRequest } = require('./lib/api');
 const { parseMatchRow } = require('./lib/parseMatch');
 const { requireAuth } = require('./lib/auth.cjs');
 const { corsHeaders, handlePreflight } = require('./lib/cors.cjs');
+const { startCronRun, endCronRun } = require('./lib/cronLog.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -114,6 +115,7 @@ exports.handler = async (event) => {
   }
 
   const results = { mode: dates.length > 1 ? 'backfill' : 'daily', dates: dates.length, fetched: 0, completed: 0, upserted: 0, errors: [], details: [] };
+  const runId = await startCronRun('daily-seed', { mode: results.mode, days: dates.length, from: dates[0], to: dates[dates.length - 1] });
 
   for (const date of dates) {
     try {
@@ -146,6 +148,18 @@ exports.handler = async (event) => {
   }
 
   console.log(`[daily-seed] END — ${results.dates} days, fetched=${results.fetched}, completed=${results.completed}, upserted=${results.upserted}, errors=${results.errors.length}`);
+
+  const runStatus = results.errors.length === 0
+    ? 'success'
+    : (results.upserted > 0 ? 'partial' : 'error');
+  await endCronRun(runId, {
+    status: runStatus,
+    count_created: results.upserted,
+    count_processed: results.fetched,
+    error_message: results.errors.length ? results.errors.join(' | ').slice(0, 1500) : null,
+    metadata: { dates: results.dates, completed: results.completed, leagues_count: results.leagues_count ?? null },
+  });
+
   return {
     statusCode: 200,
     headers: { 'Content-Type': 'application/json', ...cors },

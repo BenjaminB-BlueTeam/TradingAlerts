@@ -7,6 +7,7 @@
 const { footyRequest, supabaseQuery } = require('./lib/api');
 const { requireAuth } = require('./lib/auth.cjs');
 const { corsHeaders, handlePreflight } = require('./lib/cors.cjs');
+const { startCronRun, endCronRun } = require('./lib/cronLog.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -72,6 +73,7 @@ exports.handler = async (event) => {
   if (!auth.authorized) return { ...auth.response, headers: { ...(auth.response.headers || {}), ...cors } };
 
   const results = { checked: 0, validated: 0, lost: 0, expired: 0, errors: [] };
+  const runId = await startCronRun('check-results');
 
   try {
     // Alertes pending dont le kickoff est passé depuis > 100 minutes
@@ -148,6 +150,17 @@ exports.handler = async (event) => {
   if (dayAlerts >= 5 && dayLost / dayAlerts > 0.8) {
     console.error(`[check-results] ALERT: suspicious lost rate ${dayLost}/${dayAlerts} (${Math.round(dayLost/dayAlerts*100)}%). Possible parsing bug or API field change.`);
   }
+
+  const runStatus = results.errors.length === 0
+    ? 'success'
+    : (results.checked > 0 ? 'partial' : 'error');
+  await endCronRun(runId, {
+    status: runStatus,
+    count_updated: results.checked,
+    count_processed: results.checked,
+    error_message: results.errors.length ? results.errors.join(' | ').slice(0, 1500) : null,
+    metadata: { validated: results.validated, lost: results.lost, expired: results.expired },
+  });
 
   return {
     statusCode: 200,
