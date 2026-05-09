@@ -21,6 +21,8 @@
   // Santé crons
   let lastGenerateTs = $state(null);  // dernier started_at de generate-alerts (cron_runs)
   let lastCheckTs = $state(null);     // dernier started_at de check-results (cron_runs)
+  let lastSeedTs = $state(null);      // dernier started_at de daily-seed (cron_runs)
+  let lastComputeTs = $state(null);   // dernier started_at de compute-team-lg1 (cron_runs)
   let pendingOld = $state(null);      // count pending + match_date < J-2
   let cronsLoading = $state(true);
 
@@ -72,6 +74,26 @@
     return `${d}j`;
   }
 
+  // Heure du dernier passage du cron. Format compact mobile :
+  //   - aujourd'hui   → "12:34"
+  //   - hier          → "hier 12:34"
+  //   - plus ancien   → "08/05 12:34"
+  function lastRunLabel(isoTs) {
+    if (!isoTs) return '--';
+    const d = new Date(isoTs);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const time = `${hh}:${mm}`;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+    const dDay = new Date(d); dDay.setHours(0, 0, 0, 0);
+    if (dDay.getTime() === today.getTime()) return time;
+    if (dDay.getTime() === yesterday.getTime()) return `hier ${time}`;
+    const day = String(d.getDate()).padStart(2, '0');
+    const mon = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}/${mon} ${time}`;
+  }
+
   // freqHours = fréquence nominale du cron. Seuils : green < freq+1h, orange < 2*freq+1h, red sinon.
   function cronColorClass(isoTs, freqHours) {
     const h = hoursAgo(isoTs);
@@ -82,6 +104,8 @@
   }
   let generateColorClass = $derived(cronColorClass(lastGenerateTs, 12));
   let checkColorClass = $derived(cronColorClass(lastCheckTs, 1));
+  let seedColorClass2 = $derived(cronColorClass(lastSeedTs, 24));
+  let computeColorClass = $derived(cronColorClass(lastComputeTs, 24));
   let pendingOldColorClass = $derived(pendingOld === 0 ? 'green' : 'red');
 
   // Performances personnelles
@@ -275,14 +299,18 @@
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 2);
     const cutoffStr = cutoff.toISOString().split('T')[0];
 
-    const [generateRes, checkRes, pendingRes] = await Promise.all([
+    const [generateRes, checkRes, seedRes, computeRes, pendingRes] = await Promise.all([
       supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'generate-alerts').order('started_at', { ascending: false }).limit(1),
       supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'check-results').order('started_at', { ascending: false }).limit(1),
+      supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'daily-seed').order('started_at', { ascending: false }).limit(1),
+      supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'compute-team-lg1').order('started_at', { ascending: false }).limit(1),
       supabase.from('alerts').select('id', { count: 'exact', head: true }).eq('status', 'pending').lt('match_date', cutoffStr),
     ]);
 
     if (!generateRes.error && generateRes.data?.length > 0) lastGenerateTs = generateRes.data[0].started_at;
     if (!checkRes.error && checkRes.data?.length > 0) lastCheckTs = checkRes.data[0].started_at;
+    if (!seedRes.error && seedRes.data?.length > 0) lastSeedTs = seedRes.data[0].started_at;
+    if (!computeRes.error && computeRes.data?.length > 0) lastComputeTs = computeRes.data[0].started_at;
     if (!pendingRes.error) pendingOld = pendingRes.count ?? 0;
 
     cronsLoading = false;
@@ -371,9 +399,9 @@
           class:orange={generateColorClass === 'orange'}
           class:red={generateColorClass === 'red'}
         >
-          {hoursLabel(lastGenerateTs)}
+          {lastRunLabel(lastGenerateTs)}
         </div>
-        <div class="metric-card__sub">dernier run · cron 12h</div>
+        <div class="metric-card__sub">{lastGenerateTs ? `il y a ${hoursLabel(lastGenerateTs)} · cron 12h` : 'jamais · cron 12h'}</div>
       {/if}
     </div>
 
@@ -394,9 +422,55 @@
           class:orange={checkColorClass === 'orange'}
           class:red={checkColorClass === 'red'}
         >
-          {hoursLabel(lastCheckTs)}
+          {lastRunLabel(lastCheckTs)}
         </div>
-        <div class="metric-card__sub">dernier run · cron 1h</div>
+        <div class="metric-card__sub">{lastCheckTs ? `il y a ${hoursLabel(lastCheckTs)} · cron 1h` : 'jamais · cron 1h'}</div>
+      {/if}
+    </div>
+
+    <div
+      class="metric-card"
+      class:metric-card--ok={seedColorClass2 === 'green'}
+      class:metric-card--warn={seedColorClass2 === 'orange'}
+      class:metric-card--error={seedColorClass2 === 'red'}
+    >
+      <div class="metric-card__label">Seed quotidien</div>
+      {#if cronsLoading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">chargement…</div>
+      {:else}
+        <div
+          class="metric-card__value"
+          class:green={seedColorClass2 === 'green'}
+          class:orange={seedColorClass2 === 'orange'}
+          class:red={seedColorClass2 === 'red'}
+        >
+          {lastRunLabel(lastSeedTs)}
+        </div>
+        <div class="metric-card__sub">{lastSeedTs ? `il y a ${hoursLabel(lastSeedTs)} · cron 24h` : 'jamais · cron 24h'}</div>
+      {/if}
+    </div>
+
+    <div
+      class="metric-card"
+      class:metric-card--ok={computeColorClass === 'green'}
+      class:metric-card--warn={computeColorClass === 'orange'}
+      class:metric-card--error={computeColorClass === 'red'}
+    >
+      <div class="metric-card__label">Calcul LG1%</div>
+      {#if cronsLoading}
+        <div class="metric-card__value muted">—</div>
+        <div class="metric-card__sub">chargement…</div>
+      {:else}
+        <div
+          class="metric-card__value"
+          class:green={computeColorClass === 'green'}
+          class:orange={computeColorClass === 'orange'}
+          class:red={computeColorClass === 'red'}
+        >
+          {lastRunLabel(lastComputeTs)}
+        </div>
+        <div class="metric-card__sub">{lastComputeTs ? `il y a ${hoursLabel(lastComputeTs)} · cron 24h` : 'jamais · cron 24h'}</div>
       {/if}
     </div>
 
