@@ -71,8 +71,8 @@ src/
     +layout.js          ← ssr: false, prerender: false
     +page.svelte        ← Dashboard 12 KPIs en 4 sections (Supabase)
     login/+page.svelte        ← formulaire email/password Supabase Auth
-    alerts/+page.svelte       ← Sélection LG1 — alertes LG1 depuis Supabase
-    alerts-lg2/+page.svelte   ← Sélection LG2 — alertes LG2 depuis Supabase
+    alerts-lg1/+page.svelte   ← Sélection LG1 — alertes LG1 + LG1_MANUAL depuis Supabase
+    alerts-lg2/+page.svelte   ← Sélection LG2 — alertes LG2 + LG2_MANUAL depuis Supabase
     mes-matchs/+page.svelte   ← Mes matchs sélectionnés + saisie positions (cote/mise) + résultat manuel
     historique/+page.svelte   ← Historique alertes + stats performance + "Bet Analytix"
     matches/+page.svelte      ← Matchs à venir (cards avec expand)
@@ -96,6 +96,7 @@ src/
       Toast.svelte          ← notifications toast
       Modal.svelte          ← modale globale
       SelectAlertButton.svelte ← bouton toggle sélection alerte (selectionStore)
+      ManualSelectButton.svelte ← boutons +LG1/+LG2 sur /matches → createManualAlert + select
       ExcludeAlertModal.svelte ← modale exclusion manuelle (7 tags + note)
       charts.js             ← graphiques Chart.js (tree-shaké) + helpers line/stacked/horizontal
       historique/
@@ -173,7 +174,7 @@ scripts/
 
 | Table | Rôle | RLS | Policies authenticated | Policies anon | Policies service_role |
 |-------|------|-----|----------------------|---------------|----------------------|
-| `alerts` | Alertes LG1/LG2 (status: pending/validated/lost/expired) | ON | SELECT + UPDATE | UPDATE (résultat manuel /mes-matchs) | ALL |
+| `alerts` | Alertes LG1/LG2 (status: pending/validated/lost/expired). Colonnes: `lg1_pct`, `lg1_confidence`, `lg1_factors` (renommées depuis fhg_* le 2026-05-11) | ON | SELECT + UPDATE + INSERT (algo_version='manual' uniquement) | UPDATE (résultat manuel /mes-matchs) | ALL |
 | `trades` | Journal des trades (legacy) | ON | ALL | — | ALL |
 | `h2h_matches` | Historique matchs H2H avec goal_events (65k+ lignes) | ON | SELECT | — | ALL |
 | `team_seasons` | Stats équipes par saison (legacy, non peuplée) | ON | SELECT | — | ALL |
@@ -296,8 +297,9 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **PWA installable** — `static/manifest.json` + `static/sw.js` (service worker cache offline) + icônes 192×512px
 - **Drapeaux pays** — `src/lib/utils/countryFlags.js` : mapping ~90 noms de pays FootyStats → ISO 3166-1 alpha-2 (subdivisions UK incluses). Helpers `flagUrl(country)`, `extractCountry(leagueName)` (extraction par préfixe), `leagueFlagUrl(leagueName)`. Drapeau SVG depuis flagcdn.com affiché sur `/leagues`, `/explore` (header pays), `/alerts`, `/alerts-lg2`, `/mes-matchs` (à côté du nom de ligue).
 - **Dashboard** (`/`) — 12 KPIs en 4 sections : "Santé infra" (API FootyStats, Ligues actives, Historique H2H) + "Santé crons" (Génération LG1 last run, Génération LG2 last run, Alertes > 48h) + "Alertes du jour" (LG1 Fort, LG2 Fort, Performance 7j) + "Mes performances" (Renta semaine, Renta mois, Matchs joués ce mois). "Matchs joués ce mois" = alertes validated|lost dans selected_alerts du mois courant. Layout centré max-width 960px.
-- **Selection LG1** (`/alerts`) — alertes LG1_A/B/A+B/C/D, tri fort→moyen→date, filtres jour (boutons) + ligue (dropdown) + confiance (Tout/Fort/Moyen). Badges Fort/Moyen (sans badge signal_type). league_name via leagueMap. Expand détaillé, barres timing buts, Validé/Perdu/EN COURS, bouton Exclure, SelectAlertButton.
-- **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B, tri fort→moyen→date, filtres jour + ligue + confiance. Badges Fort/Moyen. Expand par équipe, barres timing buts (marqueur 80'), pills Dom/Ext streak, bouton Exclure, SelectAlertButton.
+- **Selection LG1** (`/alerts-lg1`) — alertes LG1_A/B/A+B/C/D + LG1_MANUAL, tri fort→moyen→date, filtres jour (boutons) + ligue (dropdown) + confiance (Tout/Fort/Moyen). Badge "Manuel" (violet) pour algo_version='manual', bypass filtre confiance. Badges Fort/Moyen pour alertes algo. Expand détaillé, barres timing buts, Validé/Perdu/EN COURS, bouton Exclure (masqué pour manuel), SelectAlertButton.
+- **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B + LG2_MANUAL, tri fort→moyen→date, filtres jour + ligue + confiance. Badge "Manuel" pour algo_version='manual'. Expand par équipe, barres timing buts (marqueur 80'), pills Dom/Ext streak, bouton Exclure (masqué pour manuel), SelectAlertButton.
+- **Sélection manuelle depuis /matches** (2026-05-11) — boutons `+LG1` / `+LG2` sur chaque card de `/matches`. Clic → `createManualAlert()` (INSERT dans `alerts` avec `algo_version='manual'`, `signal_type='LG1_MANUAL'|'LG2_MANUAL'`, `confidence=null`, `status='pending'`) + `select()` → visible dans `/mes-matchs`. Idempotent (conflit unique `match_id+signal_type` géré). Validation manuelle uniquement (Gagné/Perdu) — `check-results.js` exclut `algo_version='manual'`.
 - **Mes matchs** (`/mes-matchs`) — alertes sélectionnées via selectionStore, sections Actif (A venir/Aujourd'hui) + Terminés (collapsible). Matchs passés (match_date < today) → Terminés automatiquement. Saisie inline positions (cote + mise) → `alert_trades`. Boutons résultat manuel Gagné/Perdu. Chips P&L réactifs. Section "Rattrapage — 7 derniers jours" (collapsible) : alertes validated/lost des 7J non sélectionnées → saisie cote/mise rétroactive, impact Historique immédiat.
 - **Historique** (`/historique`) — FiltersBar multi-critères + ScopeToggle (Global / Mes positions). Section Global : grille 2x2 Chart.js (évolution, stacked stratégie, top équipes, top ligues) + tableau dense triable (infinite scroll 50/batch, colonnes Date/Ligue🏳️/Match/Conf/Résultat) + blocs "Mes trades vs Global" et "What-if exclusions" (Wilson CI). Section Mes positions : table `alert_trades` + P&L réel. Spec : `docs/superpowers/specs/2026-04-23-historique-redesign-design.md`
 - **Matchs a venir** (`/matches`) — navigation Flashscore J-1/J+29 (boutons ← date →), cache localStorage TTL 72h par date (`todays-matches-YYYY-MM-DD`). Filtre ligue + autocomplete équipe (Supabase `teams`). Panneau équipe : expand 2 colonnes Domicile/Extérieur (grid 1fr 1fr, `team-detail` + `team-matches` + `match-row` — structure identique à Sélection LG1). Cards matchs à venir expandables + goal bars H2H. Déduplication. Curseur minute interactif.
@@ -360,6 +362,8 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Helpers serverless** : utiliser `netlify/functions/lib/api.js` pour `footyRequest`/`supabaseQuery`
 - **Type mismatch `match_id`** : `alerts.match_id` est `bigint` (retourné `number` par Supabase) tandis que `alert_trades.match_id` est `TEXT` (retourné `string`). Toujours normaliser via `String(...)` (ou template literal) des deux côtés avant comparaison ou jointure côté client. La comparaison `===` stricte échoue silencieusement et fait disparaître les trades.
 - **Schéma `teams` vs migration** : la migration `20260507140000_create_teams_table.sql` déclare `team_name` mais la table préexistait avec `(id, team_id, league_id, name, stats, updated_at)` — `CREATE TABLE IF NOT EXISTS` a été un no-op. **La vraie colonne pour le nom est `name`**, pas `team_name`. Toujours vérifier avec `information_schema.columns` (ou MCP Supabase) en cas de doute sur un schéma plutôt que faire confiance au fichier de migration.
+- **Colonnes `alerts` — rebrand fhg→lg1** : le rebrand 2026-05-08 a renommé les signal_types (FHG→LG1) et algo_version ('v2'→'lg1_v2') mais PAS les colonnes. Les colonnes `fhg_pct`, `fhg_confidence`, `fhg_factors` ont été renommées en `lg1_pct`, `lg1_confidence`, `lg1_factors` le 2026-05-11 (migration 20260511110000). Tout le code utilise les noms `lg1_*`. **Ne jamais référencer `fhg_pct/fhg_confidence/fhg_factors`**.
+- **Signal types `LG1_MANUAL` / `LG2_MANUAL`** : créés par `createManualAlert()` côté frontend (algo_version='manual'). Exclus de `check-results.js` (pas d'auto-validation). Inclus dans les pages `/alerts-lg1` et `/alerts-lg2` avec badge "Manuel". La contrainte `alerts_signal_type_check` les inclut depuis la migration 20260511110000.
 - **Tables créées après hardening** : si une nouvelle table publique est créée APRÈS la migration `20260507120000_harden_rls_authenticated.sql`, elle doit avoir explicitement une policy `to authenticated` (sinon le frontend logué — qui passe en rôle `authenticated` — voit 0 ligne silencieusement). Ne pas se reposer sur les policies `to anon`. Les policies anon ne s'appliquent qu'au rôle `anon`, pas à `authenticated`.
 
 ## Conventions git
