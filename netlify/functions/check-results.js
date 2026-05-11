@@ -80,7 +80,7 @@ exports.handler = async (event) => {
     const cutoff = Math.floor(Date.now() / 1000) - 100 * 60;
     const alerts = await supabaseQuery(
       'alerts',
-      `status=eq.pending&kickoff_unix=lte.${cutoff}&order=kickoff_unix.asc&limit=20`
+      `status=eq.pending&algo_version=neq.manual&kickoff_unix=lte.${cutoff}&order=kickoff_unix.asc&limit=20`
     );
     console.log(`[check-results] START — ${alerts.length} pending alerts to check`);
 

@@ -68,7 +68,7 @@
     try {
       // Cas 4a : désélectionner toutes les variantes du match avant exclusion
       const set = get(selectedKeys);
-      const allSignals = ['LG1', 'LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D', 'LG2_A', 'LG2_B', 'LG2_A+B'];
+      const allSignals = ['LG1', 'LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D', 'LG1_MANUAL', 'LG2_A', 'LG2_B', 'LG2_A+B', 'LG2_MANUAL'];
       for (const sig of allSignals) {
         if (isSelected(set, excludeModalAlert.match_id, sig)) {
           await unselect(excludeModalAlert.match_id, sig);
@@ -118,7 +118,7 @@
       .select('*')
       .gte('match_date', getDateStr(-3))
       .lte('match_date', getDateStr(2))
-      .in('signal_type', ['LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D'])
+      .in('signal_type', ['LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D', 'LG1_MANUAL'])
       .order('match_date', { ascending: false })
       .order('kickoff_unix', { ascending: true });
     if (dbError) {
@@ -138,6 +138,7 @@
   const CONF_ORDER = { fort: 0, moyen: 1 };
 
   function matchesConfidence(alert) {
+    if (alert.algo_version === 'manual') return true;
     if (selectedConfs.size === 0) return true;
     return selectedConfs.has(alert.confidence);
   }
@@ -346,7 +347,11 @@
             </div>
           </div>
           <div class="alert-card__badges">
-            <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
+            {#if a.algo_version === 'manual'}
+              <span class="alert-badge alert-badge--manuel">Manuel</span>
+            {:else}
+              <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
+            {/if}
             {#if a.status === 'validated'}
               <span class="alert-badge alert-badge--validated">✓ Validé</span>
             {:else if a.status === 'lost'}
@@ -358,7 +363,7 @@
             {#if a.user_excluded}
               <span class="alert-badge alert-badge--exclu">EXCLUE</span>
               <button class="btn btn--sm btn-reinstate" onclick={e => { e.stopPropagation(); handleUnexclude(a); }}>Réintégrer</button>
-            {:else if a.status === 'pending'}
+            {:else if a.status === 'pending' && a.algo_version !== 'manual'}
               <button class="btn btn--sm btn--danger" onclick={e => { e.stopPropagation(); openExcludeModal(a); }}>Exclure</button>
             {/if}
           </div>
@@ -498,6 +503,7 @@
   .alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
   .alert-badge--signal { background: rgba(61,142,247,0.15); color: var(--color-accent-blue); border: 1px solid rgba(61,142,247,0.3); }
   .alert-badge--exclu { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #555; }
+  .alert-badge--manuel { background: rgba(120,100,200,0.15); color: #a090d0; border: 1px solid rgba(120,100,200,0.35); }
   .btn-reinstate { border-color: var(--color-accent-blue); color: var(--color-accent-blue); background: rgba(61,142,247,0.1); }
   .btn-reinstate:hover { background: var(--color-accent-blue); color: #fff; }
 

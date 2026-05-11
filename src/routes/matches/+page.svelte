@@ -6,6 +6,7 @@
   import { getDateStr, formatDate, formatTime, addDays, dateLabelNav } from '$lib/utils/formatters.js';
   import { cacheGet, cacheSet } from '$lib/api/cache.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
+  import ManualSelectButton from '$lib/components/ManualSelectButton.svelte';
 
   let currentDate = $state(getDateStr(0));
   const DATE_MIN = getDateStr(-1);
@@ -378,6 +379,7 @@
             </div>
             <div class="match-card__league">{getLeagueName(m)}</div>
           </div>
+          <ManualSelectButton match={m} leagueName={getLeagueName(m)} />
           <span class="match-card__arrow">{expandedId === m.id ? '▼' : '▶'}</span>
         </div>
 

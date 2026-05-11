@@ -286,6 +286,64 @@ export async function getSelectedAlerts() {
 }
 
 // ============================================================
+// ALERTES MANUELLES (sélection depuis /matches)
+// ============================================================
+
+/**
+ * Crée une alerte manuelle dans `alerts` (algo_version='manual').
+ * Idempotent : si l'alerte existe déjà (conflict unique match_id+signal_type), la retourne.
+ * @param {object} match - objet match FootyStats (id, homeID, awayID, home_name, away_name, date_unix, competition_id, season_id)
+ * @param {'LG1'|'LG2'} strategy
+ * @param {string} leagueName - nom de la ligue (résolu par getLeagueName dans /matches)
+ */
+export async function createManualAlert(match, strategy, leagueName) {
+  const signalType = strategy === 'LG1' ? 'LG1_MANUAL' : 'LG2_MANUAL';
+  const kickoffUnix = match.date_unix || null;
+  let matchDate = null;
+  let matchTime = null;
+  if (kickoffUnix) {
+    const d = new Date(kickoffUnix * 1000);
+    matchDate = d.toISOString().slice(0, 10);
+    matchTime = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+  }
+
+  const row = {
+    match_id: match.id,
+    match_date: matchDate,
+    kickoff_unix: kickoffUnix,
+    home_team_id: match.homeID || null,
+    away_team_id: match.awayID || null,
+    home_team_name: match.home_name || null,
+    away_team_name: match.away_name || null,
+    league_name: leagueName || null,
+    h2h_count: 0,
+    status: 'pending',
+    signal_type: signalType,
+    lg1_pct: null,
+    lg1_confidence: null,
+    lg1_factors: null,
+    confidence: null,
+    algo_version: 'manual',
+  };
+
+  const { data, error } = await supabase.from('alerts').insert(row).select().single();
+  if (error) {
+    if (error.code === '23505') {
+      const { data: existing, error: fetchErr } = await supabase
+        .from('alerts')
+        .select('*')
+        .eq('match_id', match.id)
+        .eq('signal_type', signalType)
+        .single();
+      if (fetchErr) throw fetchErr;
+      return existing;
+    }
+    throw error;
+  }
+  return data;
+}
+
+// ============================================================
 // AUTH
 // ============================================================
 
