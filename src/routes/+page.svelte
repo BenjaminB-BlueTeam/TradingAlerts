@@ -14,16 +14,10 @@
   let seedLoading = $state(true);
   let seedError = $state('');
 
-  let validated7j = $state(0);
-  let lost7j = $state(0);
-  let taux7jLoading = $state(true);
-
   // Santé crons
   let lastGenerateTs = $state(null);  // dernier started_at de generate-alerts (cron_runs)
-  let lastCheckTs = $state(null);     // dernier started_at de check-results (cron_runs)
   let lastSeedTs = $state(null);      // dernier started_at de daily-seed (cron_runs)
   let lastComputeTs = $state(null);   // dernier started_at de compute-team-lg1 (cron_runs)
-  let pendingOld = $state(null);      // count pending + match_date < J-2
   let cronsLoading = $state(true);
 
   let lg1Alerts = $derived(
@@ -52,12 +46,6 @@
     if (!seedLastDate) return '--';
     const [, m, day] = seedLastDate.split('-');
     return `${day}/${m}`;
-  });
-
-  let taux7j = $derived.by(() => {
-    const total = validated7j + lost7j;
-    if (total === 0) return null;
-    return Math.round(validated7j / total * 100);
   });
 
   // Helpers crons
@@ -103,10 +91,8 @@
     return 'red';
   }
   let generateColorClass = $derived(cronColorClass(lastGenerateTs, 12));
-  let checkColorClass = $derived(cronColorClass(lastCheckTs, 1));
   let seedColorClass2 = $derived(cronColorClass(lastSeedTs, 24));
   let computeColorClass = $derived(cronColorClass(lastComputeTs, 24));
-  let pendingOldColorClass = $derived(pendingOld === 0 ? 'green' : 'red');
 
   let now = new Date();
   let dateLabel = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -160,39 +146,17 @@
     seedLoading = false;
   }
 
-  async function loadTaux7j() {
-    taux7jLoading = true;
-    const d7 = new Date(); d7.setDate(d7.getDate() - 7);
-    const { data, error: dbError } = await supabase
-      .from('alerts')
-      .select('status')
-      .in('status', ['validated', 'lost'])
-      .gte('match_date', d7.toISOString().split('T')[0]);
-    if (!dbError && data) {
-      validated7j = data.filter(a => a.status === 'validated').length;
-      lost7j = data.filter(a => a.status === 'lost').length;
-    }
-    taux7jLoading = false;
-  }
-
   async function loadCronHealth() {
     cronsLoading = true;
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 2);
-    const cutoffStr = cutoff.toISOString().split('T')[0];
-
-    const [generateRes, checkRes, seedRes, computeRes, pendingRes] = await Promise.all([
+    const [generateRes, seedRes, computeRes] = await Promise.all([
       supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'generate-alerts').order('started_at', { ascending: false }).limit(1),
-      supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'check-results').order('started_at', { ascending: false }).limit(1),
       supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'daily-seed').order('started_at', { ascending: false }).limit(1),
       supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'compute-team-lg1').order('started_at', { ascending: false }).limit(1),
-      supabase.from('alerts').select('id', { count: 'exact', head: true }).eq('status', 'pending').lt('match_date', cutoffStr),
     ]);
 
     if (!generateRes.error && generateRes.data?.length > 0) lastGenerateTs = generateRes.data[0].started_at;
-    if (!checkRes.error && checkRes.data?.length > 0) lastCheckTs = checkRes.data[0].started_at;
     if (!seedRes.error && seedRes.data?.length > 0) lastSeedTs = seedRes.data[0].started_at;
     if (!computeRes.error && computeRes.data?.length > 0) lastComputeTs = computeRes.data[0].started_at;
-    if (!pendingRes.error) pendingOld = pendingRes.count ?? 0;
 
     cronsLoading = false;
   }
@@ -200,7 +164,6 @@
   onMount(() => {
     loadAlerts();
     loadSeedStatus();
-    loadTaux7j();
     loadCronHealth();
   });
 </script>
@@ -287,29 +250,6 @@
 
     <div
       class="metric-card"
-      class:metric-card--ok={checkColorClass === 'green'}
-      class:metric-card--warn={checkColorClass === 'orange'}
-      class:metric-card--error={checkColorClass === 'red'}
-    >
-      <div class="metric-card__label">Vérification résultats</div>
-      {#if cronsLoading}
-        <div class="metric-card__value muted">—</div>
-        <div class="metric-card__sub">chargement…</div>
-      {:else}
-        <div
-          class="metric-card__value"
-          class:green={checkColorClass === 'green'}
-          class:orange={checkColorClass === 'orange'}
-          class:red={checkColorClass === 'red'}
-        >
-          {lastRunLabel(lastCheckTs)}
-        </div>
-        <div class="metric-card__sub">{lastCheckTs ? `il y a ${hoursLabel(lastCheckTs)} · cron 1h` : 'jamais · cron 1h'}</div>
-      {/if}
-    </div>
-
-    <div
-      class="metric-card"
       class:metric-card--ok={seedColorClass2 === 'green'}
       class:metric-card--warn={seedColorClass2 === 'orange'}
       class:metric-card--error={seedColorClass2 === 'red'}
@@ -354,31 +294,10 @@
       {/if}
     </div>
 
-    <div
-      class="metric-card"
-      class:metric-card--ok={pendingOldColorClass === 'green'}
-      class:metric-card--error={pendingOldColorClass === 'red'}
-    >
-      <div class="metric-card__label">Alertes > 48h</div>
-      {#if cronsLoading}
-        <div class="metric-card__value muted">—</div>
-        <div class="metric-card__sub">chargement…</div>
-      {:else}
-        <div
-          class="metric-card__value"
-          class:green={pendingOldColorClass === 'green'}
-          class:red={pendingOldColorClass === 'red'}
-        >
-          {pendingOld ?? '!'}
-        </div>
-        <div class="metric-card__sub">{pendingOld === 0 ? 'aucune alerte bloquée' : `alerte${pendingOld > 1 ? 's' : ''} sans résultat`}</div>
-      {/if}
-    </div>
-
   </div>
 
   <div class="section-label">Alertes du jour</div>
-  <div class="metric-grid metric-grid--3">
+  <div class="metric-grid metric-grid--2">
 
     <a href="/alerts-lg1?day=0" class="metric-card metric-card--link">
       <div class="metric-card__label">LG1 Fort — aujourd'hui</div>
@@ -401,27 +320,6 @@
         <div class="metric-card__sub">sur {lg2Alerts.length} alerte{lg2Alerts.length > 1 ? 's' : ''} LG2</div>
       {/if}
     </a>
-
-    <div class="metric-card">
-      <div class="metric-card__label">Performance 7j</div>
-      {#if taux7jLoading}
-        <div class="metric-card__value muted">—</div>
-        <div class="metric-card__sub">chargement…</div>
-      {:else if taux7j === null}
-        <div class="metric-card__value muted">—</div>
-        <div class="metric-card__sub">aucune donnée</div>
-      {:else}
-        <div
-          class="metric-card__value"
-          class:green={taux7j >= 60}
-          class:orange={taux7j >= 40 && taux7j < 60}
-          class:red={taux7j < 40}
-        >
-          {taux7j}%
-        </div>
-        <div class="metric-card__sub">{validated7j} ✓ / {lost7j} ✗ matchs</div>
-      {/if}
-    </div>
 
   </div>
 
@@ -447,6 +345,7 @@
   }
 
   .metric-grid { display: grid; gap: 12px; margin-bottom: 24px; }
+  .metric-grid--2 { grid-template-columns: repeat(2, 1fr); }
   .metric-grid--3 { grid-template-columns: repeat(3, 1fr); }
 
   .metric-card {

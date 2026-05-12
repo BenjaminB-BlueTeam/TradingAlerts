@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
-  import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay } from '$lib/utils/formatters.js';
+  import { getDateStr, formatDateDMY, formatDate, formatTime } from '$lib/utils/formatters.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
   import { leagueFlagUrl } from '$lib/utils/countryFlags.js';
   import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
@@ -326,9 +326,6 @@
     {#each filteredAlerts as a (a.id)}
       <div class="alert-card"
         class:alert-card--expanded={expandedId === a.id}
-        class:alert-card--validated={a.status === 'validated'}
-        class:alert-card--lost={a.status === 'lost'}
-        class:alert-card--live={a.status === 'pending' && isInPlay(a)}
       >
         <div class="alert-card__header" onclick={() => toggleExpand(a)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }} role="button" tabindex="0" aria-expanded={expandedId === a.id}>
           <div class="alert-card__time">
@@ -350,18 +347,11 @@
             {:else}
               <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
             {/if}
-            {#if a.status === 'validated'}
-              <span class="alert-badge alert-badge--validated">✓ Validé</span>
-            {:else if a.status === 'lost'}
-              <span class="alert-badge alert-badge--lost">✗ Perdu</span>
-            {:else if isInPlay(a)}
-              <span class="alert-badge alert-badge--live">EN COURS</span>
-            {/if}
             <SelectAlertButton alert={a}  />
             {#if a.user_excluded}
               <span class="alert-badge alert-badge--exclu">EXCLUE</span>
               <button class="btn btn--sm btn-reinstate" onclick={e => { e.stopPropagation(); handleUnexclude(a); }}>Réintégrer</button>
-            {:else if a.status === 'pending' && a.algo_version !== 'manual'}
+            {:else if a.algo_version !== 'manual'}
               <button class="btn btn--sm btn--danger" onclick={e => { e.stopPropagation(); openExcludeModal(a); }}>Exclure</button>
             {/if}
           </div>
@@ -477,9 +467,6 @@
   .alert-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
   .alert-card:hover { border-color: var(--color-accent-blue); }
   .alert-card--expanded { border-color: var(--color-accent-blue); }
-  .alert-card--validated { border-color: var(--color-accent-green) !important; background: rgba(29,158,117,0.04); }
-  .alert-card--lost { border-color: var(--color-danger) !important; background: rgba(226,75,74,0.04); }
-  .alert-card--live { border-color: var(--color-signal-moyen) !important; background: rgba(239,159,39,0.04); }
 
   .alert-card__header { display: flex; align-items: center; gap: 14px; padding: 12px 16px; cursor: pointer; transition: background 0.15s; }
   .alert-card__header:hover { background: rgba(255,255,255,0.02); }

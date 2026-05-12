@@ -1,7 +1,7 @@
 <script>
-  import { supabase, updateAlertStatus } from '$lib/api/supabase.js';
+  import { supabase } from '$lib/api/supabase.js';
   import { selectedKeys, keyOf } from '$lib/stores/selectionStore.js';
-  import { getDateStr, formatDateDMY, formatDate, formatTime, isInPlay } from '$lib/utils/formatters.js';
+  import { getDateStr, formatDateDMY, formatDate, formatTime } from '$lib/utils/formatters.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
   import { leagueFlagUrl } from '$lib/utils/countryFlags.js';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
@@ -10,17 +10,14 @@
   let allAlerts = $state([]);
   let loading = $state(true);
   let error = $state('');
-  let terminatedOpen = $state(false);
+  let pastOpen = $state(false);
   let expandedId = $state(null);
   let teamMatchesCache = $state({});
   let hoverBar = $state(null); // { key, pct, min }
-  let resultBusy = $state({});
 
   // ---- Helpers: signal classification ----
   function isLG1(signal_type) { return signal_type?.startsWith('LG1'); }
   function isLG2(signal_type) { return signal_type?.startsWith('LG2'); }
-  function isTerminated(a) { return ['validated', 'lost', 'expired'].includes(a.status); }
-  function isActive(a) { return !isTerminated(a); }
 
   // ---- Reactive: visible alerts filtered by selectedKeys ----
   let visibleAlerts = $derived(
@@ -50,9 +47,9 @@
 
   // ---- Derived sections ----
   let sections = $derived.by(() => {
-    const lg1Active = visibleAlerts.filter(a => isLG1(a.signal_type) && isActive(a) && a.match_date >= today);
-    const lg2Active = visibleAlerts.filter(a => isLG2(a.signal_type) && isActive(a) && a.match_date >= today);
-    const terminated = visibleAlerts.filter(a => isTerminated(a) || a.match_date < today);
+    const lg1Active = visibleAlerts.filter(a => isLG1(a.signal_type) && a.match_date >= today);
+    const lg2Active = visibleAlerts.filter(a => isLG2(a.signal_type) && a.match_date >= today);
+    const past = visibleAlerts.filter(a => a.match_date < today);
 
     const lg1Today = sortActive(lg1Active.filter(a => a.match_date === today));
     const lg1Coming = sortActive(lg1Active.filter(a => a.match_date > today));
@@ -65,20 +62,9 @@
       lg2Today, lg2Coming,
       lg1Count: lg1Active.length,
       lg2Count: lg2Active.length,
-      terminated: sortTerminated(terminated),
+      past: sortTerminated(past),
     };
   });
-
-  // ---- Result ----
-  async function setResult(alert, status) {
-    const id = alert.id;
-    resultBusy[id] = true;
-    const ok = await updateAlertStatus(id, status);
-    resultBusy[id] = false;
-    if (ok) {
-      allAlerts = allAlerts.map(a => a.id === id ? { ...a, status } : a);
-    }
-  }
 
   // ---- Data loading ----
   async function loadAlerts() {
@@ -142,14 +128,6 @@
   // ---- UI helpers ----
   function confidenceClass(c) { return c === 'fort' ? 'alert-badge--fort' : 'alert-badge--moyen'; }
   function confidenceLabel(c) { return c === 'fort' ? 'Fort' : 'Moyen'; }
-
-  function statusBadge(a) {
-    if (a.status === 'validated') return { cls: 'alert-badge--validated', label: 'Valide' };
-    if (a.status === 'lost') return { cls: 'alert-badge--lost', label: 'Perdu' };
-    if (a.status === 'expired') return { cls: 'alert-badge--lost', label: 'Expiré' };
-    if (isInPlay(a)) return { cls: 'alert-badge--live', label: 'EN COURS' };
-    return null;
-  }
 </script>
 
 <div class="page-header">
@@ -242,23 +220,23 @@
     {/if}
 
     <!-- ============================================================
-         SECTION TERMINEES (collapsible)
+         SECTION PASSES (collapsible)
     ============================================================ -->
-    {#if sections.terminated.length > 0}
+    {#if sections.past.length > 0}
       <section class="mes-section">
         <button
           class="mes-section__collapsible"
-          onclick={() => (terminatedOpen = !terminatedOpen)}
-          aria-expanded={terminatedOpen}
+          onclick={() => (pastOpen = !pastOpen)}
+          aria-expanded={pastOpen}
         >
-          <span class="mes-section__chevron" class:mes-section__chevron--open={terminatedOpen}>›</span>
-          <span class="mes-section__title-text">Termines</span>
-          <span class="mes-section__badge mes-section__badge--terminated">{sections.terminated.length}</span>
+          <span class="mes-section__chevron" class:mes-section__chevron--open={pastOpen}>›</span>
+          <span class="mes-section__title-text">Passés</span>
+          <span class="mes-section__badge mes-section__badge--terminated">{sections.past.length}</span>
         </button>
 
-        {#if terminatedOpen}
+        {#if pastOpen}
           <div class="alerts-list" style="margin-top:10px;">
-            {#each sections.terminated as a (a.id)}
+            {#each sections.past as a (a.id)}
               {@render alertCard(a)}
             {/each}
           </div>
@@ -273,13 +251,8 @@
      SNIPPET: alert card
 ============================================================ -->
 {#snippet alertCard(a)}
-  {@const badge = statusBadge(a)}
-  {@const cardId = a.id}
   <div
     class="alert-card"
-    class:alert-card--validated={a.status === 'validated'}
-    class:alert-card--lost={a.status === 'lost'}
-    class:alert-card--live={a.status === 'pending' && isInPlay(a)}
     class:alert-card--expanded={expandedId === a.id}
   >
     <!-- Header CLIQUABLE pour expand -->
@@ -311,33 +284,9 @@
           <span class="strategy-badge strategy-badge--lg2">LG2</span>
         {/if}
         <span class="alert-badge {confidenceClass(a.confidence)}">{confidenceLabel(a.confidence)}</span>
-        {#if badge}
-          <span class="alert-badge {badge.cls}">{badge.label}</span>
-        {/if}
         <SelectAlertButton alert={a} onclick={e => e.stopPropagation()} />
       </div>
       <span class="alert-card__arrow">{expandedId === a.id ? '▼' : '▶'}</span>
-    </div>
-
-    <!-- Boutons résultat (toujours visibles) -->
-    <div class="result-row">
-      <button
-        class="btn btn--sm btn--result btn--result-win"
-        class:btn--result-active={a.status === 'validated'}
-        onclick={e => { e.stopPropagation(); setResult(a, a.status === 'validated' ? 'pending' : 'validated'); }}
-        disabled={resultBusy[cardId]}
-        title="Marquer comme gagné (cliquer à nouveau pour annuler)"
-      >✓ Gagné</button>
-      <button
-        class="btn btn--sm btn--result btn--result-loss"
-        class:btn--result-active={a.status === 'lost'}
-        onclick={e => { e.stopPropagation(); setResult(a, a.status === 'lost' ? 'pending' : 'lost'); }}
-        disabled={resultBusy[cardId]}
-        title="Marquer comme perdu (cliquer à nouveau pour annuler)"
-      >✗ Perdu</button>
-      {#if resultBusy[cardId]}
-        <span class="result-saving">Enregistrement…</span>
-      {/if}
     </div>
 
     <!-- EXPAND — identique à /alerts-lg1, + marqueur 80' si LG2 -->
@@ -576,18 +525,6 @@
   .alert-card:hover {
     border-color: var(--color-accent-blue);
   }
-  .alert-card--validated {
-    border-color: var(--color-accent-green) !important;
-    background: rgba(29, 158, 117, 0.04);
-  }
-  .alert-card--lost {
-    border-color: var(--color-danger) !important;
-    background: rgba(226, 75, 74, 0.04);
-  }
-  .alert-card--live {
-    border-color: var(--color-signal-moyen) !important;
-    background: rgba(239, 159, 39, 0.04);
-  }
   .alert-card--expanded {
     border-color: var(--color-accent-blue);
   }
@@ -677,49 +614,6 @@
   .strategy-badge--lg2 {
     background: rgba(127, 119, 221, 0.18);
     color: var(--color-badge-violet);
-  }
-
-  /* ---- Résultat manuel ---- */
-  .result-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px 10px;
-    border-top: 1px solid var(--color-border);
-  }
-
-  .btn--result {
-    border: 1px solid var(--color-border);
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--color-text-muted);
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
-  }
-
-  .btn--result-win:hover:not(:disabled) {
-    background: rgba(29, 158, 117, 0.15);
-    color: var(--color-accent-green);
-    border-color: rgba(29, 158, 117, 0.4);
-  }
-  .btn--result-win.btn--result-active {
-    background: rgba(29, 158, 117, 0.2);
-    color: var(--color-accent-green);
-    border-color: var(--color-accent-green);
-  }
-
-  .btn--result-loss:hover:not(:disabled) {
-    background: rgba(226, 75, 74, 0.15);
-    color: var(--color-danger);
-    border-color: rgba(226, 75, 74, 0.4);
-  }
-  .btn--result-loss.btn--result-active {
-    background: rgba(226, 75, 74, 0.2);
-    color: var(--color-danger);
-    border-color: var(--color-danger);
-  }
-
-  .result-saving {
-    font-size: 11px;
-    color: var(--color-text-muted);
   }
 
   /* ---- Expand ---- */
