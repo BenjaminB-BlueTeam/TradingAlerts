@@ -22,9 +22,9 @@ App **SvelteKit** de **trading sportif football**. Identifie les matchs avec for
 | Build | Vite 6 |
 | Déploiement | Netlify (adapter-netlify) + Netlify Functions |
 | Données | API FootyStats (`football-data-api.com`) via proxy Netlify sécurisé |
-| Persistance | Supabase (PostgreSQL) — alerts, trades, team_seasons, h2h_matches, seed_jobs, team_lg1_cache, teams, selected_alerts, alert_trades |
+| Persistance | Supabase (PostgreSQL) — alerts, trades, team_seasons, h2h_matches, seed_jobs, team_lg1_cache, teams, selected_alerts |
 | Charts | Chart.js 4.4 (tree-shaké, imports sélectifs) |
-| Tests | Vitest (331 tests) |
+| Tests | Vitest (311 tests) |
 
 ### Variables d'environnement
 
@@ -69,12 +69,11 @@ src/
   routes/
     +layout.svelte      ← layout global (Sidebar, Toast, init, guard auth)
     +layout.js          ← ssr: false, prerender: false
-    +page.svelte        ← Dashboard 12 KPIs en 4 sections (Supabase)
+    +page.svelte        ← Dashboard KPIs 3 sections : Santé infra, Santé crons, Alertes du jour (Supabase)
     login/+page.svelte        ← formulaire email/password Supabase Auth
     alerts-lg1/+page.svelte   ← Sélection LG1 — alertes LG1 + LG1_MANUAL depuis Supabase
     alerts-lg2/+page.svelte   ← Sélection LG2 — alertes LG2 + LG2_MANUAL depuis Supabase
-    mes-matchs/+page.svelte   ← Mes matchs sélectionnés + saisie positions (cote/mise) + résultat manuel
-    historique/+page.svelte   ← Historique alertes + stats performance + "Bet Analytix"
+    mes-matchs/+page.svelte   ← Mes matchs sélectionnés + expand H2H (dom/ext) + résultat manuel
     matches/+page.svelte      ← Matchs à venir (cards avec expand)
     leagues/+page.svelte      ← Ligues actives (toggle, stats)
     explore/+page.svelte      ← Explorer toutes les ligues (par pays, stats, classement)
@@ -86,7 +85,7 @@ src/
       cache.js          ← cache localStorage TTL par endpoint
       cache.test.js     ← tests unitaires cache (20 tests)
       functions.js      ← appels aux Netlify Functions (generate, check, seed, delete)
-      supabase.js       ← client Supabase + CRUD alert_trades + helpers auth
+      supabase.js       ← client Supabase + helpers auth + H2H queries + exclusion + alertes
       supabase.auth.test.js ← tests unitaires supabase auth helpers
       seedClient.js     ← client seed (orchestre seed ligue par ligue)
     components/
@@ -99,26 +98,10 @@ src/
       ManualSelectButton.svelte ← boutons +LG1/+LG2 sur /matches → createManualAlert + select
       ExcludeAlertModal.svelte ← modale exclusion manuelle (7 tags + note)
       charts.js             ← graphiques Chart.js (tree-shaké) + helpers line/stacked/horizontal
-      historique/
-        FiltersBar.svelte         ← bloc filtres multi-critères + toggle scope (Global/Mes positions)
-        ScopeToggle.svelte        ← toggle Global vs Mes positions
-        SectionGlobal.svelte      ← section stats globales (graphiques + tableau)
-        SectionMesPositions.svelte← section mes positions (alert_trades + P&L)
-        ChartEvolution.svelte     ← courbes taux dans le temps (hybride 1 ou 3 courbes)
-        ChartStackedStrategy.svelte ← barres empilées validés/perdus par stratégie
-        ChartTopTeams.svelte      ← top 10 équipes par taux
-        ChartTopLeagues.svelte    ← top 10 ligues par taux
-        MatchesTable.svelte       ← tableau dense triable + expand goal-bar
-        TradesVsGlobal.svelte     ← bloc "Mes trades vs Global" (collapsible)
-        WhatIfExclusions.svelte   ← bloc what-if exclusions avec Wilson CI
     stores/
       appStore.js       ← stores Svelte (config, leagues, prefs, persistence localStorage)
       selectionStore.js ← sélections LG1/LG2 (localStorage, Set de clés matchId:signalType)
       selectionStore.test.js ← tests unitaires selectionStore
-      tradeStore.js     ← CRUD trades (Supabase + localStorage)
-      tradeStore.test.js← tests unitaires tradeStore (14 tests)
-      tradeStats.js     ← calcul stats trades (fonction pure)
-      tradeStats.test.js← tests unitaires tradeStats
     core/
       lg1.js        ← algorithme LG1 streak v2 (client-side ESM, miroir de lg1.cjs)
       scoring.test.js   ← tests unitaires streak (44 tests)
@@ -182,7 +165,7 @@ scripts/
 | `team_lg1_cache` | LG1% 0-45 min par equipe par saison (PK: season_id+team_id) | ON | SELECT | — | ALL |
 | `teams` | 1098 équipes (team_id unique + colonne réelle `name`, pas `team_name`), autocomplete /matches | ON | SELECT | SELECT | ALL |
 | `selected_alerts` | Sélections manuelles LG1/LG2 par Benjamin | ON | SELECT, INSERT, DELETE | — | ALL |
-| `alert_trades` | Positions trading (cote + mise), plusieurs par match | ON | ALL | ALL | ALL |
+| `alert_trades` | [LEGACY — non utilisé frontend] Positions trading archivées | ON | ALL | ALL | ALL |
 
 ---
 
@@ -296,12 +279,11 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Headers sécurité** — `src/hooks.server.js` injecte CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP sur toutes les réponses SSR
 - **PWA installable** — `static/manifest.json` + `static/sw.js` (service worker cache offline) + icônes 192×512px
 - **Drapeaux pays** — `src/lib/utils/countryFlags.js` : mapping ~90 noms de pays FootyStats → ISO 3166-1 alpha-2 (subdivisions UK incluses). Helpers `flagUrl(country)`, `extractCountry(leagueName)` (extraction par préfixe), `leagueFlagUrl(leagueName)`. Drapeau SVG depuis flagcdn.com affiché sur `/leagues`, `/explore` (header pays), `/alerts`, `/alerts-lg2`, `/mes-matchs` (à côté du nom de ligue).
-- **Dashboard** (`/`) — 12 KPIs en 4 sections : "Santé infra" (API FootyStats, Ligues actives, Historique H2H) + "Santé crons" (Génération LG1 last run, Génération LG2 last run, Alertes > 48h) + "Alertes du jour" (LG1 Fort, LG2 Fort, Performance 7j) + "Mes performances" (Renta semaine, Renta mois, Matchs joués ce mois). "Matchs joués ce mois" = alertes validated|lost dans selected_alerts du mois courant. Layout centré max-width 960px.
+- **Dashboard** (`/`) — 9 KPIs en 3 sections : "Santé infra" (API FootyStats, Ligues actives, Historique H2H) + "Santé crons" (Génération LG1 last run, Vérification résultats, Seed quotidien, Calcul LG1%, Alertes > 48h) + "Alertes du jour" (LG1 Fort, LG2 Fort, Performance 7j). Layout centré max-width 960px.
 - **Selection LG1** (`/alerts-lg1`) — alertes LG1_A/B/A+B/C/D + LG1_MANUAL, tri fort→moyen→date, filtres jour (boutons) + ligue (dropdown) + confiance (Tout/Fort/Moyen). Badge "Manuel" (violet) pour algo_version='manual', bypass filtre confiance. Badges Fort/Moyen pour alertes algo. Expand détaillé, barres timing buts, Validé/Perdu/EN COURS, bouton Exclure (masqué pour manuel), SelectAlertButton.
 - **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B + LG2_MANUAL, tri fort→moyen→date, filtres jour + ligue + confiance. Badge "Manuel" pour algo_version='manual'. Expand par équipe, barres timing buts (marqueur 80'), pills Dom/Ext streak, bouton Exclure (masqué pour manuel), SelectAlertButton.
 - **Sélection manuelle depuis /matches** (2026-05-11) — boutons `+LG1` / `+LG2` sur chaque card de `/matches`. Clic → `createManualAlert()` (INSERT dans `alerts` avec `algo_version='manual'`, `signal_type='LG1_MANUAL'|'LG2_MANUAL'`, `confidence=null`, `status='pending'`) + `select()` → visible dans `/mes-matchs`. Idempotent (conflit unique `match_id+signal_type` géré). Validation manuelle uniquement (Gagné/Perdu) — `check-results.js` exclut `algo_version='manual'`.
-- **Mes matchs** (`/mes-matchs`) — alertes sélectionnées via selectionStore, sections Actif (A venir/Aujourd'hui) + Terminés (collapsible). Matchs passés (match_date < today) → Terminés automatiquement. Saisie inline positions (cote + mise) → `alert_trades`. Boutons résultat manuel Gagné/Perdu. Chips P&L réactifs. Section "Rattrapage — 7 derniers jours" (collapsible) : alertes validated/lost des 7J non sélectionnées → saisie cote/mise rétroactive, impact Historique immédiat.
-- **Historique** (`/historique`) — FiltersBar multi-critères + ScopeToggle (Global / Mes positions). Section Global : grille 2x2 Chart.js (évolution, stacked stratégie, top équipes, top ligues) + tableau dense triable (infinite scroll 50/batch, colonnes Date/Ligue🏳️/Match/Conf/Résultat) + blocs "Mes trades vs Global" et "What-if exclusions" (Wilson CI). Section Mes positions : table `alert_trades` + P&L réel. Spec : `docs/superpowers/specs/2026-04-23-historique-redesign-design.md`
+- **Mes matchs** (`/mes-matchs`) — alertes sélectionnées via selectionStore, sections Actif (A venir/Aujourd'hui) + Terminés (collapsible). Matchs passés (match_date < today) → Terminés automatiquement. Boutons résultat manuel Gagné/Perdu. Expand au clic → 2 colonnes Domicile/Extérieur avec barres timing buts H2H (idem /alerts-lg1, marqueur 80' pour LG2).
 - **Matchs a venir** (`/matches`) — navigation Flashscore J-1/J+29 (boutons ← date →), cache localStorage TTL 72h par date (`todays-matches-YYYY-MM-DD`). Filtre ligue + autocomplete équipe (Supabase `teams`). Panneau équipe : expand 2 colonnes Domicile/Extérieur (grid 1fr 1fr, `team-detail` + `team-matches` + `match-row` — structure identique à Sélection LG1). Cards matchs à venir expandables + goal bars H2H. Déduplication. Curseur minute interactif.
 - **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par LG1% 0-45 (depuis team_lg1_cache Supabase)
 - **Classements ligues** (`/explore`) — par pays, classements. Badges stat (1MT/AVG/BTTS/O2.5) supprimés.
@@ -313,7 +295,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Compteur API** — req restantes affiché dans la sidebar
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
 - **Supabase RLS durcie** (2026-05-07) — policies `authenticated` pour le frontend (plus `anon`), `service_role` pour les Netlify Functions. `anon` UPDATE sur `alerts` conservé pour résultat manuel /mes-matchs.
-- **Tests unitaires** — Vitest, 331 tests (lg1.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, cache 20, formatters 22, teamData 14, tradeStore 14, tradeStats 17, historyFilters 30, selectionFilters + selectionStore + supabase.auth)
+- **Tests unitaires** — Vitest, 311 tests (lg1.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, cache 20, formatters 22, teamData 14, selectionFilters + selectionStore + supabase.auth)
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`. Tooltip goal-dot opaque (#1e2330). bar-hover-min opaque.
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
 - **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5
@@ -338,8 +320,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 3. Vérification LG1 à la MT (pas à la volée — VAR)
 4. Terminologie : Validé / Perdu
 5. Pas de mode démo — données réelles uniquement
-6. **Cotes et P&L** : utilisés dans `/mes-matchs` (saisie inline cote + mise → `alert_trades`) et `/historique` (section "Mes positions"). Plusieurs positions possibles sur un même match (mises échelonnées à différentes cotes). **Aucune cote n'est utilisée par l'algo** (génération d'alertes, filtrage, validation).
-7. Pas de bouton "Analyse IA" — Benjamin fait sa propre analyse
+6. Pas de bouton "Analyse IA" — Benjamin fait sa propre analyse
 8. Clé anon sans fallback hardcodé
 9. ESM/CJS : lg1.js (frontend ESM) et lg1.cjs (backend CJS) dupliquent la logique streak — pas de fichier partagé (incompatibilité bundlers). Même règle pour lg2.js / lg2.cjs.
 10. LG2 = streak simple "match avec but >= 80'" (tout but compte), sans confirmation ni veto H2H — volontairement plus léger que LG1. `lg1_factors` jsonb réutilisé pour stocker les streaks LG2 (évite une migration).
@@ -360,7 +341,6 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Tests** : `npm test` (vitest) avant de pusher les changements sur la logique metier
 - **Utilitaires partages** : utiliser `$lib/utils/formatters.js` et `$lib/utils/teamData.js` au lieu de dupliquer
 - **Helpers serverless** : utiliser `netlify/functions/lib/api.js` pour `footyRequest`/`supabaseQuery`
-- **Type mismatch `match_id`** : `alerts.match_id` est `bigint` (retourné `number` par Supabase) tandis que `alert_trades.match_id` est `TEXT` (retourné `string`). Toujours normaliser via `String(...)` (ou template literal) des deux côtés avant comparaison ou jointure côté client. La comparaison `===` stricte échoue silencieusement et fait disparaître les trades.
 - **Schéma `teams` vs migration** : la migration `20260507140000_create_teams_table.sql` déclare `team_name` mais la table préexistait avec `(id, team_id, league_id, name, stats, updated_at)` — `CREATE TABLE IF NOT EXISTS` a été un no-op. **La vraie colonne pour le nom est `name`**, pas `team_name`. Toujours vérifier avec `information_schema.columns` (ou MCP Supabase) en cas de doute sur un schéma plutôt que faire confiance au fichier de migration.
 - **Colonnes `alerts` — rebrand fhg→lg1** : le rebrand 2026-05-08 a renommé les signal_types (FHG→LG1) et algo_version ('v2'→'lg1_v2') mais PAS les colonnes. Les colonnes `fhg_pct`, `fhg_confidence`, `fhg_factors` ont été renommées en `lg1_pct`, `lg1_confidence`, `lg1_factors` le 2026-05-11 (migration 20260511110000). Tout le code utilise les noms `lg1_*`. **Ne jamais référencer `fhg_pct/fhg_confidence/fhg_factors`**.
 - **Signal types `LG1_MANUAL` / `LG2_MANUAL`** : créés par `createManualAlert()` côté frontend (algo_version='manual'). Exclus de `check-results.js` (pas d'auto-validation). Inclus dans les pages `/alerts-lg1` et `/alerts-lg2` avec badge "Manuel". La contrainte `alerts_signal_type_check` les inclut depuis la migration 20260511110000.

@@ -14,97 +14,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 // ============================================================
-// MAPPING localStorage ↔ Supabase
-// ============================================================
-
-function toRow(trade) {
-  return {
-    date:        trade.date        || null,
-    match:       trade.match       || null,
-    ligue:       trade.ligue       || null,
-    lg1_pct:     trade.lg1Pct      || null,
-    strategie:   trade.strategie   || 'lg1',
-    badge_1mt:   !!trade.badge1MT,
-    h2h:         trade.h2h         || 'insuffisant',
-    timer:       trade.timer       || null,
-    cote:        trade.cote        || null,
-    etat_esprit: trade.etatEsprit  || null,
-    resultat:    trade.resultat    || 'non_joue',
-    notes:       trade.analyse     || null,
-    match_id:    trade.matchId     ? String(trade.matchId) : null,
-  }
-}
-
-function fromRow(row) {
-  return {
-    id:          row.id,
-    date:        row.date,
-    match:       row.match,
-    ligue:       row.ligue,
-    lg1Pct:      row.lg1_pct,
-    strategie:   row.strategie,
-    badge1MT:    row.badge_1mt,
-    h2h:         row.h2h,
-    timer:       row.timer,
-    cote:        row.cote,
-    etatEsprit:  row.etat_esprit,
-    resultat:    row.resultat,
-    analyse:     row.notes,
-    matchId:     row.match_id,
-  }
-}
-
-// ============================================================
-// CRUD TRADES
-// ============================================================
-
-export async function fetchTrades() {
-  const { data, error } = await supabase
-    .from('trades')
-    .select('*')
-    .order('created_at', { ascending: true })
-  if (error) { console.error('fetchTrades:', error); return null }
-  return data.map(fromRow)
-}
-
-export async function insertTrade(trade) {
-  const { data, error } = await supabase
-    .from('trades')
-    .insert(toRow(trade))
-    .select()
-    .single()
-  if (error) { console.error('insertTrade:', error); return null }
-  return fromRow(data)
-}
-
-export async function updateTradeInDB(id, updates) {
-  const row = {}
-  if (updates.resultat    !== undefined) row.resultat    = updates.resultat
-  if (updates.cote        !== undefined) row.cote        = updates.cote
-  if (updates.analyse     !== undefined) row.notes       = updates.analyse
-  if (updates.etatEsprit  !== undefined) row.etat_esprit = updates.etatEsprit
-
-  const { error } = await supabase
-    .from('trades')
-    .update(row)
-    .eq('id', id)
-  if (error) console.error('updateTradeInDB:', error)
-}
-
-export async function deleteTradeFromDB(id) {
-  const { error } = await supabase
-    .from('trades')
-    .delete()
-    .eq('id', id)
-  if (error) console.error('deleteTradeFromDB:', error)
-}
-
-// ============================================================
-// MIGRATION localStorage → Supabase (premier lancement)
-// ============================================================
-
-// ============================================================
-// H2H QUERIES (pour Alertes et DC)
+// H2H QUERIES
 // ============================================================
 
 /**
@@ -159,17 +69,17 @@ export async function getH2HForAnalysis(teamAId, teamBId) {
 export async function testSupabaseConnection() {
   try {
     const { count, error } = await supabase
-      .from('trades')
+      .from('alerts')
       .select('*', { count: 'exact', head: true })
     if (error) return { success: false, error: error.message }
-    return { success: true, message: `Connexion OK — ${count} trade(s)` }
+    return { success: true, message: `Connexion OK — ${count} alerte(s)` }
   } catch (e) {
     return { success: false, error: e.message }
   }
 }
 
 export async function getTableCounts() {
-  const tables = ['trades', 'team_seasons', 'h2h_matches', 'seed_jobs']
+  const tables = ['alerts', 'h2h_matches', 'seed_jobs', 'team_lg1_cache', 'teams', 'selected_alerts']
   const counts = {}
   for (const table of tables) {
     try {
@@ -183,28 +93,6 @@ export async function getTableCounts() {
     }
   }
   return counts
-}
-
-// ============================================================
-// MIGRATION localStorage → Supabase (premier lancement)
-// ============================================================
-
-export async function migrateLocalTrades(localTrades) {
-  if (!localTrades || localTrades.length === 0) return
-
-  const { count, error } = await supabase
-    .from('trades')
-    .select('*', { count: 'exact', head: true })
-
-  if (error || count > 0) return
-
-  const rows = localTrades.map(toRow)
-  const { error: insertError } = await supabase.from('trades').insert(rows)
-  if (insertError) {
-    console.error('migrateLocalTrades:', insertError)
-  } else {
-    console.log(`Migration : ${rows.length} trade(s) migrés vers Supabase`)
-  }
 }
 
 // ============================================================
@@ -370,26 +258,3 @@ export async function getCurrentUser() {
   return data.user;
 }
 
-// ============================================================
-// ALERT TRADES (positions de trading par alerte)
-// ============================================================
-
-export async function fetchAlertTrades() {
-  const { data, error } = await supabase.from('alert_trades').select('*').order('created_at');
-  if (error) { console.error('fetchAlertTrades:', error); return []; }
-  return data;
-}
-
-export async function insertAlertTrade({ match_id, signal_type, cote, mise }) {
-  const { data, error } = await supabase
-    .from('alert_trades')
-    .insert({ match_id, signal_type, cote: +cote, mise: mise ? +mise : null })
-    .select().single();
-  if (error) { console.error('insertAlertTrade:', error); return null; }
-  return data;
-}
-
-export async function deleteAlertTrade(id) {
-  const { error } = await supabase.from('alert_trades').delete().eq('id', id);
-  if (error) console.error('deleteAlertTrade:', error);
-}

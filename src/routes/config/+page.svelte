@@ -1,7 +1,5 @@
 <script>
-  import { config, saveConfig, trades } from '$lib/stores/appStore.js';
-  import { updateTrade, deleteTrade } from '$lib/stores/tradeStore.js';
-  import { calcStatsTradesGlobal } from '$lib/stores/tradeStats.js';
+  import { config, saveConfig } from '$lib/stores/appStore.js';
 
   const profilLabels = {
     debutant:      { name: 'Debutant',       desc: '5-10e, cote ~1.50' },
@@ -34,26 +32,7 @@
     }
   }
 
-  function handleTradeResult(id, value) {
-    updateTrade(id, { resultat: value });
-    if (typeof window !== 'undefined' && window.showToast) {
-      window.showToast('Resultat mis a jour', 'success');
-    }
-  }
-
-  function handleDeleteTrade(id) {
-    if (confirm('Supprimer ce trade ?')) {
-      deleteTrade(id);
-      if (typeof window !== 'undefined' && window.showToast) {
-        window.showToast('Trade supprime', 'info');
-      }
-    }
-  }
-
   let cfg = $derived($config);
-  let tradesJoues = $derived($trades.filter(t => t.resultat !== 'non_joue'));
-  let stats = $derived(calcStatsTradesGlobal());
-  let recentTrades = $derived($trades.slice().reverse().slice(0, 20));
 </script>
 
 <h1 class="page-title">Alertes & Configuration</h1>
@@ -292,111 +271,3 @@
   </div>
 </div>
 
-<!-- HISTORIQUE ALERTES -->
-<div class="settings-block">
-  <div class="settings-block__title">📋 Historique des alertes</div>
-
-  {#if tradesJoues.length >= 20 && stats}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
-      <div class="stat-card">
-        <div class="stat-card__label">Avec badge 1MT 50%+</div>
-        <div class="stat-card__value" class:green={stats.taux1MT >= 60} class:orange={stats.taux1MT < 60}>
-          {stats.taux1MT ?? '—'}%
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">Sans badge 1MT</div>
-        <div class="stat-card__value">{stats.tauxSans1MT ?? '—'}%</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">H2H vert</div>
-        <div class="stat-card__value green">{stats.tauxH2HVert ?? '—'}%</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">H2H orange</div>
-        <div class="stat-card__value orange">{stats.tauxH2HOrange ?? '—'}%</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">H2H insuffisant</div>
-        <div class="stat-card__value">{stats.tauxH2HGris ?? '—'}%</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__label">Taux global</div>
-        <div class="stat-card__value" class:green={stats.tauxGlobal >= 50} class:orange={stats.tauxGlobal < 50}>
-          {stats.tauxGlobal}%
-        </div>
-      </div>
-    </div>
-  {:else}
-    <div class="info-box mb-16" style="font-size:12px;">
-      ℹ Les stats croisees apparaitront apres 20+ trades enregistres
-      (actuellement {tradesJoues.length} trade{tradesJoues.length > 1 ? 's' : ''}).
-    </div>
-  {/if}
-
-  {#if $trades.length === 0}
-    <div class="empty-state" style="padding:24px;">
-      <div class="empty-state__icon">📋</div>
-      <div class="empty-state__title">Aucun trade enregistre</div>
-      <div class="empty-state__desc">Utilisez la fiche rapide sur une carte match pour noter vos trades.</div>
-    </div>
-  {:else}
-    <div class="table-wrapper">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Match</th>
-            <th>Signal</th>
-            <th>1MT</th>
-            <th>H2H</th>
-            <th>Resultat</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each recentTrades as t (t.id)}
-            <tr>
-              <td>{t.date || '—'}</td>
-              <td style="font-size:12px;">{t.match || '—'}</td>
-              <td>{t.lg1Pct ? t.lg1Pct + '%' : '—'}</td>
-              <td>
-                {#if t.badge1MT}
-                  <span class="badge badge--1mt">★</span>
-                {:else}
-                  —
-                {/if}
-              </td>
-              <td>
-                {#if t.h2h === 'favorable'}
-                  <span class="badge badge--h2h-vert">✓</span>
-                {:else if t.h2h === 'defavorable'}
-                  <span class="badge badge--h2h-orange">⚠</span>
-                {:else}
-                  <span class="badge badge--h2h-gris">?</span>
-                {/if}
-              </td>
-              <td>
-                <select class="form-input" style="padding:3px 6px;font-size:11px;width:100px;"
-                  value={t.resultat || 'non_joue'}
-                  onchange={e => handleTradeResult(t.id, e.target.value)}>
-                  <option value="non_joue">Non joue</option>
-                  <option value="gagne">Gagne ✓</option>
-                  <option value="perdu">Perdu ✗</option>
-                </select>
-              </td>
-              <td>
-                <button class="btn btn--ghost btn--sm" onclick={() => handleDeleteTrade(t.id)}>🗑</button>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-    {#if $trades.length > 20}
-      <p style="font-size:12px;color:var(--color-text-muted);margin-top:8px;">
-        Affichage des 20 derniers trades. Voir l'historique complet dans Parametres.
-      </p>
-    {/if}
-  {/if}
-</div>

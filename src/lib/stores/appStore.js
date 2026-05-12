@@ -7,7 +7,6 @@ import { writable } from 'svelte/store';
 
 const STORAGE_KEYS = {
   CONFIG:        'lg1_config',
-  TRADES:        'lg1_trades',
   LEAGUES:       'lg1_leagues',
   PREFERENCES:   'lg1_prefs',
 };
@@ -45,7 +44,6 @@ export const apiConnected    = writable(false);
 export const leagues         = writable(getDefaultLeagues());
 export const config          = writable({ ...defaultConfig });
 export const prefs           = writable({ ...defaultPrefs });
-export const trades          = writable([]);
 export const pauseSession    = writable(false);
 export const alertesActives  = writable([]);
 export const apiRequestsRemaining = writable(null); // Requêtes API restantes (sur 1800/h)
@@ -57,7 +55,6 @@ export const apiRequestsRemaining = writable(null); // Requêtes API restantes (
 function migrateLegacyKeysOnce() {
   const map = [
     ['fhg_config',  'lg1_config'],
-    ['fhg_trades',  'lg1_trades'],
     ['fhg_leagues', 'lg1_leagues'],
     ['fhg_prefs',   'lg1_prefs'],
   ];
@@ -74,19 +71,16 @@ export function loadFromStorage() {
   try {
     migrateLegacyKeysOnce();
     const savedConfig  = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONFIG)      || 'null');
-    const savedTrades  = JSON.parse(localStorage.getItem(STORAGE_KEYS.TRADES)      || '[]');
     const savedLeagues = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAGUES)     || 'null');
     const savedPrefs   = JSON.parse(localStorage.getItem(STORAGE_KEYS.PREFERENCES) || 'null');
 
     config.set(savedConfig  ? { ...defaultConfig, ...savedConfig }  : { ...defaultConfig });
-    trades.set(Array.isArray(savedTrades) ? savedTrades : []);
     leagues.set(savedLeagues || getDefaultLeagues());
     prefs.set(savedPrefs ? { ...defaultPrefs, ...savedPrefs } : { ...defaultPrefs });
     return true;
   } catch (e) {
     console.warn('Store: erreur chargement localStorage', e);
     config.set({ ...defaultConfig });
-    trades.set([]);
     leagues.set(getDefaultLeagues());
     prefs.set({ ...defaultPrefs });
     return false;

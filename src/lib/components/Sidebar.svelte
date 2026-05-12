@@ -19,7 +19,6 @@
     { href: '/alerts-lg1',        icon: '⚡', label: 'Sélection LG1'      },
     { href: '/alerts-lg2',    icon: '⏱️', label: 'Sélection LG2'      },
     { href: '/mes-matchs',    icon: '⭐', label: 'Mes matchs'         },
-    { href: '/historique',    icon: '📈', label: 'Historique'         },
     { href: '/matches',       icon: '⚽', label: 'Matchs à venir'     },
     { href: '/explore',       icon: '🌍', label: 'Classements ligues' },
   ];

@@ -224,7 +224,7 @@ function destroyChart(canvas) {
 }
 
 // ============================================================
-// Helpers génériques pour /historique (refonte dashboard)
+// Helpers génériques pour les graphiques
 // ============================================================
 
 const TOOLTIP_STYLE = {

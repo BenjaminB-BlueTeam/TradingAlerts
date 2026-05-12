@@ -6,7 +6,6 @@
   import Sidebar from '$lib/components/Sidebar.svelte';
   import Toast from '$lib/components/Toast.svelte';
   import { loadFromStorage } from '$lib/stores/appStore.js';
-  import { loadTradesFromSupabase } from '$lib/stores/tradeStore.js';
   import { loadSelections } from '$lib/stores/selectionStore.js';
   import { initApp } from '$lib/data.js';
   import { cacheEvict } from '$lib/api/cache.js';
@@ -40,7 +39,6 @@
     // Test API + chargement données en parallèle
     const [apiStatus] = await Promise.all([
       initApp(),
-      loadTradesFromSupabase(),
       loadSelections(),
     ]);
 
