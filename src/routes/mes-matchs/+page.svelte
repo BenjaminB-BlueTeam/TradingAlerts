@@ -290,6 +290,7 @@
      SNIPPET: alert card
 ============================================================ -->
 {#snippet alertCard(a)}
+  {@const inPlay = !!a.kickoff_unix && a.kickoff_unix <= now && a.kickoff_unix > now - IN_PLAY_WINDOW}
   <div
     class="alert-card"
     class:alert-card--expanded={expandedId === a.match_id}
@@ -305,7 +306,10 @@
     >
       <div class="alert-card__time">
         <div class="alert-card__day">{formatDateDMY(a.match_date)}</div>
-        <div class="alert-card__hour">{formatTime(a.kickoff_unix)}</div>
+        <div class="alert-card__hour">
+          {#if inPlay}<span class="inplay-dot inplay-dot--sm"></span>{/if}
+          {formatTime(a.kickoff_unix)}
+        </div>
       </div>
       <div class="alert-card__match">
         <div class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</div>
@@ -562,6 +566,13 @@
     background: #ef4444;
     flex-shrink: 0;
     animation: pulse-dot 1.4s ease-in-out infinite;
+  }
+  .inplay-dot--sm {
+    width: 6px;
+    height: 6px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 4px;
   }
   @keyframes pulse-dot {
     0%, 100% { opacity: 1; transform: scale(1); }
