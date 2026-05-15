@@ -12,6 +12,8 @@
   let error = $state('');
   let pastOpen = $state(false);
   let expandedId = $state(null);
+  let filterType = $state('all');       // 'all' | 'lg1' | 'lg2'
+  let filterConfidence = $state('all'); // 'all' | 'fort' | 'moyen'
   let teamMatchesCache = $state({});
   let hoverBar = $state(null); // { key, pct, min }
 
@@ -25,6 +27,13 @@
   );
 
   let today = $derived(getDateStr(0));
+
+  let filteredAlerts = $derived(visibleAlerts.filter(a => {
+    if (filterType === 'lg1' && !isLG1(a.signal_type)) return false;
+    if (filterType === 'lg2' && !isLG2(a.signal_type)) return false;
+    if (filterConfidence !== 'all' && a.confidence !== filterConfidence) return false;
+    return true;
+  }));
 
   function sortByKickoff(list) {
     return [...list].sort((a, b) => (a.kickoff_unix || 0) - (b.kickoff_unix || 0));
@@ -61,8 +70,8 @@
 
   // ---- Derived sections ----
   let sections = $derived.by(() => {
-    const active = visibleAlerts.filter(a => a.match_date >= today);
-    const past = visibleAlerts.filter(a => a.match_date < today);
+    const active = filteredAlerts.filter(a => a.match_date >= today);
+    const past = filteredAlerts.filter(a => a.match_date < today);
 
     const todayAll = groupByMatch(sortByKickoff(active.filter(a => a.match_date === today)));
     const comingAll = groupByMatch(sortByDateKickoff(active.filter(a => a.match_date > today)));
@@ -165,6 +174,24 @@
   </div>
 
 {:else}
+  <div class="mm-filters">
+    <div class="mm-filter-group">
+      <button class="mm-filter-btn" class:active={filterType === 'all'} onclick={() => filterType = 'all'}>Tout</button>
+      <button class="mm-filter-btn mm-filter-btn--lg1" class:active={filterType === 'lg1'} onclick={() => filterType = 'lg1'}>LG1</button>
+      <button class="mm-filter-btn mm-filter-btn--lg2" class:active={filterType === 'lg2'} onclick={() => filterType = 'lg2'}>LG2</button>
+    </div>
+    <div class="mm-filter-group">
+      <button class="mm-filter-btn" class:active={filterConfidence === 'all'} onclick={() => filterConfidence = 'all'}>Tout</button>
+      <button class="mm-filter-btn mm-filter-btn--fort" class:active={filterConfidence === 'fort'} onclick={() => filterConfidence = 'fort'}>Fort</button>
+      <button class="mm-filter-btn mm-filter-btn--moyen" class:active={filterConfidence === 'moyen'} onclick={() => filterConfidence = 'moyen'}>Moyen</button>
+    </div>
+  </div>
+
+  {#if filteredAlerts.length === 0}
+    <div class="empty-state" style="padding:32px;">
+      <div class="empty-state__title">Aucun match pour ces filtres</div>
+    </div>
+  {:else}
   <div class="mes-matchs-sections">
 
     <!-- ============================================================
@@ -227,6 +254,7 @@
     {/if}
 
   </div>
+  {/if}
 {/if}
 
 <!-- ============================================================
@@ -396,6 +424,33 @@
   .empty-state__desc a {
     color: var(--color-accent-blue);
   }
+
+  /* ---- Filters ---- */
+  .mm-filters {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .mm-filter-group {
+    display: flex;
+    gap: 4px;
+  }
+  .mm-filter-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mm-filter-btn.active { background: var(--color-accent-blue); border-color: var(--color-accent-blue); color: white; }
+  .mm-filter-btn--lg1.active { background: rgba(29,158,117,0.8); border-color: var(--color-accent-green); }
+  .mm-filter-btn--lg2.active { background: rgba(127,119,221,0.8); border-color: var(--color-badge-violet); }
+  .mm-filter-btn--fort.active { background: rgba(251,191,36,0.8); border-color: #f59e0b; }
+  .mm-filter-btn--moyen.active { background: rgba(107,114,128,0.6); border-color: #6b7280; }
 
   /* ---- Sections ---- */
   .mes-matchs-sections {
