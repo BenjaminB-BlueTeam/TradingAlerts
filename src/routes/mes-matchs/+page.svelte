@@ -26,14 +26,13 @@
 
   let today = $derived(getDateStr(0));
 
-  const CONF_ORDER = { fort: 0, moyen: 1 };
+  function sortByKickoff(list) {
+    return [...list].sort((a, b) => (a.kickoff_unix || 0) - (b.kickoff_unix || 0));
+  }
 
-  function sortActive(list) {
+  function sortByDateKickoff(list) {
     return [...list].sort((a, b) => {
       if (a.match_date !== b.match_date) return a.match_date < b.match_date ? -1 : 1;
-      const ca = CONF_ORDER[a.confidence] ?? 99;
-      const cb = CONF_ORDER[b.confidence] ?? 99;
-      if (ca !== cb) return ca - cb;
       return (a.kickoff_unix || 0) - (b.kickoff_unix || 0);
     });
   }
@@ -47,21 +46,15 @@
 
   // ---- Derived sections ----
   let sections = $derived.by(() => {
-    const lg1Active = visibleAlerts.filter(a => isLG1(a.signal_type) && a.match_date >= today);
-    const lg2Active = visibleAlerts.filter(a => isLG2(a.signal_type) && a.match_date >= today);
+    const active = visibleAlerts.filter(a => a.match_date >= today);
     const past = visibleAlerts.filter(a => a.match_date < today);
 
-    const lg1Today = sortActive(lg1Active.filter(a => a.match_date === today));
-    const lg1Coming = sortActive(lg1Active.filter(a => a.match_date > today));
-
-    const lg2Today = sortActive(lg2Active.filter(a => a.match_date === today));
-    const lg2Coming = sortActive(lg2Active.filter(a => a.match_date > today));
+    const todayAll = sortByKickoff(active.filter(a => a.match_date === today));
+    const comingAll = sortByDateKickoff(active.filter(a => a.match_date > today));
 
     return {
-      lg1Today, lg1Coming,
-      lg2Today, lg2Coming,
-      lg1Count: lg1Active.length,
-      lg2Count: lg2Active.length,
+      todayAll,
+      comingAll,
       past: sortTerminated(past),
     };
   });
@@ -160,62 +153,36 @@
   <div class="mes-matchs-sections">
 
     <!-- ============================================================
-         SECTION LG1
+         AUJOURD'HUI
     ============================================================ -->
-    {#if sections.lg1Count > 0}
+    {#if sections.todayAll.length > 0}
       <section class="mes-section">
         <h2 class="mes-section__title">
-          <span class="mes-section__badge mes-section__badge--lg1">{sections.lg1Count}</span>
-          LG1
+          <span class="mes-section__badge mes-section__badge--today">{sections.todayAll.length}</span>
+          Aujourd'hui
         </h2>
-
-        {#if sections.lg1Today.length > 0}
-          <div class="subsection-label">Aujourd'hui</div>
-          <div class="alerts-list">
-            {#each sections.lg1Today as a (a.id)}
-              {@render alertCard(a)}
-            {/each}
-          </div>
-        {/if}
-
-        {#if sections.lg1Coming.length > 0}
-          <div class="subsection-label" class:subsection-label--mt={sections.lg1Today.length > 0}>A venir</div>
-          <div class="alerts-list">
-            {#each sections.lg1Coming as a (a.id)}
-              {@render alertCard(a)}
-            {/each}
-          </div>
-        {/if}
+        <div class="alerts-list">
+          {#each sections.todayAll as a (a.id)}
+            {@render alertCard(a)}
+          {/each}
+        </div>
       </section>
     {/if}
 
     <!-- ============================================================
-         SECTION LG2
+         A VENIR
     ============================================================ -->
-    {#if sections.lg2Count > 0}
+    {#if sections.comingAll.length > 0}
       <section class="mes-section">
         <h2 class="mes-section__title">
-          <span class="mes-section__badge mes-section__badge--lg2">{sections.lg2Count}</span>
-          LG2
+          <span class="mes-section__badge mes-section__badge--coming">{sections.comingAll.length}</span>
+          À venir
         </h2>
-
-        {#if sections.lg2Today.length > 0}
-          <div class="subsection-label">Aujourd'hui</div>
-          <div class="alerts-list">
-            {#each sections.lg2Today as a (a.id)}
-              {@render alertCard(a)}
-            {/each}
-          </div>
-        {/if}
-
-        {#if sections.lg2Coming.length > 0}
-          <div class="subsection-label" class:subsection-label--mt={sections.lg2Today.length > 0}>A venir</div>
-          <div class="alerts-list">
-            {#each sections.lg2Coming as a (a.id)}
-              {@render alertCard(a)}
-            {/each}
-          </div>
-        {/if}
+        <div class="alerts-list">
+          {#each sections.comingAll as a (a.id)}
+            {@render alertCard(a)}
+          {/each}
+        </div>
       </section>
     {/if}
 
@@ -480,32 +447,19 @@
     padding: 0 6px;
   }
 
-  .mes-section__badge--lg1 {
+  .mes-section__badge--today {
     background: rgba(29, 158, 117, 0.18);
     color: var(--color-accent-green);
   }
 
-  .mes-section__badge--lg2 {
-    background: rgba(127, 119, 221, 0.18);
-    color: var(--color-badge-violet);
+  .mes-section__badge--coming {
+    background: rgba(59, 130, 246, 0.18);
+    color: var(--color-accent-blue);
   }
 
   .mes-section__badge--terminated {
     background: rgba(160, 163, 177, 0.12);
     color: var(--color-text-muted);
-  }
-
-  /* Sub-section labels (Aujourd'hui / A venir) */
-  .subsection-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    color: var(--color-text-muted);
-    margin-bottom: 6px;
-  }
-  .subsection-label--mt {
-    margin-top: 14px;
   }
 
   .alerts-list {
