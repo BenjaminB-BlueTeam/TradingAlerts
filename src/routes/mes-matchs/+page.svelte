@@ -44,18 +44,33 @@
     });
   }
 
+  function groupByMatch(alerts) {
+    const map = new Map();
+    for (const a of alerts) {
+      if (!map.has(a.match_id)) {
+        map.set(a.match_id, { ...a, signals: [{ id: a.id, signal_type: a.signal_type, confidence: a.confidence }] });
+      } else {
+        map.get(a.match_id).signals.push({ id: a.id, signal_type: a.signal_type, confidence: a.confidence });
+      }
+    }
+    for (const item of map.values()) {
+      item.signals.sort((a, b) => (isLG1(a.signal_type) ? 0 : 1) - (isLG1(b.signal_type) ? 0 : 1));
+    }
+    return [...map.values()];
+  }
+
   // ---- Derived sections ----
   let sections = $derived.by(() => {
     const active = visibleAlerts.filter(a => a.match_date >= today);
     const past = visibleAlerts.filter(a => a.match_date < today);
 
-    const todayAll = sortByKickoff(active.filter(a => a.match_date === today));
-    const comingAll = sortByDateKickoff(active.filter(a => a.match_date > today));
+    const todayAll = groupByMatch(sortByKickoff(active.filter(a => a.match_date === today)));
+    const comingAll = groupByMatch(sortByDateKickoff(active.filter(a => a.match_date > today)));
 
     return {
       todayAll,
       comingAll,
-      past: sortTerminated(past),
+      past: groupByMatch(sortTerminated(past)),
     };
   });
 
@@ -97,12 +112,12 @@
   }
 
   async function toggleExpand(alert) {
-    if (expandedId === alert.id) { expandedId = null; return; }
+    if (expandedId === alert.match_id) { expandedId = null; return; }
     await Promise.all([
       loadTeamMatches(alert.home_team_id, 'home'),
       loadTeamMatches(alert.away_team_id, 'away'),
     ]);
-    expandedId = alert.id;
+    expandedId = alert.match_id;
   }
 
   function getTeamMatches(teamId, context) {
@@ -162,7 +177,7 @@
           Aujourd'hui
         </h2>
         <div class="alerts-list">
-          {#each sections.todayAll as a (a.id)}
+          {#each sections.todayAll as a (a.match_id)}
             {@render alertCard(a)}
           {/each}
         </div>
@@ -179,7 +194,7 @@
           À venir
         </h2>
         <div class="alerts-list">
-          {#each sections.comingAll as a (a.id)}
+          {#each sections.comingAll as a (a.match_id)}
             {@render alertCard(a)}
           {/each}
         </div>
@@ -203,7 +218,7 @@
 
         {#if pastOpen}
           <div class="alerts-list" style="margin-top:10px;">
-            {#each sections.past as a (a.id)}
+            {#each sections.past as a (a.match_id)}
               {@render alertCard(a)}
             {/each}
           </div>
@@ -220,7 +235,7 @@
 {#snippet alertCard(a)}
   <div
     class="alert-card"
-    class:alert-card--expanded={expandedId === a.id}
+    class:alert-card--expanded={expandedId === a.match_id}
   >
     <!-- Header CLIQUABLE pour expand -->
     <div
@@ -229,7 +244,7 @@
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }}
       role="button"
       tabindex="0"
-      aria-expanded={expandedId === a.id}
+      aria-expanded={expandedId === a.match_id}
     >
       <div class="alert-card__time">
         <div class="alert-card__day">{formatDateDMY(a.match_date)}</div>
@@ -245,19 +260,21 @@
         </div>
       </div>
       <div class="alert-card__badges">
-        {#if isLG1(a.signal_type)}
-          <span class="strategy-badge strategy-badge--lg1">LG1</span>
-        {:else if isLG2(a.signal_type)}
-          <span class="strategy-badge strategy-badge--lg2">LG2</span>
-        {/if}
-        <span class="alert-badge {confidenceClass(a.confidence)}">{confidenceLabel(a.confidence)}</span>
-        <SelectAlertButton alert={a} onclick={e => e.stopPropagation()} />
+        {#each a.signals as sig}
+          {#if isLG1(sig.signal_type)}
+            <span class="strategy-badge strategy-badge--lg1">LG1</span>
+          {:else if isLG2(sig.signal_type)}
+            <span class="strategy-badge strategy-badge--lg2">LG2</span>
+          {/if}
+          <span class="alert-badge {confidenceClass(sig.confidence)}">{confidenceLabel(sig.confidence)}</span>
+          <SelectAlertButton alert={{ ...a, id: sig.id, signal_type: sig.signal_type, confidence: sig.confidence }} onclick={e => e.stopPropagation()} />
+        {/each}
       </div>
-      <span class="alert-card__arrow">{expandedId === a.id ? '▼' : '▶'}</span>
+      <span class="alert-card__arrow">{expandedId === a.match_id ? '▼' : '▶'}</span>
     </div>
 
     <!-- EXPAND — identique à /alerts-lg1, + marqueur 80' si LG2 -->
-    {#if expandedId === a.id}
+    {#if expandedId === a.match_id}
       {@const homeMatches = getTeamMatches(a.home_team_id, 'home')}
       {@const awayMatches = getTeamMatches(a.away_team_id, 'away')}
       <div class="alert-expand">
@@ -272,7 +289,7 @@
             <div class="team-matches">
               {#each homeMatches as m, i}
                 {@const bar = goalBar(m, 'home')}
-                {@const barKey = `${a.id}_home`}
+                {@const barKey = `${a.match_id}_home`}
                 <div class="match-row">
                   <span class="match-row__date">{formatDate(m.match_date)}</span>
                   <span class="match-row__home match-row__bold">{m.home_team_name}</span>
@@ -284,7 +301,7 @@
                       onmouseleave={onBarLeave}
                     >
                       <span class="goal-bar__marker" style="left:50%">HT</span>
-                      {#if isLG2(a.signal_type)}
+                      {#if a.signals.some(s => isLG2(s.signal_type))}
                         <span class="goal-bar__marker" style="left:89%">80'</span>
                       {/if}
                       <span class="goal-bar__marker" style="left:98%">FT</span>
@@ -317,7 +334,7 @@
             <div class="team-matches">
               {#each awayMatches as m, i}
                 {@const bar = goalBar(m, 'away')}
-                {@const barKey = `${a.id}_away`}
+                {@const barKey = `${a.match_id}_away`}
                 <div class="match-row">
                   <span class="match-row__date">{formatDate(m.match_date)}</span>
                   <span class="match-row__home">{m.home_team_name}</span>
@@ -329,7 +346,7 @@
                       onmouseleave={onBarLeave}
                     >
                       <span class="goal-bar__marker" style="left:50%">HT</span>
-                      {#if isLG2(a.signal_type)}
+                      {#if a.signals.some(s => isLG2(s.signal_type))}
                         <span class="goal-bar__marker" style="left:89%">80'</span>
                       {/if}
                       <span class="goal-bar__marker" style="left:98%">FT</span>
