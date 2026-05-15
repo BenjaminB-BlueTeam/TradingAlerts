@@ -300,6 +300,7 @@
                       onmousemove={(e) => onBarMove(e, barKey)}
                       onmouseleave={onBarLeave}
                     >
+                      <span class="goal-bar__marker" style="left:33%">30'</span>
                       <span class="goal-bar__marker" style="left:50%">HT</span>
                       {#if a.signals.some(s => isLG2(s.signal_type))}
                         <span class="goal-bar__marker" style="left:89%">80'</span>
@@ -345,6 +346,7 @@
                       onmousemove={(e) => onBarMove(e, barKey)}
                       onmouseleave={onBarLeave}
                     >
+                      <span class="goal-bar__marker" style="left:33%">30'</span>
                       <span class="goal-bar__marker" style="left:50%">HT</span>
                       {#if a.signals.some(s => isLG2(s.signal_type))}
                         <span class="goal-bar__marker" style="left:89%">80'</span>

@@ -386,6 +386,7 @@
                           onmousemove={(e) => onBarMove(e, barKey)}
                           onmouseleave={onBarLeave}
                         >
+                          <span class="goal-bar__marker" style="left:33%">30'</span>
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#if hoverBar?.key === barKey}
@@ -427,6 +428,7 @@
                           onmousemove={(e) => onBarMove(e, barKey)}
                           onmouseleave={onBarLeave}
                         >
+                          <span class="goal-bar__marker" style="left:33%">30'</span>
                           <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#if hoverBar?.key === barKey}

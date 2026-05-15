@@ -302,6 +302,7 @@
               <span class="match-row__away">{m.away_team_name}</span>
               <div class="match-row__bar">
                 <div class="goal-bar" onmousemove={(e) => onBarMove(e, barKey)} onmouseleave={onBarLeave}>
+                  <span class="goal-bar__marker" style="left:33%">30'</span>
                   <span class="goal-bar__marker" style="left:50%">HT</span>
                   <span class="goal-bar__marker" style="left:98%">FT</span>
                   {#if hoverBar?.key === barKey}
@@ -338,6 +339,7 @@
               <span class="match-row__away match-row__bold">{m.away_team_name}</span>
               <div class="match-row__bar">
                 <div class="goal-bar" onmousemove={(e) => onBarMove(e, barKey)} onmouseleave={onBarLeave}>
+                  <span class="goal-bar__marker" style="left:33%">30'</span>
                   <span class="goal-bar__marker" style="left:50%">HT</span>
                   <span class="goal-bar__marker" style="left:98%">FT</span>
                   {#if hoverBar?.key === barKey}
@@ -410,7 +412,8 @@
                           onmousemove={(e) => onBarMove(e, barKey)}
                           onmouseleave={onBarLeave}
                         >
-                          <span class="goal-bar__marker" style="left:50%">HT</span>
+                          <span class="goal-bar__marker" style="left:33%">30'</span>
+                  <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#if hoverBar?.key === barKey}
                             <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
@@ -452,7 +455,8 @@
                           onmousemove={(e) => onBarMove(e, barKey)}
                           onmouseleave={onBarLeave}
                         >
-                          <span class="goal-bar__marker" style="left:50%">HT</span>
+                          <span class="goal-bar__marker" style="left:33%">30'</span>
+                  <span class="goal-bar__marker" style="left:50%">HT</span>
                           <span class="goal-bar__marker" style="left:98%">FT</span>
                           {#if hoverBar?.key === barKey}
                             <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
