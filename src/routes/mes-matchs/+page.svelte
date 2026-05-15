@@ -14,6 +14,7 @@
   let expandedId = $state(null);
   let filterType = $state('all');       // 'all' | 'lg1' | 'lg2'
   let filterConfidence = $state('all'); // 'all' | 'fort' | 'moyen'
+  let now = $state(Math.floor(Date.now() / 1000));
   let teamMatchesCache = $state({});
   let hoverBar = $state(null); // { key, pct, min }
 
@@ -68,19 +69,29 @@
     return [...map.values()];
   }
 
+  // Ticker 60s pour "En cours"
+  $effect(() => {
+    const t = setInterval(() => { now = Math.floor(Date.now() / 1000); }, 60000);
+    return () => clearInterval(t);
+  });
+
+  const IN_PLAY_WINDOW = 7200; // 2h en secondes
+
   // ---- Derived sections ----
   let sections = $derived.by(() => {
-    const active = filteredAlerts.filter(a => a.match_date >= today);
-    const past = filteredAlerts.filter(a => a.match_date < today);
-
-    const todayAll = groupByMatch(sortByKickoff(active.filter(a => a.match_date === today)));
-    const comingAll = groupByMatch(sortByDateKickoff(active.filter(a => a.match_date > today)));
-
-    return {
-      todayAll,
-      comingAll,
-      past: groupByMatch(sortTerminated(past)),
-    };
+    const inPlayAll = groupByMatch(sortByKickoff(
+      filteredAlerts.filter(a => a.kickoff_unix && a.kickoff_unix <= now && a.kickoff_unix > now - IN_PLAY_WINDOW)
+    ));
+    const todayAll = groupByMatch(sortByKickoff(
+      filteredAlerts.filter(a => a.match_date === today && (!a.kickoff_unix || a.kickoff_unix > now))
+    ));
+    const comingAll = groupByMatch(sortByDateKickoff(
+      filteredAlerts.filter(a => a.match_date > today)
+    ));
+    const past = groupByMatch(sortTerminated(
+      filteredAlerts.filter(a => a.match_date < today || (a.kickoff_unix && a.kickoff_unix <= now - IN_PLAY_WINDOW))
+    ));
+    return { inPlayAll, todayAll, comingAll, past };
   });
 
   // ---- Data loading ----
@@ -193,6 +204,24 @@
     </div>
   {:else}
   <div class="mes-matchs-sections">
+
+    <!-- ============================================================
+         EN COURS
+    ============================================================ -->
+    {#if sections.inPlayAll.length > 0}
+      <section class="mes-section">
+        <h2 class="mes-section__title">
+          <span class="inplay-dot"></span>
+          <span class="mes-section__badge mes-section__badge--inplay">{sections.inPlayAll.length}</span>
+          En cours
+        </h2>
+        <div class="alerts-list">
+          {#each sections.inPlayAll as a (a.match_id)}
+            {@render alertCard(a)}
+          {/each}
+        </div>
+      </section>
+    {/if}
 
     <!-- ============================================================
          AUJOURD'HUI
@@ -519,6 +548,24 @@
     font-size: 11px;
     font-weight: 700;
     padding: 0 6px;
+  }
+
+  .mes-section__badge--inplay {
+    background: rgba(239, 68, 68, 0.18);
+    color: #ef4444;
+  }
+
+  .inplay-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    flex-shrink: 0;
+    animation: pulse-dot 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.75); }
   }
 
   .mes-section__badge--today {
