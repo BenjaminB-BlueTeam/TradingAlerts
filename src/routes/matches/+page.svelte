@@ -4,9 +4,14 @@
   import { getTodaysMatches, getAllLeagues } from '$lib/api/footystats.js';
   import { supabase } from '$lib/api/supabase.js';
   import { getDateStr, formatDate, formatTime, addDays, dateLabelNav } from '$lib/utils/formatters.js';
-  import { cacheGet, cacheSet } from '$lib/api/cache.js';
+  import { cacheGet, cacheSet, cacheInvalidate } from '$lib/api/cache.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
   import ManualSelectButton from '$lib/components/ManualSelectButton.svelte';
+  import { selectedKeys } from '$lib/stores/selectionStore.js';
+
+  function isSelectedFor(matchId, type) {
+    return [...$selectedKeys].some(k => k.startsWith(`${matchId}:${type}`));
+  }
 
   let currentDate = $state(getDateStr(0));
   const DATE_MIN = getDateStr(-1);
@@ -22,6 +27,7 @@
   let filtreLigue = $state('toutes');
   let allMatches = $state([]);
   let loading = $state(false);
+  let loadingRefresh = $state(false);
   let error = $state('');
   let leagueNames = $state({}); // competition_id -> nom de la ligue
   let expandedId = $state(null);
@@ -82,6 +88,13 @@
       error = 'Impossible de charger les matchs.';
     }
     loading = false;
+  }
+
+  async function refreshMatches(dateStr) {
+    loadingRefresh = true;
+    cacheInvalidate(`todays-matches-${dateStr}`);
+    await loadMatches(dateStr);
+    loadingRefresh = false;
   }
 
   // Recharger quand la date change
@@ -239,6 +252,13 @@
     <button class="date-nav__label" onclick={goToday} title="Revenir à aujourd'hui">{dateLabelNav(currentDate)}</button>
     <button class="date-nav__arrow" onclick={goForward} disabled={!canGoForward()} aria-label="Jour suivant">›</button>
   </div>
+  <button
+    class="date-nav__refresh"
+    onclick={() => refreshMatches(currentDate)}
+    disabled={loadingRefresh || loading}
+    title="Actualiser ce jour (ignore le cache)"
+    aria-label="Actualiser"
+  >{loadingRefresh ? '⏳' : '↺'}</button>
 
   <select class="filter-select filter-select--league" bind:value={filtreLigue}>
     <option value="toutes">Toutes les ligues</option>
@@ -378,6 +398,12 @@
           <div class="match-card__match">
             <div class="match-card__teams">
               {m.home_name || '?'} - {m.away_name || '?'}
+              {#if isSelectedFor(m.id, 'LG1')}
+                <span class="sel-badge sel-badge--lg1">LG1</span>
+              {/if}
+              {#if isSelectedFor(m.id, 'LG2')}
+                <span class="sel-badge sel-badge--lg2">LG2</span>
+              {/if}
             </div>
             <div class="match-card__league">{getLeagueName(m)}</div>
           </div>
@@ -530,6 +556,25 @@
   }
   .date-nav__label:hover { background: rgba(255,255,255,0.04); }
 
+  .date-nav__refresh {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 6px 10px;
+    flex-shrink: 0;
+    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  }
+  .date-nav__refresh:hover:not(:disabled) {
+    background: rgba(55, 138, 221, 0.12);
+    color: var(--color-accent-blue);
+    border-color: var(--color-accent-blue);
+  }
+  .date-nav__refresh:disabled { opacity: 0.4; cursor: default; }
+
   .matches-list { display: flex; flex-direction: column; gap: 6px; }
 
   .match-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
@@ -546,6 +591,10 @@
   .match-card__teams { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
   .match-card__league { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
   .match-card__arrow { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
+
+  .sel-badge { display: inline-flex; align-items: center; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 700; line-height: 1.4; flex-shrink: 0; }
+  .sel-badge--lg1 { background: rgba(29,158,117,0.18); color: var(--color-accent-green); border: 1px solid rgba(29,158,117,0.35); }
+  .sel-badge--lg2 { background: rgba(127,119,221,0.18); color: var(--color-badge-violet); border: 1px solid rgba(127,119,221,0.35); }
 
   /* Expand */
   .match-expand { border-top: 1px solid var(--color-border); padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

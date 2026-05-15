@@ -15,12 +15,12 @@
   }
 
   const navItems = [
-    { href: '/',              icon: '📊', label: 'Dashboard'          },
-    { href: '/alerts-lg1',        icon: '⚡', label: 'Sélection LG1'      },
-    { href: '/alerts-lg2',    icon: '⏱️', label: 'Sélection LG2'      },
     { href: '/mes-matchs',    icon: '⭐', label: 'Mes matchs'         },
+    { href: '/alerts-lg1',    icon: '⚡', label: 'Sélection LG1'      },
+    { href: '/alerts-lg2',    icon: '⏱️', label: 'Sélection LG2'      },
     { href: '/matches',       icon: '⚽', label: 'Matchs à venir'     },
     { href: '/explore',       icon: '🌍', label: 'Classements ligues' },
+    { href: '/dashboard',     icon: '📊', label: 'Dashboard'          },
   ];
 
   const adminItems = [
@@ -33,7 +33,7 @@
 
   function navigate(href) {
     goto(href);
-    savePrefs({ currentPage: href === '/' ? 'dashboard' : href.slice(1) });
+    savePrefs({ currentPage: href.slice(1) || 'home' });
     sidebarOpen = false;
   }
 
@@ -44,7 +44,6 @@
   }
 
   function isActive(href) {
-    if (href === '/') return $page.url.pathname === '/';
     const p = $page.url.pathname;
     return p === href || p.startsWith(href + '/');
   }
