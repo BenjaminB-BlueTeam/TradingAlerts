@@ -75,32 +75,40 @@ function formatTime(kickoffUnix) {
   });
 }
 
+function buildMatchLines(alerts) {
+  return alerts.map((a, i) => {
+    const prefix = i === alerts.length - 1 ? '└' : '├';
+    const time = formatTime(a.kickoff_unix);
+    const match = `${a.home_team_name} – ${a.away_team_name}`;
+    const signal = `<code>${a.signal_type}</code>`;
+    return `${prefix} ${time}  ${match}  ${signal}`;
+  });
+}
+
 function buildSummaryText(today, alerts) {
   const dateLabel = formatFrenchDate(today);
 
   if (alerts.length === 0) {
-    return `☀️ Résumé alertes Fort — ${dateLabel}\n\nAucune alerte Fort aujourd'hui.`;
+    return `☀️ <b>Alertes Fort — ${dateLabel}</b>\n\nAucune alerte Fort aujourd'hui.`;
   }
 
   const lg1Alerts = alerts.filter(a => a.signal_type.startsWith('LG1'));
   const lg2Alerts = alerts.filter(a => a.signal_type.startsWith('LG2'));
 
-  const lines = [`☀️ Résumé alertes Fort — ${dateLabel}`];
+  const lines = [`☀️ <b>Alertes Fort — ${dateLabel}</b>`];
 
   if (lg1Alerts.length > 0) {
+    const label = lg1Alerts.length === 1 ? 'match' : 'matchs';
     lines.push('');
-    lines.push(`LG1 Fort (${lg1Alerts.length}) :`);
-    for (const a of lg1Alerts) {
-      lines.push(`• ${formatTime(a.kickoff_unix)} ${a.home_team_name} vs ${a.away_team_name} (${a.signal_type})`);
-    }
+    lines.push(`⚡ <b>LG1</b>  ·  ${lg1Alerts.length} ${label}`);
+    lines.push(...buildMatchLines(lg1Alerts));
   }
 
   if (lg2Alerts.length > 0) {
+    const label = lg2Alerts.length === 1 ? 'match' : 'matchs';
     lines.push('');
-    lines.push(`LG2 Fort (${lg2Alerts.length}) :`);
-    for (const a of lg2Alerts) {
-      lines.push(`• ${formatTime(a.kickoff_unix)} ${a.home_team_name} vs ${a.away_team_name} (${a.signal_type})`);
-    }
+    lines.push(`⏱ <b>LG2</b>  ·  ${lg2Alerts.length} ${label}`);
+    lines.push(...buildMatchLines(lg2Alerts));
   }
 
   return lines.join('\n');
