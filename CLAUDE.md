@@ -36,6 +36,8 @@ App **SvelteKit** de **trading sportif football**. Identifie les matchs avec for
 | `SUPABASE_SERVICE_ROLE_KEY` | Serveur | Clé service_role (bypass RLS) |
 | `FOOTYSTATS_API_KEY` | Serveur | Clé API FootyStats (jamais côté browser) |
 | `SEED_AUTH_TOKEN` | Serveur | Token auth pour seed-data.js |
+| `TELEGRAM_BOT_TOKEN` | Serveur | Token bot Telegram (notifications) |
+| `TELEGRAM_CHAT_ID` | Serveur | Chat ID Telegram cible (notifications) |
 
 ---
 
@@ -51,11 +53,14 @@ netlify/functions/
   seed-data.js          ← seed Supabase (team_seasons, h2h_matches) (auth token requis)
   daily-seed.js         ← cron quotidien 6h UTC — seed matchs d'hier dans h2h_matches
   compute-team-lg1.js  ← cron quotidien 7h UTC — calcule LG1% 0-45 min (goal_events) par (season_id, team_id), upsert team_lg1_cache
+  notify-pre-kickoff.js ← cron */5 min — notification Telegram 10min avant coup d'envoi (selected_alerts)
+  notify-daily-summary.js ← cron 9h UTC — résumé quotidien Telegram des alertes Fort (idempotent)
   lib/
     api.js              ← helpers partagés (footyRequest, supabaseQuery)
     auth.cjs            ← requireAuth (FUNCTIONS_AUTH_TOKEN + bypass scheduled)
     auth.test.js        ← tests unitaires auth
     cors.cjs            ← corsHeaders (CORS restreint + dev localhost)
+    telegram.cjs        ← sendMessage(text) — POST Telegram Bot API (HTML parse_mode, 5s timeout)
     lg1.cjs        ← logique LG1 streak v2 (server-side CJS)
     analysis.test.js    ← tests unitaires streak (162 tests)
     lg2.cjs             ← logique LG2 streak (but >= 80') — server-side CJS
@@ -70,9 +75,10 @@ src/
     +layout.js          ← ssr: false, prerender: false
     +page.svelte        ← Dashboard KPIs 3 sections : Santé infra, Santé crons, Alertes du jour (Supabase)
     login/+page.svelte        ← formulaire email/password Supabase Auth
-    alerts-lg1/+page.svelte   ← Sélection LG1 — alertes LG1 + LG1_MANUAL depuis Supabase
-    alerts-lg2/+page.svelte   ← Sélection LG2 — alertes LG2 + LG2_MANUAL depuis Supabase
-    mes-matchs/+page.svelte   ← Mes matchs sélectionnés + expand H2H (dom/ext)
+    alerts-lg1/+page.svelte   ← redirect → /alerts/lg1 (legacy)
+    alerts-lg2/+page.svelte   ← redirect → /alerts/lg2 (legacy)
+    alerts/[type=lgType]/+page.svelte ← Alertes unifiées LG1/LG2 (onglets), matcher src/params/lgType.js
+    mes-matchs/+page.svelte   ← Mes matchs sélectionnés + expand H2H + notes inline par signal
     matches/+page.svelte      ← Matchs à venir (cards avec expand)
     leagues/+page.svelte      ← Ligues actives (toggle, stats)
     explore/+page.svelte      ← Explorer toutes les ligues (par pays, stats, classement)
@@ -121,6 +127,8 @@ src/
       selectionFilters.test.js ← tests unitaires selectionFilters
       countryFlags.js     ← mapping nom de pays FootyStats → ISO 3166-1 alpha-2 + helpers flagUrl/extractCountry/leagueFlagUrl (drapeaux flagcdn.com)
     data.js             ← initApp (test connexion API)
+  params/
+    lgType.js           ← matcher SvelteKit : autorise 'lg1' | 'lg2' comme param [type]
 static/
   manifest.json         ← PWA manifest (nom, icônes, display standalone)
   sw.js                 ← Service Worker (cache statique, offline shell)
@@ -163,7 +171,8 @@ scripts/
 | `seed_jobs` | Suivi progression seed | ON | SELECT, INSERT, UPDATE | — | ALL |
 | `team_lg1_cache` | LG1% 0-45 min par equipe par saison (PK: season_id+team_id) | ON | SELECT | — | ALL |
 | `teams` | 1098 équipes (team_id unique + colonne réelle `name`, pas `team_name`), autocomplete /matches | ON | SELECT | SELECT | ALL |
-| `selected_alerts` | Sélections manuelles LG1/LG2 par Benjamin | ON | SELECT, INSERT, DELETE | — | ALL |
+| `selected_alerts` | Sélections manuelles LG1/LG2 par Benjamin. Colonne `user_note text` pour notes inline par signal | ON | SELECT, INSERT, DELETE, UPDATE | — | ALL |
+| `notifications_sent` | Idempotence notifications Telegram. PK composée (kind, ref_key UNIQUE). Kinds : fort_alert, pre_kickoff, daily_summary | ON | — | — | ALL |
 | `alert_trades` | [LEGACY — non utilisé frontend] Positions trading archivées | ON | ALL | ALL | ALL |
 
 ---
@@ -277,10 +286,9 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **PWA installable** — `static/manifest.json` + `static/sw.js` (service worker cache offline) + icônes 192×512px
 - **Drapeaux pays** — `src/lib/utils/countryFlags.js` : mapping ~90 noms de pays FootyStats → ISO 3166-1 alpha-2 (subdivisions UK incluses). Helpers `flagUrl(country)`, `extractCountry(leagueName)` (extraction par préfixe), `leagueFlagUrl(leagueName)`. Drapeau SVG depuis flagcdn.com affiché sur `/leagues`, `/explore` (header pays), `/alerts`, `/alerts-lg2`, `/mes-matchs` (à côté du nom de ligue).
 - **Dashboard** (`/`) — 7 KPIs en 3 sections : "Santé infra" (API FootyStats, Ligues actives, Historique H2H) + "Santé crons" (Génération alertes, Seed quotidien, Calcul LG1%) + "Alertes du jour" (LG1 Fort, LG2 Fort). Layout centré max-width 960px.
-- **Selection LG1** (`/alerts-lg1`) — alertes LG1_A/B/A+B/C/D + LG1_MANUAL, tri fort→moyen→date, filtres jour (boutons) + ligue (dropdown) + confiance (Tout/Fort/Moyen). Badge "Manuel" (violet) pour algo_version='manual', bypass filtre confiance. Badges Fort/Moyen pour alertes algo. Expand détaillé, barres timing buts, bouton Exclure (masqué pour manuel), SelectAlertButton.
-- **Selection LG2** (`/alerts-lg2`) — alertes LG2_A/B/A+B + LG2_MANUAL, tri fort→moyen→date, filtres jour + ligue + confiance. Badge "Manuel" pour algo_version='manual'. Expand par équipe, barres timing buts (marqueur 80'), pills Dom/Ext streak, bouton Exclure (masqué pour manuel), SelectAlertButton.
+- **Alertes unifiées** (`/alerts/lg1` et `/alerts/lg2`, 2026-05-16) — route dynamique `[type=lgType]` avec onglets ⚡ LG1 / ⏱️ LG2. Même page, logique pilotée par `type`. `$effect` sur `type` → reset filtres + rechargement. Sidebar : un seul item "Alertes" → `/alerts/lg1`. Anciens `/alerts-lg1` et `/alerts-lg2` redirigent via `onMount`. Dashboard : liens mis à jour.
 - **Sélection manuelle depuis /matches** (2026-05-11) — boutons `+LG1` / `+LG2` sur chaque card de `/matches`. Clic → `createManualAlert()` (INSERT dans `alerts` avec `algo_version='manual'`, `signal_type='LG1_MANUAL'|'LG2_MANUAL'`, `confidence=null`, `status='pending'`) + `select()` → visible dans `/mes-matchs`. Idempotent (conflit unique `match_id+signal_type` géré).
-- **Mes matchs** (`/mes-matchs`) — alertes sélectionnées via selectionStore, sections Actif (A venir/Aujourd'hui) + Passés (collapsible). Matchs passés (match_date < today) → Passés automatiquement. Expand au clic → 2 colonnes Domicile/Extérieur avec barres timing buts H2H (idem /alerts-lg1, marqueur 80' pour LG2).
+- **Mes matchs** (`/mes-matchs`) — alertes sélectionnées via selectionStore, sections Actif (A venir/Aujourd'hui) + Passés (collapsible). Expand au clic → 2 colonnes H2H. Notes inline par signal (2026-05-16) : icône crayon → input inline → save onblur/Enter, annulation Escape. `saveNote()` UPDATE `selected_alerts.user_note` + mise à jour optimiste locale via `noteMap` (`Map<"matchId:signalType", string|null>`).
 - **Matchs a venir** (`/matches`) — navigation Flashscore J-1/J+29 (boutons ← date →), cache localStorage TTL 72h par date (`todays-matches-YYYY-MM-DD`). Filtre ligue + autocomplete équipe (Supabase `teams`). Panneau équipe : expand 2 colonnes Domicile/Extérieur (grid 1fr 1fr, `team-detail` + `team-matches` + `match-row` — structure identique à Sélection LG1). Cards matchs à venir expandables + goal bars H2H. Déduplication. Curseur minute interactif.
 - **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par LG1% 0-45 (depuis team_lg1_cache Supabase)
 - **Classements ligues** (`/explore`) — par pays, classements. Badges stat (1MT/AVG/BTTS/O2.5) supprimés.
@@ -292,7 +300,8 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Compteur API** — req restantes affiché dans la sidebar
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
 - **Supabase RLS durcie** (2026-05-07) — policies `authenticated` pour le frontend (plus `anon`), `service_role` pour les Netlify Functions.
-- **Tests unitaires** — Vitest, 311 tests (lg1.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, cache 20, formatters 22, teamData 14, selectionFilters + selectionStore + supabase.auth)
+- **Notifications Telegram** (2026-05-16) — `lib/telegram.cjs` : helper `sendMessage(text)`. Trois crons : (1) `notify-pre-kickoff.js` (*/5 min) — match sélectionné dans 10min ; (2) `notify-daily-summary.js` (9h UTC) — résumé alertes Fort du jour ; (3) `generate-alerts.js` — notifie nouvelles alertes Fort à la génération. Idempotence via table `notifications_sent` (UNIQUE kind+ref_key). Filtre `user_excluded=neq.true` (match null ET false). Env vars : `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`.
+- **Tests unitaires** — Vitest, 1244 tests (lg1.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, cache 20, formatters 22, teamData 14, selectionFilters + selectionStore + supabase.auth + autres)
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`. Tooltip goal-dot opaque (#1e2330). bar-hover-min opaque.
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
 - **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5
@@ -306,7 +315,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - [ ] Attendre ~20 alertes LG2 terminées → calibrer les seuils LG2 (STREAK_MOYEN / STREAK_FORT) avec Wilson CI
 - [ ] Chantier D : Page "Résultats" + filtres équipe/ligue
 - [ ] Chantier E : Blacklist équipes
-- [ ] Chantier A : Notifications externes
+- [x] Chantier A : Notifications Telegram — DONE 2026-05-16 (fort_alert, pre_kickoff, daily_summary)
 
 ---
 
