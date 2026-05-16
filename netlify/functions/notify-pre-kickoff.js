@@ -127,7 +127,7 @@ exports.handler = async (event) => {
         const confidenceLabel = alert.confidence === 'fort' ? 'Fort' : 'Moyen';
         const category = alert.signal_type.startsWith('LG2') ? 'LG2' : 'LG1';
         const text = [
-          '⚽ <b>Match dans 10 min !</b>',
+          '⚽ <b>Match imminent !</b>',
           '',
           `<b>${alert.home_team_name} – ${alert.away_team_name}</b>`,
           `⏰ ${timeStr}  ·  ${alert.league_name || 'Ligue inconnue'}`,
