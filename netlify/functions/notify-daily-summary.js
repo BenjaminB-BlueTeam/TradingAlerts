@@ -80,8 +80,7 @@ function buildMatchLines(alerts) {
     const prefix = i === alerts.length - 1 ? '└' : '├';
     const time = formatTime(a.kickoff_unix);
     const match = `${a.home_team_name} – ${a.away_team_name}`;
-    const signal = `<code>${a.signal_type}</code>`;
-    return `${prefix} ${time}  ${match}  ${signal}`;
+    return `${prefix} ${time}  ${match}`;
   });
 }
 

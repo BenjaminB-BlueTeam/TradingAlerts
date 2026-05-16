@@ -106,9 +106,13 @@ async function notifyFortAlerts(alerts) {
       const timeStr = alert.kickoff_unix
         ? new Date(alert.kickoff_unix * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
         : '??:??';
-      const isLG2 = alert.signal_type.startsWith('LG2');
-      const label = isLG2 ? 'Alerte LG2 Fort' : 'Alerte LG1 Fort';
-      const text = `🔔 ${label} — <b>${alert.home_team_name} vs ${alert.away_team_name}</b>\n⏰ ${timeStr} | ${alert.league_name || 'Ligue inconnue'}\nSignal : ${alert.signal_type}`;
+      const category = alert.signal_type.startsWith('LG2') ? 'LG2' : 'LG1';
+      const text = [
+        `🔔 <b>Alerte ${category} Fort</b>`,
+        '',
+        `<b>${alert.home_team_name} – ${alert.away_team_name}</b>`,
+        `⏰ ${timeStr}  ·  ${alert.league_name || 'Ligue inconnue'}`,
+      ].join('\n');
 
       const sent = await sendMessage(text);
       if (!sent) continue;

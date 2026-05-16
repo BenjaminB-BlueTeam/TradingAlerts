@@ -125,11 +125,13 @@ exports.handler = async (event) => {
           timeZone: 'Europe/Paris',
         });
         const confidenceLabel = alert.confidence === 'fort' ? 'Fort' : 'Moyen';
+        const category = alert.signal_type.startsWith('LG2') ? 'LG2' : 'LG1';
         const text = [
-          '⚽ Match dans 10 min !',
-          `<b>${alert.home_team_name} vs ${alert.away_team_name}</b>`,
-          `⏰ ${timeStr} | ${alert.league_name || 'Ligue inconnue'}`,
-          `🎯 ${alert.signal_type} — ${confidenceLabel}`,
+          '⚽ <b>Match dans 10 min !</b>',
+          '',
+          `<b>${alert.home_team_name} – ${alert.away_team_name}</b>`,
+          `⏰ ${timeStr}  ·  ${alert.league_name || 'Ligue inconnue'}`,
+          `🎯 ${category}  ·  ${confidenceLabel}`,
         ].join('\n');
 
         const sent = await sendMessage(text);
