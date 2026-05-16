@@ -76,8 +76,8 @@ exports.handler = async (event) => {
 
   try {
     const nowUnix = Math.floor(Date.now() / 1000);
-    const windowStart = nowUnix + 9 * 60;  // +9 min
-    const windowEnd = nowUnix + 11 * 60;   // +11 min
+    const windowStart = nowUnix;            // maintenant
+    const windowEnd = nowUnix + 5 * 60;    // +5 min
 
     // 1. Récupérer les sélections actives
     const selectedRows = await supabaseFetch('selected_alerts', 'select=match_id,signal_type');
