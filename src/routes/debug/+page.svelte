@@ -216,15 +216,7 @@
       fn: 'generate-alerts.js',
       schedule: '0 */12 * * *',
       human: 'Tous les jours à 0h et 12h UTC',
-      desc: 'Génère les alertes LG1/LG2 pour J, J+1, J+2 depuis h2h_matches + team_seasons.',
-    },
-    {
-      id: 'check-results',
-      label: 'Vérification résultats',
-      fn: 'check-results.js',
-      schedule: '0 * * * *',
-      human: 'Toutes les heures (minute 0)',
-      desc: 'Clôture les alertes pending dont le match est terminé (validated / lost / expired).',
+      desc: 'Génère les alertes LG1/LG2 pour J, J+1, J+2. Notifie Telegram pour les alertes Fort.',
     },
     {
       id: 'daily-seed',
@@ -242,6 +234,22 @@
       human: 'Tous les jours à 7h UTC',
       desc: 'Calcule le % de matchs avec un but 0-45 min (stoppage compris) par équipe, upsert dans team_lg1_cache.',
     },
+    {
+      id: 'notify-daily-summary',
+      label: 'Résumé Telegram quotidien',
+      fn: 'notify-daily-summary.js',
+      schedule: '0 6 * * *',
+      human: 'Tous les jours à 6h UTC (8h Paris)',
+      desc: 'Envoie un résumé Telegram des alertes Fort du jour. Idempotent (1 message/jour).',
+    },
+    {
+      id: 'notify-pre-kickoff',
+      label: 'Telegram pré-match',
+      fn: 'notify-pre-kickoff.js',
+      schedule: '*/5 * * * *',
+      human: 'Toutes les 5 minutes',
+      desc: 'Envoie une notification Telegram 10 min avant le coup d\'envoi de chaque match sélectionné.',
+    },
   ];
 
   function nextRun(schedule) {
@@ -251,8 +259,11 @@
     const utcM = now.getUTCMinutes();
     const nowMins = utcH * 60 + utcM;
 
+    if (schedule === '*/5 * * * *') {
+      const minsUntil = 5 - (utcM % 5);
+      return `dans ${minsUntil} min`;
+    }
     if (schedule === '0 * * * *') {
-      // Toutes les heures
       const minsUntil = 60 - utcM;
       return `dans ${minsUntil} min`;
     }
@@ -274,6 +285,37 @@
       return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
     }
     return '—';
+  }
+
+  // --- Telegram notify triggers ---
+  let dailySummaryRunning = $state(false);
+  let dailySummaryResult = $state(null);
+
+  async function handleDailySummary() {
+    dailySummaryRunning = true;
+    dailySummaryResult = null;
+    try {
+      const res = await callFunction('/.netlify/functions/notify-daily-summary');
+      dailySummaryResult = await res.json();
+    } catch (e) {
+      dailySummaryResult = { error: e.message };
+    }
+    dailySummaryRunning = false;
+  }
+
+  let preKickoffRunning = $state(false);
+  let preKickoffResult = $state(null);
+
+  async function handlePreKickoff() {
+    preKickoffRunning = true;
+    preKickoffResult = null;
+    try {
+      const res = await callFunction('/.netlify/functions/notify-pre-kickoff');
+      preKickoffResult = await res.json();
+    } catch (e) {
+      preKickoffResult = { error: e.message };
+    }
+    preKickoffRunning = false;
   }
 
   // --- LG1 Cache trigger ---
@@ -395,6 +437,35 @@
             {#if lg1CacheResult}
               <span class="debug-result" class:success={!lg1CacheResult.error} class:error={lg1CacheResult.error} style="margin-left:8px;display:inline-block;padding:3px 8px;font-size:11px;">
                 {lg1CacheResult.error ? '✗ ' + lg1CacheResult.error : `✓ ${lg1CacheResult.teams ?? '?'} équipes, ${lg1CacheResult.matches ?? '?'} matchs`}
+              </span>
+            {/if}
+          </div>
+        {/if}
+        {#if cron.id === 'notify-daily-summary'}
+          <div style="margin-top:8px;">
+            <button class="btn btn--secondary btn--sm" onclick={handleDailySummary} disabled={dailySummaryRunning}>
+              {dailySummaryRunning ? '⏳ Envoi...' : '▶ Tester maintenant'}
+            </button>
+            {#if dailySummaryResult}
+              <span class="debug-result" class:success={!dailySummaryResult.error && !dailySummaryResult.errors?.length} class:error={dailySummaryResult.error || dailySummaryResult.errors?.length} style="margin-left:8px;display:inline-block;padding:3px 8px;font-size:11px;">
+                {#if dailySummaryResult.error}✗ {dailySummaryResult.error}
+                {:else if dailySummaryResult.skipped}⏭ Déjà envoyé aujourd'hui
+                {:else if dailySummaryResult.errors?.length}✗ {dailySummaryResult.errors[0]}
+                {:else}✓ {dailySummaryResult.alerts_count ?? 0} alertes Fort envoyées{/if}
+              </span>
+            {/if}
+          </div>
+        {/if}
+        {#if cron.id === 'notify-pre-kickoff'}
+          <div style="margin-top:8px;">
+            <button class="btn btn--secondary btn--sm" onclick={handlePreKickoff} disabled={preKickoffRunning}>
+              {preKickoffRunning ? '⏳ Vérif...' : '▶ Tester maintenant'}
+            </button>
+            {#if preKickoffResult}
+              <span class="debug-result" class:success={!preKickoffResult.error && !preKickoffResult.errors?.length} class:error={preKickoffResult.error || preKickoffResult.errors?.length} style="margin-left:8px;display:inline-block;padding:3px 8px;font-size:11px;">
+                {#if preKickoffResult.error}✗ {preKickoffResult.error}
+                {:else if preKickoffResult.errors?.length}✗ {preKickoffResult.errors[0]}
+                {:else}✓ {preKickoffResult.notified ?? 0} notifiés, {preKickoffResult.skipped ?? 0} déjà vus{/if}
               </span>
             {/if}
           </div>

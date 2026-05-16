@@ -18,4 +18,4 @@
   schedule = "*/5 * * * *"
 
 [functions."notify-daily-summary"]
-  schedule = "0 9 * * *"
+  schedule = "0 6 * * *"
