@@ -8,6 +8,7 @@
 
   // ---- State ----
   let allAlerts = $state([]);
+  let noteMap = $state(new Map()); // Map<"matchId:signalType", string|null>
   let loading = $state(true);
   let error = $state('');
   let pastOpen = $state(false);
@@ -17,6 +18,9 @@
   let now = $state(Math.floor(Date.now() / 1000));
   let teamMatchesCache = $state({});
   let hoverBar = $state(null); // { key, pct, min }
+  // Note editing state
+  let editingNote = $state(null); // { matchId, signalType } | null
+  let editNoteValue = $state('');
 
   // ---- Helpers: signal classification ----
   function isLG1(signal_type) { return signal_type?.startsWith('LG1'); }
@@ -54,13 +58,19 @@
     });
   }
 
-  function groupByMatch(alerts) {
+  function groupByMatch(alerts, nm) {
     const map = new Map();
     for (const a of alerts) {
+      const sig = {
+        id: a.id,
+        signal_type: a.signal_type,
+        confidence: a.confidence,
+        note: nm?.get(`${a.match_id}:${a.signal_type}`) ?? null,
+      };
       if (!map.has(a.match_id)) {
-        map.set(a.match_id, { ...a, signals: [{ id: a.id, signal_type: a.signal_type, confidence: a.confidence }] });
+        map.set(a.match_id, { ...a, signals: [sig] });
       } else {
-        map.get(a.match_id).signals.push({ id: a.id, signal_type: a.signal_type, confidence: a.confidence });
+        map.get(a.match_id).signals.push(sig);
       }
     }
     for (const item of map.values()) {
@@ -79,18 +89,19 @@
 
   // ---- Derived sections ----
   let sections = $derived.by(() => {
+    const nm = noteMap;
     const inPlayAll = groupByMatch(sortByKickoff(
       filteredAlerts.filter(a => a.kickoff_unix && a.kickoff_unix <= now && a.kickoff_unix > now - IN_PLAY_WINDOW)
-    ));
+    ), nm);
     const todayAll = groupByMatch(sortByKickoff(
       filteredAlerts.filter(a => a.match_date === today && (!a.kickoff_unix || a.kickoff_unix > now))
-    ));
+    ), nm);
     const comingAll = groupByMatch(sortByDateKickoff(
       filteredAlerts.filter(a => a.match_date > today)
-    ));
+    ), nm);
     const past = groupByMatch(sortTerminated(
       filteredAlerts.filter(a => a.match_date < today || (a.kickoff_unix && a.kickoff_unix <= now - IN_PLAY_WINDOW))
-    ));
+    ), nm);
     return { inPlayAll, todayAll, comingAll, past };
   });
 
@@ -99,20 +110,68 @@
     loading = true;
     error = '';
     const keys = $selectedKeys;
-    if (keys.size === 0) { allAlerts = []; loading = false; return; }
+    if (keys.size === 0) { allAlerts = []; noteMap = new Map(); loading = false; return; }
     const matchIds = [...new Set([...keys].map(k => k.split(':')[0]))];
-    const { data, error: dbError } = await supabase
-      .from('alerts')
-      .select('*')
-      .in('match_id', matchIds);
-    if (dbError) {
-      console.error('mes-matchs loadAlerts:', dbError);
+    const [alertsRes, notesRes] = await Promise.all([
+      supabase.from('alerts').select('*').in('match_id', matchIds),
+      supabase.from('selected_alerts').select('match_id, signal_type, user_note').in('match_id', matchIds),
+    ]);
+    if (alertsRes.error) {
+      console.error('mes-matchs loadAlerts:', alertsRes.error);
       error = 'Impossible de charger les alertes sélectionnées.';
       allAlerts = [];
     } else {
-      allAlerts = data || [];
+      allAlerts = alertsRes.data || [];
+    }
+    if (!notesRes.error && notesRes.data) {
+      const nm = new Map();
+      for (const row of notesRes.data) {
+        if (row.user_note != null) {
+          nm.set(`${row.match_id}:${row.signal_type}`, row.user_note);
+        }
+      }
+      noteMap = nm;
     }
     loading = false;
+  }
+
+  // ---- Note editing ----
+  function startEditNote(matchId, signalType, currentNote) {
+    editingNote = { matchId, signalType };
+    editNoteValue = currentNote || '';
+  }
+
+  function cancelEditNote() {
+    editingNote = null;
+    editNoteValue = '';
+  }
+
+  async function saveNote(matchId, signalType) {
+    const val = editNoteValue.trim() || null;
+    try {
+      const { error: upErr } = await supabase
+        .from('selected_alerts')
+        .update({ user_note: val })
+        .eq('match_id', matchId)
+        .eq('signal_type', signalType);
+      if (upErr) throw upErr;
+      const nm = new Map(noteMap);
+      if (val) {
+        nm.set(`${matchId}:${signalType}`, val);
+      } else {
+        nm.delete(`${matchId}:${signalType}`);
+      }
+      noteMap = nm;
+    } catch (e) {
+      console.error('saveNote:', e);
+    }
+    editingNote = null;
+    editNoteValue = '';
+  }
+
+  function onNoteKeydown(e, matchId, signalType) {
+    if (e.key === 'Enter') { e.preventDefault(); saveNote(matchId, signalType); }
+    if (e.key === 'Escape') { e.preventDefault(); cancelEditNote(); }
   }
 
   // Recharge les alertes dès que selectedKeys change (s'exécute aussi au montage)
@@ -180,7 +239,7 @@
     <div class="empty-state__icon">⭐</div>
     <div class="empty-state__title">Aucune alerte sélectionnée</div>
     <div class="empty-state__desc">
-      Va sur <a href="/alerts-lg1">Sélection LG1</a> ou <a href="/alerts-lg2">Sélection LG2</a> pour faire ta première sélection.
+      Va sur <a href="/alerts/lg1">Alertes LG1</a> ou <a href="/alerts/lg2">Alertes LG2</a> pour faire ta première sélection.
     </div>
   </div>
 
@@ -322,19 +381,48 @@
       </div>
       <div class="alert-card__badges">
         {#each a.signals as sig}
-          {#if isLG1(sig.signal_type)}
-            <span class="strategy-badge strategy-badge--lg1">LG1</span>
-          {:else if isLG2(sig.signal_type)}
-            <span class="strategy-badge strategy-badge--lg2">LG2</span>
-          {/if}
-          <span class="alert-badge {confidenceClass(sig.confidence)}">{confidenceLabel(sig.confidence)}</span>
-          <SelectAlertButton alert={{ ...a, id: sig.id, signal_type: sig.signal_type, confidence: sig.confidence }} onclick={e => e.stopPropagation()} />
+          <div class="signal-row">
+            <div class="signal-row__badges">
+              {#if isLG1(sig.signal_type)}
+                <span class="strategy-badge strategy-badge--lg1">LG1</span>
+              {:else if isLG2(sig.signal_type)}
+                <span class="strategy-badge strategy-badge--lg2">LG2</span>
+              {/if}
+              <span class="alert-badge {confidenceClass(sig.confidence)}">{confidenceLabel(sig.confidence)}</span>
+              <SelectAlertButton alert={{ ...a, id: sig.id, signal_type: sig.signal_type, confidence: sig.confidence }} onclick={e => e.stopPropagation()} />
+            </div>
+            <div class="signal-note-row" onclick={e => e.stopPropagation()}>
+              {#if editingNote?.matchId === a.match_id && editingNote?.signalType === sig.signal_type}
+                <input
+                  class="note-edit-input"
+                  type="text"
+                  bind:value={editNoteValue}
+                  onblur={() => saveNote(a.match_id, sig.signal_type)}
+                  onkeydown={e => onNoteKeydown(e, a.match_id, sig.signal_type)}
+                  placeholder="Ajouter une note..."
+                  autofocus
+                />
+              {:else}
+                {#if sig.note}
+                  <span class="signal-note">{sig.note}</span>
+                {/if}
+                <button
+                  class="note-edit-btn"
+                  title="Modifier la note"
+                  onclick={() => startEditNote(a.match_id, sig.signal_type, sig.note)}
+                  aria-label="Modifier la note"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+              {/if}
+            </div>
+          </div>
         {/each}
       </div>
       <span class="alert-card__arrow">{expandedId === a.match_id ? '▼' : '▶'}</span>
     </div>
 
-    <!-- EXPAND — identique à /alerts-lg1, + marqueur 80' si LG2 -->
+    <!-- EXPAND — 2 colonnes dom/ext -->
     {#if expandedId === a.match_id}
       {@const homeMatches = getTeamMatches(a.home_team_id, 'home')}
       {@const awayMatches = getTeamMatches(a.away_team_id, 'away')}
@@ -382,7 +470,7 @@
               {/each}
             </div>
           {:else}
-            <p style="color:var(--color-text-muted);text-align:center;padding:1rem;font-size:13px;">Aucun match joue cette saison</p>
+            <p style="color:var(--color-text-muted);text-align:center;padding:1rem;font-size:13px;">Aucun match joué cette saison</p>
           {/if}
         </div>
 
@@ -390,7 +478,7 @@
         <div class="team-detail">
           <div class="team-detail__header">
             <span class="team-detail__name">{a.away_team_name}</span>
-            <span class="team-detail__context">Exterieur</span>
+            <span class="team-detail__context">Extérieur</span>
           </div>
           {#if awayMatches.length > 0}
             <div class="team-matches">
@@ -428,7 +516,7 @@
               {/each}
             </div>
           {:else}
-            <p style="color:var(--color-text-muted);text-align:center;padding:1rem;font-size:13px;">Aucun match joue cette saison</p>
+            <p style="color:var(--color-text-muted);text-align:center;padding:1rem;font-size:13px;">Aucun match joué cette saison</p>
           {/if}
         </div>
 
@@ -678,10 +766,76 @@
 
   .alert-card__badges {
     display: flex;
+    flex-direction: column;
     gap: 4px;
     flex-shrink: 0;
+    align-items: flex-end;
+  }
+
+  .signal-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+  }
+
+  .signal-row__badges {
+    display: flex;
+    gap: 4px;
     align-items: center;
     flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .signal-note-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: flex-end;
+  }
+
+  .signal-note {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    font-style: italic;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 180px;
+  }
+
+  .note-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    opacity: 0.5;
+    cursor: pointer;
+    transition: opacity var(--transition-fast);
+    flex-shrink: 0;
+  }
+  .note-edit-btn:hover {
+    opacity: 1;
+  }
+
+  .note-edit-input {
+    font-size: 11px;
+    color: var(--color-text-primary);
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    width: 180px;
+    max-width: 100%;
+  }
+  .note-edit-input:focus {
+    border-color: var(--color-accent-blue);
   }
 
   /* Strategy badge LG1 / LG2 */

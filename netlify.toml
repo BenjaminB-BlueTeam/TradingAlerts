@@ -13,3 +13,9 @@
 
 [functions."compute-team-lg1"]
   schedule = "0 7 * * *"
+
+[functions."notify-pre-kickoff"]
+  schedule = "*/5 * * * *"
+
+[functions."notify-daily-summary"]
+  schedule = "0 9 * * *"

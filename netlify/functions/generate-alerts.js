@@ -11,6 +11,7 @@ const { analyzeLG2 } = require('./lib/lg2.cjs');
 const { requireAuth } = require('./lib/auth.cjs');
 const { corsHeaders, handlePreflight } = require('./lib/cors.cjs');
 const { startCronRun, endCronRun } = require('./lib/cronLog.cjs');
+const { sendMessage } = require('./lib/telegram.cjs');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -73,6 +74,67 @@ async function getH2H(teamAId, teamBId) {
   return await supabaseQuery('h2h_matches',
     `or=(and(home_team_id.eq.${teamAId},away_team_id.eq.${teamBId}),and(home_team_id.eq.${teamBId},away_team_id.eq.${teamAId}))&order=match_date.asc`
   );
+}
+
+/**
+ * Envoie une notification Telegram pour chaque alerte Fort du jour
+ * qui n'a pas encore été notifiée (vérifie notifications_sent en BDD).
+ * Idempotent : INSERT ignore les doublons via contrainte UNIQUE (kind, ref_key).
+ */
+async function notifyFortAlerts(alerts) {
+  for (const alert of alerts) {
+    const refKey = `fort_alert:${alert.match_id}:${alert.signal_type}`;
+    try {
+      const checkUrl = `${SUPABASE_URL}/rest/v1/notifications_sent?kind=eq.fort_alert&ref_key=eq.${encodeURIComponent(refKey)}&select=id&limit=1`;
+      const checkRes = await fetch(checkUrl, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!checkRes.ok) {
+        console.error(`[generate-alerts] notifications_sent check failed for ${refKey}: ${checkRes.status}`);
+        continue;
+      }
+      const existing = await checkRes.json();
+      if (existing.length > 0) {
+        console.log(`[generate-alerts] notification déjà envoyée pour ${refKey}`);
+        continue;
+      }
+
+      const timeStr = alert.kickoff_unix
+        ? new Date(alert.kickoff_unix * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+        : '??:??';
+      const isLG2 = alert.signal_type.startsWith('LG2');
+      const label = isLG2 ? 'Alerte LG2 Fort' : 'Alerte LG1 Fort';
+      const text = `🔔 ${label} — <b>${alert.home_team_name} vs ${alert.away_team_name}</b>\n⏰ ${timeStr} | ${alert.league_name || 'Ligue inconnue'}\nSignal : ${alert.signal_type}`;
+
+      const sent = await sendMessage(text);
+      if (!sent) continue;
+
+      const insertUrl = `${SUPABASE_URL}/rest/v1/notifications_sent`;
+      const insertRes = await fetch(insertUrl, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=ignore-duplicates,return=minimal',
+        },
+        body: JSON.stringify({ kind: 'fort_alert', ref_key: refKey }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!insertRes.ok) {
+        const errBody = await insertRes.text().catch(() => '');
+        console.error(`[generate-alerts] notifications_sent insert failed for ${refKey}: ${insertRes.status} ${errBody}`);
+      } else {
+        console.log(`[generate-alerts] notification envoyée: ${refKey}`);
+      }
+    } catch (e) {
+      console.error(`[generate-alerts] notifyFortAlerts error for ${refKey}: ${e.message}`);
+    }
+  }
 }
 
 // --- Main ---
@@ -295,6 +357,15 @@ exports.handler = async (event) => {
       } catch (e) {
         results.errors.push(`Insert failed: ${e.message}`);
       }
+    }
+
+    // Notifications Telegram — alertes Fort générées POUR AUJOURD'HUI uniquement
+    const today = getDateStr(0);
+    const fortAlertsToday = newAlerts.filter(
+      a => a.confidence === 'fort' && a.match_date === today
+    );
+    if (fortAlertsToday.length > 0) {
+      await notifyFortAlerts(fortAlertsToday);
     }
 
     console.log(`[generate-alerts] END — ${results.alerts_created} alerts created, ${results.errors.length} errors`);

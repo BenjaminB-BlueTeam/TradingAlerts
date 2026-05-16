@@ -331,7 +331,7 @@
   <div class="section-label">Alertes du jour</div>
   <div class="metric-grid metric-grid--2">
 
-    <a href="/alerts-lg1?day=0" class="metric-card metric-card--link">
+    <a href="/alerts/lg1?day=0" class="metric-card metric-card--link">
       <div class="metric-card__label">LG1 Fort — aujourd'hui</div>
       {#if loading}
         <div class="metric-card__value muted">—</div>
@@ -342,7 +342,7 @@
       {/if}
     </a>
 
-    <a href="/alerts-lg2?day=0" class="metric-card metric-card--link">
+    <a href="/alerts/lg2?day=0" class="metric-card metric-card--link">
       <div class="metric-card__label">LG2 Fort — aujourd'hui</div>
       {#if loading}
         <div class="metric-card__value muted">—</div>

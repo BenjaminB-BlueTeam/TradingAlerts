@@ -16,8 +16,7 @@
 
   const navItems = [
     { href: '/mes-matchs',    icon: '⭐', label: 'Mes matchs'         },
-    { href: '/alerts-lg1',    icon: '⚡', label: 'Sélection LG1'      },
-    { href: '/alerts-lg2',    icon: '⏱️', label: 'Sélection LG2'      },
+    { href: '/alerts/lg1',    icon: '⚡', label: 'Alertes'            },
     { href: '/matches',       icon: '⚽', label: 'Matchs à venir'     },
     { href: '/explore',       icon: '🌍', label: 'Classements ligues' },
     { href: '/dashboard',     icon: '📊', label: 'Dashboard'          },
@@ -45,6 +44,9 @@
 
   function isActive(href) {
     const p = $page.url.pathname;
+    if (href === '/alerts/lg1') {
+      return p.startsWith('/alerts/') || p.startsWith('/alerts-lg1') || p.startsWith('/alerts-lg2');
+    }
     return p === href || p.startsWith(href + '/');
   }
 
@@ -96,7 +98,7 @@
       >
         <span class="sidebar__nav-icon">{item.icon}</span>
         <span class="sidebar__nav-label">{item.label}</span>
-        {#if (item.href === '/alerts-lg1' || item.href === '/alerts-lg2') && alertsBadgeCount > 0}
+        {#if item.href === '/alerts/lg1' && alertsBadgeCount > 0}
           <span class="sidebar__badge">{alertsBadgeCount}</span>
         {/if}
       </a>
