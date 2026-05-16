@@ -321,7 +321,7 @@ exports.handler = async (event) => {
   };
 };
 
-// Netlify Scheduled Function — toutes les 12h
+// Netlify Scheduled Function — 8h et 18h Paris (6h et 16h UTC, CEST)
 exports.config = {
-  schedule: '0 */12 * * *',
+  schedule: '0 6,16 * * *',
 };

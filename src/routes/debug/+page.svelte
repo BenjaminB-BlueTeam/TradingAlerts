@@ -214,9 +214,9 @@
       id: 'generate-alerts',
       label: 'Génération alertes',
       fn: 'generate-alerts.js',
-      schedule: '0 */12 * * *',
-      human: 'Tous les jours à 0h et 12h UTC',
-      desc: 'Génère les alertes LG1/LG2 pour J, J+1, J+2. Notifie Telegram pour les alertes Fort.',
+      schedule: '0 6,16 * * *',
+      human: 'Tous les jours à 8h et 18h Paris (6h et 16h UTC)',
+      desc: 'Génère les alertes LG1/LG2 pour J, J+1, J+2.',
     },
     {
       id: 'daily-seed',
@@ -267,9 +267,9 @@
       const minsUntil = 60 - utcM;
       return `dans ${minsUntil} min`;
     }
-    if (schedule === '0 */12 * * *') {
-      // 0h et 12h
-      const targets = [0, 12 * 60];
+    if (schedule === '0 6,16 * * *') {
+      // 6h et 16h UTC
+      const targets = [6 * 60, 16 * 60];
       const next = targets.find(t => t > nowMins) ?? (targets[0] + 24 * 60);
       const diff = next - nowMins;
       return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
