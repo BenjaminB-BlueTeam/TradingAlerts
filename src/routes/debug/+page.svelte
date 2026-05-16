@@ -238,8 +238,8 @@
       id: 'notify-daily-summary',
       label: 'Résumé Telegram quotidien',
       fn: 'notify-daily-summary.js',
-      schedule: '0 6 * * *',
-      human: 'Tous les jours à 6h UTC (8h Paris)',
+      schedule: '0 9 * * *',
+      human: 'Tous les jours à 9h UTC (11h Paris)',
       desc: 'Envoie un résumé Telegram des alertes Fort du jour. Idempotent (1 message/jour).',
     },
     {
@@ -281,6 +281,11 @@
     }
     if (schedule === '0 7 * * *') {
       const target = 7 * 60;
+      const diff = target > nowMins ? target - nowMins : 24 * 60 - nowMins + target;
+      return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
+    }
+    if (schedule === '0 9 * * *') {
+      const target = 9 * 60;
       const diff = target > nowMins ? target - nowMins : 24 * 60 - nowMins + target;
       return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
     }

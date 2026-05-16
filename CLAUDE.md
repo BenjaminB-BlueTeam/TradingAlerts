@@ -48,12 +48,12 @@ package.json / svelte.config.js / vite.config.js
 netlify.toml
 netlify/functions/
   footystats.js         ← proxy sécurisé API FootyStats (whitelist endpoints, CORS restreint)
-  generate-alerts.js    ← cron 12h — génère alertes LG1/LG2 pour J, J+1, J+2
+  generate-alerts.js    ← cron 8h+18h Paris (6h+16h UTC) — génère alertes LG1/LG2 pour J, J+1, J+2
   delete-alerts.js      ← suppression d'alertes par IDs (auth requise)
   seed-data.js          ← seed Supabase (team_seasons, h2h_matches) (auth token requis)
   daily-seed.js         ← cron quotidien 6h UTC — seed matchs d'hier dans h2h_matches
   compute-team-lg1.js  ← cron quotidien 7h UTC — calcule LG1% 0-45 min (goal_events) par (season_id, team_id), upsert team_lg1_cache
-  notify-pre-kickoff.js ← cron */5 min — notification Telegram 10min avant coup d'envoi (selected_alerts)
+  notify-pre-kickoff.js ← cron */5 min — notification Telegram match imminent (fenêtre 0-5min avant kickoff, selected_alerts)
   notify-daily-summary.js ← cron 9h UTC — résumé quotidien Telegram des alertes Fort (idempotent)
   lib/
     api.js              ← helpers partagés (footyRequest, supabaseQuery)
@@ -300,7 +300,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Compteur API** — req restantes affiché dans la sidebar
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
 - **Supabase RLS durcie** (2026-05-07) — policies `authenticated` pour le frontend (plus `anon`), `service_role` pour les Netlify Functions.
-- **Notifications Telegram** (2026-05-16) — `lib/telegram.cjs` : helper `sendMessage(text)`. Trois crons : (1) `notify-pre-kickoff.js` (*/5 min) — match sélectionné dans 10min ; (2) `notify-daily-summary.js` (9h UTC) — résumé alertes Fort du jour ; (3) `generate-alerts.js` — notifie nouvelles alertes Fort à la génération. Idempotence via table `notifications_sent` (UNIQUE kind+ref_key). Filtre `user_excluded=neq.true` (match null ET false). Env vars : `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`.
+- **Notifications Telegram** (2026-05-16) — `lib/telegram.cjs` : helper `sendMessage(text)`. Deux crons actifs : (1) `notify-pre-kickoff.js` (*/5 min) — match imminent dans fenêtre 0-5min avant kickoff ; (2) `notify-daily-summary.js` (9h UTC) — résumé alertes Fort du jour. `generate-alerts.js` ne notifie plus Telegram (supprimé). Idempotence via table `notifications_sent` (UNIQUE kind+ref_key). Filtre `user_excluded=neq.true`. Env vars : `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`.
 - **Tests unitaires** — Vitest, 1244 tests (lg1.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, cache 20, formatters 22, teamData 14, selectionFilters + selectionStore + supabase.auth + autres)
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`. Tooltip goal-dot opaque (#1e2330). bar-hover-min opaque.
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
