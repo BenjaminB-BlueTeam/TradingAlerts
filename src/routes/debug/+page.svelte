@@ -295,7 +295,7 @@
     dailySummaryRunning = true;
     dailySummaryResult = null;
     try {
-      const res = await callFunction('/.netlify/functions/notify-daily-summary');
+      const res = await callFunction('/.netlify/functions/notify-daily-summary?force=true');
       dailySummaryResult = await res.json();
     } catch (e) {
       dailySummaryResult = { error: e.message };

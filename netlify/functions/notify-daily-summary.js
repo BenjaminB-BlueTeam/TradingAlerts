@@ -134,18 +134,22 @@ exports.handler = async (event) => {
     const today = getTodayStr();
     const refKey = `daily_summary:${today}`;
 
-    // Vérifier idempotence : déjà envoyé aujourd'hui ?
-    const existingRows = await supabaseFetch(
-      'notifications_sent',
-      `kind=eq.daily_summary&ref_key=eq.${encodeURIComponent(refKey)}&select=id&limit=1`
-    );
-    if (existingRows.length > 0) {
-      console.log(`[notify-daily-summary] résumé déjà envoyé pour ${today}`);
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json', ...cors },
-        body: JSON.stringify({ ...results, skipped: true, reason: 'already_sent' }),
-      };
+    const force = event.queryStringParameters?.force === 'true';
+
+    // Vérifier idempotence : déjà envoyé aujourd'hui ? (bypass si force=true)
+    if (!force) {
+      const existingRows = await supabaseFetch(
+        'notifications_sent',
+        `kind=eq.daily_summary&ref_key=eq.${encodeURIComponent(refKey)}&select=id&limit=1`
+      );
+      if (existingRows.length > 0) {
+        console.log(`[notify-daily-summary] résumé déjà envoyé pour ${today}`);
+        return {
+          statusCode: 200,
+          headers: { 'Content-Type': 'application/json', ...cors },
+          body: JSON.stringify({ ...results, skipped: true, reason: 'already_sent' }),
+        };
+      }
     }
 
     // Récupérer les alertes Fort du jour (non exclues), triées par kickoff
