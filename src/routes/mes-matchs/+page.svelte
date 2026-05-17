@@ -230,18 +230,14 @@
     try {
       const { data, error } = await supabase
         .from('team_lg1_cache')
-        .select('team_id, lg1_after30_pct, lg2_pct, matches_count, updated_at')
+        .select('team_id, lg1_after30_pct, lg2_pct, matches_count, lg1_home_pct, lg1_away_pct, lg2_home_pct, lg2_away_pct, matches_home, matches_away, updated_at')
         .in('team_id', teamIdsArr)
         .order('updated_at', { ascending: false });
       if (error || !data) return;
       const newCache = new Map(teamStatsCache);
       for (const row of data) {
         if (newCache.has(row.team_id)) continue;
-        newCache.set(row.team_id, {
-          lg1_after30_pct: row.lg1_after30_pct,
-          lg2_pct: row.lg2_pct,
-          matches_count: row.matches_count,
-        });
+        newCache.set(row.team_id, row);
       }
       teamStatsCache = newCache;
     } catch (e) {
@@ -421,6 +417,7 @@
               <span class="alert-card__team-label">{a.home_team_name}</span>
               <TeamLgBadges
                 teamId={a.home_team_id}
+                context="home"
                 size="sm"
                 inline
                 preload={teamStatsCache.get(a.home_team_id) ?? null}
@@ -430,6 +427,7 @@
               <span class="alert-card__team-label">{a.away_team_name}</span>
               <TeamLgBadges
                 teamId={a.away_team_id}
+                context="away"
                 size="sm"
                 inline
                 preload={teamStatsCache.get(a.away_team_id) ?? null}

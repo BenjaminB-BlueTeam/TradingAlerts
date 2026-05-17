@@ -309,7 +309,7 @@
       <div class="team-detail__header">
         <span class="team-detail__name">{selectedTeam.name}</span>
         <span class="team-detail__context">Domicile</span>
-        <TeamLgBadges teamId={selectedTeam.id} size="sm" inline />
+        <TeamLgBadges teamId={selectedTeam.id} context="home" size="sm" inline />
         <div class="team-detail__summary"><span><strong>{homeMatches.length}</strong> matchs</span></div>
       </div>
       {#if homeMatches.length > 0}
@@ -347,7 +347,7 @@
       <div class="team-detail__header">
         <span class="team-detail__name">{selectedTeam.name}</span>
         <span class="team-detail__context">Extérieur</span>
-        <TeamLgBadges teamId={selectedTeam.id} size="sm" inline />
+        <TeamLgBadges teamId={selectedTeam.id} context="away" size="sm" inline />
         <div class="team-detail__summary"><span><strong>{awayMatches.length}</strong> matchs</span></div>
       </div>
       {#if awayMatches.length > 0}
@@ -412,11 +412,11 @@
               <div class="match-card__team-stats">
                 <div class="match-card__team-stat-row">
                   <span class="match-card__team-stat-name">{m.home_name}</span>
-                  <TeamLgBadges teamId={m.homeID} size="sm" inline />
+                  <TeamLgBadges teamId={m.homeID} context="home" size="sm" inline />
                 </div>
                 <div class="match-card__team-stat-row">
                   <span class="match-card__team-stat-name">{m.away_name}</span>
-                  <TeamLgBadges teamId={m.awayID} size="sm" inline />
+                  <TeamLgBadges teamId={m.awayID} context="away" size="sm" inline />
                 </div>
               </div>
             {/if}
@@ -437,7 +437,7 @@
               <div class="team-detail__header">
                 <span class="team-detail__name">{m.home_name || '?'}</span>
                 <span class="team-detail__context">Domicile</span>
-                <TeamLgBadges teamId={m.homeID} size="sm" inline />
+                <TeamLgBadges teamId={m.homeID} context="home" size="sm" inline />
               </div>
               {#if homeMatches.length > 0}
                 <div class="team-matches">
@@ -481,7 +481,7 @@
               <div class="team-detail__header">
                 <span class="team-detail__name">{m.away_name || '?'}</span>
                 <span class="team-detail__context">Extérieur</span>
-                <TeamLgBadges teamId={m.awayID} size="sm" inline />
+                <TeamLgBadges teamId={m.awayID} context="away" size="sm" inline />
               </div>
               {#if awayMatches.length > 0}
                 <div class="team-matches">

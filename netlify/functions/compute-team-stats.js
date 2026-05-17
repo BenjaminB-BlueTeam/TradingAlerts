@@ -1,11 +1,13 @@
 /* ================================================
    netlify/functions/compute-team-stats.js
-   Tache planifiee — calcul LG1% et LG2% par equipe par saison.
-   Lit h2h_matches (saison courante) et calcule 2 metriques par equipe :
-   - lg1_after30_pct : % de matchs ou un but est tombe entre 31-45 min (stoppage 1MT compris)
-   - lg2_pct         : % de matchs ou un but est tombe >= 80 min (stoppage 2MT compris)
-   IMPORTANT : on compte les buts MATCH-LEVEL (peu importe qui marque, equipe ou adversaire)
-   — oriente trading Over 0.5 dans la fenetre, pas algo streak offensif/defensif.
+   Tache planifiee — calcul LG1% et LG2% par equipe par saison, split home/away.
+   Lit h2h_matches (saison courante) et calcule pour chaque equipe :
+   - Overall : lg1_after30_pct (but 31-45), lg2_pct (but >= 80), matches_count
+   - Contextuel : lg1_home_pct / lg1_away_pct / lg2_home_pct / lg2_away_pct
+     + matches_home / matches_away
+   Match-level semantique (peu importe qui marque, equipe ou adversaire) — oriente
+   trading Over 0.5 dans la fenetre. Les badges UI utilisent le split home/away,
+   /leagues utilise les colonnes overall.
    Upserte dans team_lg1_cache.
    Tourne 1x/jour a 4h30 UTC (6h30 Paris) via Netlify Scheduled Functions, juste apres daily-seed.
    ================================================ */
@@ -126,15 +128,22 @@ exports.handler = async function(event) {
       return { statusCode: 200, headers: cors, body: 'Aucun match — rien a calculer.' };
     }
 
-    // Agregation : { "season_id:team_id" -> { season_id, team_id, team_name, total, lg1_after30, lg2 } }
+    // Agregation par equipe avec split home/away
     const stats = new Map();
 
-    function addMatch(seasonId, teamId, teamName, goalEvents) {
+    function addMatch(seasonId, teamId, teamName, isHome, goalEvents) {
       if (!seasonId || !teamId) return;
       const key = `${seasonId}:${teamId}`;
-      if (!stats.has(key)) stats.set(key, { season_id: seasonId, team_id: teamId, team_name: teamName, total: 0, lg1_after30: 0, lg2: 0 });
+      if (!stats.has(key)) stats.set(key, {
+        season_id: seasonId, team_id: teamId, team_name: teamName,
+        total: 0, lg1: 0, lg2: 0,
+        totalHome: 0, lg1Home: 0, lg2Home: 0,
+        totalAway: 0, lg1Away: 0, lg2Away: 0,
+      });
       const s = stats.get(key);
       s.total++;
+      if (isHome) s.totalHome++; else s.totalAway++;
+
       const events = Array.isArray(goalEvents) ? goalEvents : [];
       // Match-level : n'importe quel but dans la fenetre compte (perspective trading Over 0.5)
       let hasLg1 = false;
@@ -144,14 +153,22 @@ exports.handler = async function(event) {
         if (!hasLg2 && isLg2Goal(g)) hasLg2 = true;
         if (hasLg1 && hasLg2) break;
       }
-      if (hasLg1) s.lg1_after30++;
-      if (hasLg2) s.lg2++;
+      if (hasLg1) {
+        s.lg1++;
+        if (isHome) s.lg1Home++; else s.lg1Away++;
+      }
+      if (hasLg2) {
+        s.lg2++;
+        if (isHome) s.lg2Home++; else s.lg2Away++;
+      }
     }
 
     for (const m of matches) {
-      addMatch(m.season_id, m.home_team_id, m.home_team_name, m.goal_events);
-      addMatch(m.season_id, m.away_team_id, m.away_team_name, m.goal_events);
+      addMatch(m.season_id, m.home_team_id, m.home_team_name, true,  m.goal_events);
+      addMatch(m.season_id, m.away_team_id, m.away_team_name, false, m.goal_events);
     }
+
+    const pct = (num, den) => (den > 0 ? Math.round((num / den) * 100) : null);
 
     const rows = [];
     for (const s of stats.values()) {
@@ -160,9 +177,17 @@ exports.handler = async function(event) {
         season_id:        s.season_id,
         team_id:          s.team_id,
         team_name:        s.team_name,
-        lg1_after30_pct:  Math.round(s.lg1_after30 / s.total * 100),
-        lg2_pct:          Math.round(s.lg2 / s.total * 100),
+        // Overall (utilise par /leagues)
+        lg1_after30_pct:  pct(s.lg1, s.total),
+        lg2_pct:          pct(s.lg2, s.total),
         matches_count:    s.total,
+        // Contextuel (badges sur /matches, /alerts, /mes-matchs)
+        lg1_home_pct:     pct(s.lg1Home, s.totalHome),
+        lg1_away_pct:     pct(s.lg1Away, s.totalAway),
+        lg2_home_pct:     pct(s.lg2Home, s.totalHome),
+        lg2_away_pct:     pct(s.lg2Away, s.totalAway),
+        matches_home:     s.totalHome,
+        matches_away:     s.totalAway,
         updated_at:       new Date().toISOString(),
       });
     }
