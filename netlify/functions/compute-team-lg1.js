@@ -7,7 +7,7 @@
    IMPORTANT : on compte les buts MATCH-LEVEL (peu importe qui marque, equipe ou adversaire)
    — oriente trading Over 0.5 dans la fenetre, pas algo streak offensif/defensif.
    Upserte dans team_lg1_cache.
-   Tourne 1x/jour a 7h UTC via Netlify Scheduled Functions.
+   Tourne 1x/jour a 5h UTC (7h Paris) via Netlify Scheduled Functions, juste apres daily-seed.
    ================================================ */
 
 const { requireAuth } = require('./lib/auth.cjs');

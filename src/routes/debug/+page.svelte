@@ -222,17 +222,17 @@
       id: 'daily-seed',
       label: 'Seed quotidien',
       fn: 'daily-seed.js',
-      schedule: '0 6 * * *',
-      human: 'Tous les jours à 6h UTC',
+      schedule: '0 4 * * *',
+      human: 'Tous les jours à 6h Paris (4h UTC)',
       desc: 'Seed dans h2h_matches les matchs joués hier (goal_events inclus).',
     },
     {
       id: 'compute-team-lg1',
-      label: 'LG1% équipes',
+      label: 'LG1% / LG2% équipes',
       fn: 'compute-team-lg1.js',
-      schedule: '0 7 * * *',
-      human: 'Tous les jours à 7h UTC',
-      desc: 'Calcule le % de matchs avec un but 0-45 min (stoppage compris) par équipe, upsert dans team_lg1_cache.',
+      schedule: '0 5 * * *',
+      human: 'Tous les jours à 7h Paris (5h UTC)',
+      desc: 'Calcule lg1_after30_pct (but 31-45) et lg2_pct (but >=80) par équipe, upsert dans team_lg1_cache.',
     },
     {
       id: 'notify-daily-summary',
@@ -274,13 +274,13 @@
       const diff = next - nowMins;
       return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
     }
-    if (schedule === '0 6 * * *') {
-      const target = 6 * 60;
+    if (schedule === '0 4 * * *') {
+      const target = 4 * 60;
       const diff = target > nowMins ? target - nowMins : 24 * 60 - nowMins + target;
       return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
     }
-    if (schedule === '0 7 * * *') {
-      const target = 7 * 60;
+    if (schedule === '0 5 * * *') {
+      const target = 5 * 60;
       const diff = target > nowMins ? target - nowMins : 24 * 60 - nowMins + target;
       return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
     }

@@ -9,10 +9,10 @@
   schedule = "0 */12 * * *"
 
 [functions."daily-seed"]
-  schedule = "0 6 * * *"
+  schedule = "0 4 * * *"
 
 [functions."compute-team-lg1"]
-  schedule = "0 7 * * *"
+  schedule = "0 5 * * *"
 
 [functions."notify-pre-kickoff"]
   schedule = "*/5 * * * *"

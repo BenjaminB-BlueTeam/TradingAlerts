@@ -51,8 +51,8 @@ netlify/functions/
   generate-alerts.js    ← cron 8h+18h Paris (6h+16h UTC) — génère alertes LG1/LG2 pour J, J+1, J+2
   delete-alerts.js      ← suppression d'alertes par IDs (auth requise)
   seed-data.js          ← seed Supabase (team_seasons, h2h_matches) (auth token requis)
-  daily-seed.js         ← cron quotidien 6h UTC — seed matchs d'hier dans h2h_matches
-  compute-team-lg1.js  ← cron quotidien 7h UTC — calcule lg1_after30_pct (but 31-45 min) ET lg2_pct (but ≥80 min) par (season_id, team_id), upsert team_lg1_cache
+  daily-seed.js         ← cron quotidien 4h UTC (6h Paris) — seed matchs d'hier dans h2h_matches
+  compute-team-lg1.js  ← cron quotidien 5h UTC (7h Paris) — calcule lg1_after30_pct (but 31-45 min) ET lg2_pct (but ≥80 min) par (season_id, team_id), upsert team_lg1_cache
   notify-pre-kickoff.js ← cron */5 min — notification Telegram match imminent (fenêtre 0-5min avant kickoff, selected_alerts)
   notify-daily-summary.js ← cron 9h UTC — résumé quotidien Telegram des alertes Fort (idempotent)
   lib/
@@ -172,7 +172,7 @@ scripts/
 | `h2h_matches` | Historique matchs H2H avec goal_events (65k+ lignes) | ON | SELECT | — | ALL |
 | `team_seasons` | Stats équipes par saison (legacy, non peuplée) | ON | SELECT | — | ALL |
 | `seed_jobs` | Suivi progression seed | ON | SELECT, INSERT, UPDATE | — | ALL |
-| `team_lg1_cache` | Stats LG par equipe/saison : `lg1_after30_pct` (but 31-45 min) + `lg2_pct` (but ≥80 min). PK: (season_id, team_id). Refresh quotidien 7h UTC | ON | SELECT | — | ALL |
+| `team_lg1_cache` | Stats LG par equipe/saison : `lg1_after30_pct` (but 31-45 min) + `lg2_pct` (but ≥80 min). PK: (season_id, team_id). Refresh quotidien 5h UTC (7h Paris) | ON | SELECT | — | ALL |
 | `teams` | 1098 équipes (team_id unique + colonne réelle `name`, pas `team_name`), autocomplete /matches | ON | SELECT | SELECT | ALL |
 | `selected_alerts` | Sélections manuelles LG1/LG2 par Benjamin. Colonne `user_note text` pour notes inline par signal | ON | SELECT, INSERT, DELETE, UPDATE | — | ALL |
 | `notifications_sent` | Idempotence notifications Telegram. PK composée (kind, ref_key UNIQUE). Kinds : fort_alert, pre_kickoff, daily_summary | ON | — | — | ALL |
@@ -281,8 +281,8 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Algo LG1 streak v2** (2026-04-23) — `lg1.cjs` + `lg1.js` : Scénario A (streak >=3 → fort), B (count adversaire 3/5 → moyen), A+B → fort, C (streak=2 + confirmation 3/3 → moyen, fallback), D (double activité 31-45 → moyen, fallback). Veto H2H 1MT. `fort_double` mergé dans `fort` (migration 2026-05-07). Spec : `SPEC_STREAK_V2.md`
 - **Algo LG2 streak** (2026-04-23) — `lg2.cjs` + `lg2.js` : streak consécutif de matchs avec but >= 80' par équipe (dom ou ext). LG2_A (home), LG2_B (away), LG2_A+B. Confidence = moyen (3) / fort (4+). Spec : `docs/superpowers/specs/2026-04-23-lg2-design.md`
 - **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) : génère LG1_A/B/A+B + LG2_A/B/A+B, algo_version='v2' (LG1) ou 'lg2_v1' (LG2), table Supabase `alerts`
-- **Daily seed auto** — `daily-seed.js` (cron 6h UTC) : seed matchs d'hier dans `h2h_matches`
-- **Calcul stats équipes LG1/LG2** — `compute-team-lg1.js` (cron 7h UTC) : pour chaque (season_id, team_id), calcule `lg1_after30_pct` (% matchs avec but en 31-45 min) + `lg2_pct` (% matchs avec but ≥80 min) depuis `h2h_matches`, upsert dans `team_lg1_cache`. Migration 20260517 a renommé `lg1_pct` → `lg1_after30_pct` (semantique passe de 0-45 à 31-45)
+- **Daily seed auto** — `daily-seed.js` (cron 4h UTC / 6h Paris) : seed matchs d'hier dans `h2h_matches`
+- **Calcul stats équipes LG1/LG2** — `compute-team-lg1.js` (cron 5h UTC / 7h Paris, 1h apres daily-seed) : pour chaque (season_id, team_id), calcule `lg1_after30_pct` (% matchs avec but en 31-45 min, semantique match-level) + `lg2_pct` (% matchs avec but ≥80 min) depuis `h2h_matches`, upsert dans `team_lg1_cache`. Migration 20260517 a renommé `lg1_pct` → `lg1_after30_pct`
 - **Badges LG1/LG2 par equipe** (2026-05-17) — composant `TeamLgBadges.svelte` reutilisable, 2 badges colorés (vert ≥55%, orange 40-54, rouge <40, gris si n/a). Affichés inline sur `/matches` (card + expand team-detail), `/alerts/[type]`, `/mes-matchs` (prefetch batch par team_id), `/leagues` (tableau equipes, colonnes triables LG1 31-45 + LG2 ≥80 — passe seasonId explicite). La table `alerts` n'ayant pas de season_id, le composant accepte `teamId` seul et resout la derniere saison connue.
 - **Cleanup colonnes orphelines** (2026-05-17, migration 20260517100000) — drop `alerts.fhg_result`, `dc_defeat_pct`, `dc_best_side`, `dc_confidence`, `dc_result` (0 ligne remplie, 0 ref code). Suppression dead code `src/lib/components/MatchCard.svelte` (composant jamais importe).
 - **Page Cartons rouges** (`/red-cards`, 2026-05-17) — analyse statique post-match sur 3904 matchs (49 ligues × 3 saisons FootyStats). 4 KPIs (61.9% but apres rouge, 34.5% ≥2 buts, +37% effet causal), bar chart % but selon minute du rouge, line chart strategie wait-and-bet (4 series par tranche), tableau ligues triable Top/Bottom/Toutes, distribution minute des rouges. Data figee dans `src/lib/data/red-card-stats.json` (regeneration manuelle via script Python)

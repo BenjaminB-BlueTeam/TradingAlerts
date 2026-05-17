@@ -3,7 +3,7 @@
    Tache planifiee — seed quotidien des matchs de la veille.
    Recupere les matchs termines d'hier via FootyStats
    et les upsert dans h2h_matches (Supabase).
-   Tourne 1x/jour a 6h UTC via Netlify Scheduled Functions.
+   Tourne 1x/jour a 4h UTC (6h Paris) via Netlify Scheduled Functions.
    ================================================ */
 
 const { footyRequest } = require('./lib/api');
@@ -167,7 +167,7 @@ exports.handler = async (event) => {
   };
 };
 
-// Netlify Scheduled Function — tous les jours a 6h UTC
+// Netlify Scheduled Function — tous les jours a 4h UTC (6h Paris)
 exports.config = {
-  schedule: '0 6 * * *',
+  schedule: '0 4 * * *',
 };
