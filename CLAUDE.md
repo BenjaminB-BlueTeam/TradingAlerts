@@ -73,7 +73,7 @@ src/
   routes/
     +layout.svelte      ← layout global (Sidebar, Toast, init, guard auth)
     +layout.js          ← ssr: false, prerender: false
-    +page.svelte        ← Dashboard KPIs 3 sections : Santé infra, Santé crons, Alertes du jour (Supabase)
+    +page.svelte        ← Dashboard KPIs 3 sections : Santé infra (3) · Santé crons (5 cards data-driven : statut ✓/✗ du dernier run + prochain passage countdown) · Alertes du jour (Supabase)
     login/+page.svelte        ← formulaire email/password Supabase Auth
     alerts-lg1/+page.svelte   ← redirect → /alerts/lg1 (legacy)
     alerts-lg2/+page.svelte   ← redirect → /alerts/lg2 (legacy)

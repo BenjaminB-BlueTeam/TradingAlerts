@@ -14,10 +14,26 @@
   let seedLoading = $state(true);
   let seedError = $state('');
 
-  // Santé crons
-  let lastGenerateTs = $state(null);  // dernier started_at de generate-alerts (cron_runs)
-  let lastSeedTs = $state(null);      // dernier started_at de daily-seed (cron_runs)
-  let lastComputeTs = $state(null);   // dernier started_at de compute-team-lg1 (cron_runs)
+  // Santé crons — definition des 5 crons (source de verite = function-level exports.config)
+  /**
+   * @type {Array<{
+   *   name: string, label: string,
+   *   hoursUTC: number[] | null,   // null = recurrent (toutes les X min)
+   *   intervalMin?: number,        // pour les crons recurrents (pre-kickoff)
+   *   freqHours: number,           // periode nominale en heures pour seuils color
+   *   notes: string,
+   * }>}
+   */
+  const CRONS = [
+    { name: 'daily-seed',           label: 'Seed quotidien',     hoursUTC: [4],     freqHours: 24, notes: '6h Paris · matchs hier' },
+    { name: 'compute-team-lg1',     label: 'Calcul LG1% / LG2%', hoursUTC: [5],     freqHours: 24, notes: '7h Paris · badges equipes' },
+    { name: 'generate-alerts',      label: 'Generation alertes', hoursUTC: [6, 16], freqHours: 12, notes: '8h + 18h Paris' },
+    { name: 'notify-daily-summary', label: 'Resume Telegram',    hoursUTC: [9],     freqHours: 24, notes: '11h Paris · alertes Fort' },
+    { name: 'notify-pre-kickoff',   label: 'Telegram pre-match', hoursUTC: null, intervalMin: 5, freqHours: 0.1, notes: 'toutes les 5 min' },
+  ];
+
+  /** @type {Map<string, {started_at: string, status: string}>} */
+  let cronLastRuns = $state(new Map());
   let cronsLoading = $state(true);
 
   let lg1Alerts = $derived(
@@ -90,9 +106,20 @@
     if (h < 2 * freqHours + 1) return 'orange';
     return 'red';
   }
-  let generateColorClass = $derived(cronColorClass(lastGenerateTs, 12));
-  let seedColorClass2 = $derived(cronColorClass(lastSeedTs, 24));
-  let computeColorClass = $derived(cronColorClass(lastComputeTs, 24));
+
+  // Icone de statut (case a cocher visuelle) selon le status du dernier run
+  function statusIcon(status) {
+    if (status === 'success') return '✓';
+    if (status === 'error') return '✗';
+    if (status === 'running') return '…';
+    return '—';
+  }
+  function statusClass(status) {
+    if (status === 'success') return 'status-ok';
+    if (status === 'error') return 'status-ko';
+    if (status === 'running') return 'status-running';
+    return 'status-none';
+  }
 
   let now = $state(new Date());
   let dateLabel = $derived(now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
@@ -102,10 +129,18 @@
     return () => clearInterval(t);
   });
 
-  function nextCronRun(hours) {
+  function nextCronRun(cron) {
+    if (cron.hoursUTC == null && cron.intervalMin) {
+      // Cron recurrent : prochain pas de N minutes
+      const d = new Date(now);
+      const m = d.getUTCMinutes();
+      const next = Math.ceil((m + 1) / cron.intervalMin) * cron.intervalMin;
+      d.setUTCMinutes(next, 0, 0);
+      return d;
+    }
     const candidates = [];
     for (let day = 0; day <= 1; day++) {
-      for (const h of hours) {
+      for (const h of cron.hoursUTC) {
         const d = new Date(now);
         d.setUTCDate(d.getUTCDate() + day);
         d.setUTCHours(h, 0, 0, 0);
@@ -177,16 +212,22 @@
 
   async function loadCronHealth() {
     cronsLoading = true;
-    const [generateRes, seedRes, computeRes] = await Promise.all([
-      supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'generate-alerts').order('started_at', { ascending: false }).limit(1),
-      supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'daily-seed').order('started_at', { ascending: false }).limit(1),
-      supabase.from('cron_runs').select('started_at, status').eq('cron_name', 'compute-team-lg1').order('started_at', { ascending: false }).limit(1),
-    ]);
-
-    if (!generateRes.error && generateRes.data?.length > 0) lastGenerateTs = generateRes.data[0].started_at;
-    if (!seedRes.error && seedRes.data?.length > 0) lastSeedTs = seedRes.data[0].started_at;
-    if (!computeRes.error && computeRes.data?.length > 0) lastComputeTs = computeRes.data[0].started_at;
-
+    const results = await Promise.all(
+      CRONS.map(c =>
+        supabase.from('cron_runs')
+          .select('started_at, status')
+          .eq('cron_name', c.name)
+          .order('started_at', { ascending: false })
+          .limit(1)
+      )
+    );
+    const m = new Map();
+    results.forEach((res, i) => {
+      if (!res.error && res.data?.length > 0) {
+        m.set(CRONS[i].name, res.data[0]);
+      }
+    });
+    cronLastRuns = m;
     cronsLoading = false;
   }
 
@@ -254,77 +295,40 @@
   <div class="section-label">Santé crons</div>
   <div class="metric-grid metric-grid--3">
 
-    <div
-      class="metric-card"
-      class:metric-card--ok={generateColorClass === 'green'}
-      class:metric-card--warn={generateColorClass === 'orange'}
-      class:metric-card--error={generateColorClass === 'red'}
-    >
-      <div class="metric-card__label">Génération alertes</div>
-      {#if cronsLoading}
-        <div class="metric-card__value muted">—</div>
-        <div class="metric-card__sub">chargement…</div>
-      {:else}
-        <div
-          class="metric-card__value"
-          class:green={generateColorClass === 'green'}
-          class:orange={generateColorClass === 'orange'}
-          class:red={generateColorClass === 'red'}
-        >
-          {lastRunLabel(lastGenerateTs)}
+    {#each CRONS as cron (cron.name)}
+      {@const last = cronLastRuns.get(cron.name)}
+      {@const lastTs = last?.started_at ?? null}
+      {@const lastStatus = last?.status ?? null}
+      {@const colorClass = cronColorClass(lastTs, cron.freqHours)}
+      <div
+        class="metric-card cron-card"
+        class:metric-card--ok={colorClass === 'green'}
+        class:metric-card--warn={colorClass === 'orange'}
+        class:metric-card--error={colorClass === 'red'}
+      >
+        <div class="cron-card__head">
+          <div class="metric-card__label">{cron.label}</div>
+          <span class="cron-status {statusClass(lastStatus)}" title="Statut du dernier run : {lastStatus ?? 'aucun run'}">
+            {statusIcon(lastStatus)}
+          </span>
         </div>
-        <div class="metric-card__sub">{lastGenerateTs ? `il y a ${hoursLabel(lastGenerateTs)} · cron 12h` : 'jamais · cron 12h'}</div>
-        <div class="next-run">Prochain : {formatCountdown(nextCronRun([0, 12]))}</div>
-      {/if}
-    </div>
-
-    <div
-      class="metric-card"
-      class:metric-card--ok={seedColorClass2 === 'green'}
-      class:metric-card--warn={seedColorClass2 === 'orange'}
-      class:metric-card--error={seedColorClass2 === 'red'}
-    >
-      <div class="metric-card__label">Seed quotidien</div>
-      {#if cronsLoading}
-        <div class="metric-card__value muted">—</div>
-        <div class="metric-card__sub">chargement…</div>
-      {:else}
-        <div
-          class="metric-card__value"
-          class:green={seedColorClass2 === 'green'}
-          class:orange={seedColorClass2 === 'orange'}
-          class:red={seedColorClass2 === 'red'}
-        >
-          {lastRunLabel(lastSeedTs)}
-        </div>
-        <div class="metric-card__sub">{lastSeedTs ? `il y a ${hoursLabel(lastSeedTs)} · cron 24h` : 'jamais · cron 24h'}</div>
-        <div class="next-run">Prochain : {formatCountdown(nextCronRun([6]))}</div>
-      {/if}
-    </div>
-
-    <div
-      class="metric-card"
-      class:metric-card--ok={computeColorClass === 'green'}
-      class:metric-card--warn={computeColorClass === 'orange'}
-      class:metric-card--error={computeColorClass === 'red'}
-    >
-      <div class="metric-card__label">Calcul LG1%</div>
-      {#if cronsLoading}
-        <div class="metric-card__value muted">—</div>
-        <div class="metric-card__sub">chargement…</div>
-      {:else}
-        <div
-          class="metric-card__value"
-          class:green={computeColorClass === 'green'}
-          class:orange={computeColorClass === 'orange'}
-          class:red={computeColorClass === 'red'}
-        >
-          {lastRunLabel(lastComputeTs)}
-        </div>
-        <div class="metric-card__sub">{lastComputeTs ? `il y a ${hoursLabel(lastComputeTs)} · cron 24h` : 'jamais · cron 24h'}</div>
-        <div class="next-run">Prochain : {formatCountdown(nextCronRun([7]))}</div>
-      {/if}
-    </div>
+        {#if cronsLoading}
+          <div class="metric-card__value muted">—</div>
+          <div class="metric-card__sub">chargement…</div>
+        {:else}
+          <div
+            class="metric-card__value"
+            class:green={colorClass === 'green'}
+            class:orange={colorClass === 'orange'}
+            class:red={colorClass === 'red'}
+          >
+            {lastRunLabel(lastTs)}
+          </div>
+          <div class="metric-card__sub">{lastTs ? `il y a ${hoursLabel(lastTs)} · ${cron.notes}` : `jamais · ${cron.notes}`}</div>
+          <div class="next-run">Prochain : {formatCountdown(nextCronRun(cron))}</div>
+        {/if}
+      </div>
+    {/each}
 
   </div>
 
@@ -411,6 +415,37 @@
 
   .next-run { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; display: block; }
   .error-msg { color: var(--color-danger); font-size: 13px; margin-top: 8px; }
+
+  /* Cron card : status icon en haut a droite */
+  .cron-card { position: relative; padding-top: 24px; }
+  .cron-card__head {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .cron-card .metric-card__label { margin-bottom: 0; text-align: left; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cron-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+    border: 1px solid;
+  }
+  .cron-status.status-ok    { background: rgba(29,158,117,0.18);  color: var(--color-accent-green); border-color: rgba(29,158,117,0.4); }
+  .cron-status.status-ko    { background: rgba(226,75,74,0.15);   color: var(--color-danger);       border-color: rgba(226,75,74,0.4); }
+  .cron-status.status-running { background: rgba(239,159,39,0.15); color: var(--color-signal-moyen); border-color: rgba(239,159,39,0.4); }
+  .cron-status.status-none  { background: rgba(160,163,177,0.10); color: var(--color-text-muted);   border-color: rgba(160,163,177,0.25); }
 
   @media (max-width: 900px) {
     .metric-grid--3 { grid-template-columns: repeat(2, 1fr); }
