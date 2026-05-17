@@ -73,9 +73,9 @@
       return {
         label: bucket.red_bucket,
         color,
-        data: bucket.points.map((p, i) => {
-          if (p.pct == null || p.n === 0) return null;
-          return { x: i, y: p.pct };
+        data: bucket.points.map(p => {
+          if (p.pct == null || p.n === 0) return NaN;
+          return p.pct;
         }),
       };
     });
@@ -213,11 +213,11 @@
         <thead>
           <tr>
             <th class="rc-table__th rc-table__th--left">Ligue</th>
-            <th class="rc-table__th">N</th>
-            <th class="rc-table__th">% but apres</th>
-            <th class="rc-table__th rc-table__th--hide-sm">% 2 buts</th>
-            <th class="rc-table__th rc-table__th--hide-sm">Buts moy.</th>
-            <th class="rc-table__th rc-table__th--hide-sm">Effet causal %</th>
+            <th class="rc-table__th" title="Nombre de matchs avec carton rouge dans la ligue">N</th>
+            <th class="rc-table__th" title="% de matchs avec au moins 1 but marque apres le carton rouge">% but apres</th>
+            <th class="rc-table__th rc-table__th--hide-sm" title="% de matchs avec au moins 2 buts marques apres le carton rouge">% 2 buts</th>
+            <th class="rc-table__th rc-table__th--hide-sm" title="Nombre moyen de buts marques apres le carton rouge, par match">Buts moy.</th>
+            <th class="rc-table__th rc-table__th--hide-sm" title="Difference de taux de buts par heure avant vs apres le rouge. Ex. +37% = le match produit 37% de buts en plus par heure apres l'expulsion">Surplus buts/h</th>
           </tr>
         </thead>
         <tbody>
@@ -225,17 +225,19 @@
             {@const flagUrl = leagueFlagUrl(league.league)}
             <tr class="rc-table__row" class:rc-table__row--alt={i % 2 === 1}>
               <td class="rc-table__td rc-table__td--league">
-                {#if flagUrl}
-                  <img
-                    src={flagUrl}
-                    alt={league.country}
-                    class="rc-flag"
-                    loading="lazy"
-                  />
-                {:else}
-                  <span class="rc-flag-placeholder"></span>
-                {/if}
-                <span class="rc-table__league-name">{league.league}</span>
+                <div class="rc-league-cell">
+                  {#if flagUrl}
+                    <img
+                      src={flagUrl}
+                      alt={league.country}
+                      class="rc-flag"
+                      loading="lazy"
+                    />
+                  {:else}
+                    <span class="rc-flag-placeholder"></span>
+                  {/if}
+                  <span class="rc-table__league-name">{league.league}</span>
+                </div>
               </td>
               <td class="rc-table__td rc-table__td--center">
                 <span class:text-muted={league.n < 30}>{league.n}</span>
@@ -448,10 +450,12 @@
     text-align: center;
   }
   .rc-table__td--league {
+    min-width: 200px;
+  }
+  .rc-league-cell {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-width: 200px;
   }
   .rc-table__league-name {
     color: var(--color-text-primary);

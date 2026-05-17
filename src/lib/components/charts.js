@@ -254,33 +254,32 @@ export function makeLineChart(canvas, { labels, datasets }) {
         label: d.label,
         data: d.data,
         borderColor: d.color,
-        backgroundColor: d.color + '20',
+        backgroundColor: 'transparent',
         borderWidth: 2,
         pointRadius: 3,
         pointBackgroundColor: d.color,
         tension: 0.3,
         spanGaps: true,
+        fill: false,
       })),
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: '#A0A3B1', font: { size: 11 } } },
+        legend: { display: false },
         tooltip: {
           ...TOOLTIP_STYLE,
           callbacks: {
             label: ctx => {
-              const raw = ctx.raw;
-              if (raw == null || raw.y == null) return ` ${ctx.dataset.label}: —`;
-              const { v, t } = raw;
-              return ` ${ctx.dataset.label}: ${raw.y}%  (${v ?? 0}/${t ?? 0})`;
+              if (ctx.parsed.y == null) return ` ${ctx.dataset.label}: —`;
+              return ` ${ctx.dataset.label}: ${ctx.parsed.y}%`;
             },
           },
         },
       },
       scales: {
-        x: AXIS_STYLE,
+        x: { ...AXIS_STYLE, type: 'category' },
         y: { ...AXIS_STYLE, beginAtZero: true, max: 100, ticks: { ...AXIS_STYLE.ticks, callback: v => `${v}%` } },
       },
     },
