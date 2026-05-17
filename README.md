@@ -31,7 +31,7 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 ### Dashboard (`/`) — etat de sante prod
 - **7 KPIs** en 2 sections : "Santé infra" (API FootyStats, Ligues, Seed H2H, LG1 Cache) et "Alertes du jour" (LG1 Fort, LG2 Fort, Taux validées 7j)
 - Seed H2H : derniere date seedee (filtrée <= aujourd'hui) + count total + heure du dernier seed
-- LG1 Cache : date dernier `compute-team-lg1`, nombre d'equipes en cache
+- LG1 Cache : date dernier `compute-team-stats`, nombre d'equipes en cache
 - Taux validées 7j : % validated/(validated+lost) sur 7 jours glissants
 - Couleurs : vert/orange/rouge selon ancienneté pour Seed et LG1 Cache
 - Layout centre, max-width 960px, 2 grilles separees (4col + 3col)
@@ -125,7 +125,7 @@ Streak consecutif de matchs avec au moins un but apres la 80e minute, par equipe
     +-- generate-alerts.js   (cron 12h) --> FootyStats + Supabase (LG1 + LG2)
     +-- check-results.js     (cron 1h)  --> FootyStats + Supabase (valide/perdu)
     +-- daily-seed.js        (cron 6h)  --> FootyStats + Supabase (rolling J-3→J-1)
-    +-- compute-team-lg1.js  (cron 7h)  --> Supabase team_lg1_cache
+    +-- compute-team-stats.js (cron 4h30 UTC)  --> Supabase team_lg1_cache
 ```
 
 ### Tables Supabase (RLS actif sur toutes)

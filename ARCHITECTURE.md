@@ -22,7 +22,7 @@
   |     Mode backfill : ?from=...&to=... (requiert FUNCTIONS_AUTH_TOKEN)
   |     Sanity check : appel league-list, log WARNING si count < 40 ou > 60
   |
-  +-- compute-team-lg1.js (cron 7h UTC)
+  +-- compute-team-stats.js (cron 4h30 UTC)
   |     Calcule LG1% 0-45 min par (season_id, team_id) depuis h2h_matches
   |     Upsert dans team_lg1_cache
   |
@@ -42,7 +42,7 @@ Toutes les tables ont RLS active. `service_role` bypass RLS par defaut.
 | `teams` | team_id (unique), name (~1098 equipes — colonne réelle `name`, pas `team_name`) | SELECT | SELECT | seed-data.js (league-teams) |
 | `team_seasons` | team_id, season_id, stats (non peuplee, legacy) | SELECT | — | — |
 | `seed_jobs` | job_id, status, progress | SELECT + INSERT + UPDATE | — | seed-data.js |
-| `team_lg1_cache` | season_id, team_id, lg1_pct (PK composite) | SELECT | — | compute-team-lg1.js |
+| `team_lg1_cache` | season_id, team_id, lg1_after30_pct + lg2_pct (PK composite) | SELECT | — | compute-team-stats.js |
 | `selected_alerts` | match_id, signal_type | SELECT + INSERT + DELETE | — | Frontend (SelectAlertButton) |
 | `alert_trades` | match_id, signal_type, cote, mise, created_at | ALL | ALL | Frontend (/mes-matchs) |
 | `leagues`, `api_cache`, `alerts_v1_backup` | Tables legacy | — | — | service_role only |
