@@ -7,17 +7,15 @@
 
   let selected = $derived(isSelected($selectedKeys, alert.match_id, alert.signal_type));
 
-  let isExcluded = $derived(!!alert.user_excluded);
   // Clôturée ET non-sélectionnée : interdit la sélection rétroactive (anti-biais)
   // Si déjà sélectionnée et terminée : on autorise la désélection
   let isClosedNonSelected = $derived(
     !!alert.status && alert.status !== 'pending' && !selected
   );
 
-  let disabled = $derived(isPending || isExcluded || isClosedNonSelected);
+  let disabled = $derived(isPending || isClosedNonSelected);
 
   let tooltip = $derived.by(() => {
-    if (isExcluded) return "Alerte exclue — réintégrez-la pour pouvoir la sélectionner";
     if (isClosedNonSelected) return "Alerte clôturée — sélection rétroactive interdite (anti-biais)";
     if (selected) return "Cliquer pour désélectionner";
     return "Sélectionner cette alerte";

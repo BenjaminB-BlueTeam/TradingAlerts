@@ -37,7 +37,7 @@ async function fetchAlerts() {
   // Récupère toutes les alertes terminées (inclut v1 + v2 pour comparaison)
   const url = `${SUPABASE_URL}/rest/v1/alerts`
     + `?status=in.(validated,lost)`
-    + `&select=signal_type,lg1_pct,confidence,status,algo_version,user_excluded`
+    + `&select=signal_type,lg1_pct,confidence,status,algo_version`
     + `&order=kickoff_unix.desc`;
 
   const res = await fetch(url, {
@@ -117,7 +117,7 @@ async function main() {
   console.log(`${all.length} alertes terminées au total.`);
 
   // Séparer v1 vs v2
-  const v2 = all.filter(a => a.algo_version === 'lg1_v2' && !a.user_excluded);
+  const v2 = all.filter(a => a.algo_version === 'lg1_v2');
   const v1 = all.filter(a => a.algo_version !== 'lg1_v2');
 
   console.log(`  v1 (ancien algo) : ${v1.length}`);

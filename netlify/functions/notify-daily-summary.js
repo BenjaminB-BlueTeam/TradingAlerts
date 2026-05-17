@@ -152,12 +152,10 @@ exports.handler = async (event) => {
       }
     }
 
-    // Récupérer les alertes Fort du jour (non exclues), triées par kickoff
-    // user_excluded=neq.true pour inclure les alertes où user_excluded est null ou false
+    // Récupérer les alertes Fort du jour, triées par kickoff
     const alertsParams = [
       `match_date=eq.${today}`,
       'confidence=eq.fort',
-      'user_excluded=neq.true',
       'order=kickoff_unix.asc',
       'select=match_id,signal_type,home_team_name,away_team_name,league_name,kickoff_unix',
     ].join('&');

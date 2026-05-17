@@ -1,15 +1,12 @@
 <script>
   import { onMount } from 'svelte';
-  import { get } from 'svelte/store';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { supabase, excludeAlert, unexcludeAlert } from '$lib/api/supabase.js';
+  import { supabase } from '$lib/api/supabase.js';
   import { getDateStr, formatDateDMY, formatDate, formatTime } from '$lib/utils/formatters.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
   import { leagueFlagUrl } from '$lib/utils/countryFlags.js';
-  import ExcludeAlertModal from '$lib/components/ExcludeAlertModal.svelte';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
-  import { selectedKeys, isSelected, unselect } from '$lib/stores/selectionStore.js';
   import { callFunction } from '$lib/api/functions.js';
   import TeamLgBadges from '$lib/components/TeamLgBadges.svelte';
 
@@ -21,11 +18,6 @@
     lg1: ['LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D', 'LG1_MANUAL'],
     lg2: ['LG2_A', 'LG2_B', 'LG2_A+B', 'LG2_MANUAL'],
   };
-
-  const ALL_SIGNALS_FOR_UNSELECT = [
-    'LG1', 'LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D', 'LG1_MANUAL',
-    'LG2_A', 'LG2_B', 'LG2_A+B', 'LG2_MANUAL',
-  ];
 
   let alerts = $state([]);
   let loading = $state(true);
@@ -48,7 +40,6 @@
 
   let selectedLeague = $state('toutes');
   let selectedConfs = $state(new Set(['fort']));
-  let selectedExclusion = $state('actives');
 
   // Quand le type change (navigation entre tabs), réinitialiser les filtres et recharger
   $effect(() => {
@@ -56,7 +47,6 @@
     selectedDay = 0;
     selectedLeague = 'toutes';
     selectedConfs = new Set(['fort']);
-    selectedExclusion = 'actives';
     expandedId = null;
     teamMatchesCache = {};
     alerts = [];
@@ -90,39 +80,6 @@
       deleteMessage = `Erreur : ${e.message}`;
     }
     deleting = false;
-  }
-
-  // Exclusion modale
-  let excludeModalOpen = $state(false);
-  let excludeModalAlert = $state(null);
-
-  function openExcludeModal(alert) {
-    excludeModalAlert = alert;
-    excludeModalOpen = true;
-  }
-
-  async function handleExcluded({ tags, note }) {
-    try {
-      const set = get(selectedKeys);
-      for (const sig of ALL_SIGNALS_FOR_UNSELECT) {
-        if (isSelected(set, excludeModalAlert.match_id, sig)) {
-          await unselect(excludeModalAlert.match_id, sig);
-        }
-      }
-      await excludeAlert(excludeModalAlert.match_id, tags, note);
-      await loadAlerts();
-    } catch (err) {
-      console.error('excludeAlert error:', err);
-    }
-  }
-
-  async function handleUnexclude(alert) {
-    try {
-      await unexcludeAlert(alert.match_id);
-      await loadAlerts();
-    } catch (err) {
-      console.error('unexcludeAlert error:', err);
-    }
   }
 
   async function handleGenerate() {
@@ -189,8 +146,6 @@
     alerts.filter(a => {
       if (selectedLeague !== 'toutes' && a.league_name !== selectedLeague) return false;
       if (!matchesConfidence(a)) return false;
-      if (selectedExclusion === 'actives' && a.user_excluded) return false;
-      if (selectedExclusion === 'exclus' && !a.user_excluded) return false;
       return true;
     })
   );
@@ -201,8 +156,6 @@
         if (selectedDay !== null && a.match_date !== getDateStr(selectedDay)) return false;
         if (selectedLeague !== 'toutes' && a.league_name !== selectedLeague) return false;
         if (!matchesConfidence(a)) return false;
-        if (selectedExclusion === 'actives' && a.user_excluded) return false;
-        if (selectedExclusion === 'exclus' && !a.user_excluded) return false;
         return true;
       })
       .sort((a, b) => {
@@ -381,15 +334,7 @@
       <button class="alerts-filter-btn" class:active={selectedConfs.has('moyen')} onclick={() => toggleConf('moyen')}>Moyen</button>
     </div>
   </div>
-  <div class="sub-filter-group">
-    <span class="sub-filter-label">Statut</span>
-    <select class="alerts-filter-select" bind:value={selectedExclusion}>
-      <option value="actives">Actives</option>
-      <option value="exclus">Exclus</option>
-      <option value="toutes">Toutes</option>
-    </select>
   </div>
-</div>
 
 {#if error}
   <p class="error-msg">{error}</p>
@@ -426,7 +371,14 @@
             <div class="alert-card__hour">{formatTime(a.kickoff_unix)}</div>
           </div>
           <div class="alert-card__match">
-            <div class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</div>
+            <div class="alert-card__teams-row">
+              <span class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</span>
+              {#if a.algo_version === 'manual'}
+                <span class="alert-badge alert-badge--manuel">Manuel</span>
+              {:else}
+                <span class="alert-badge alert-badge--inline {confidenceClass(a.confidence)}">{a.confidence}</span>
+              {/if}
+            </div>
             <div class="alert-card__league">
               {#if leagueFlagUrl(a.league_name)}
                 <img class="country-flag" src={leagueFlagUrl(a.league_name)} alt="" loading="lazy" />
@@ -456,19 +408,8 @@
               </div>
             {/if}
           </div>
-          <div class="alert-card__badges">
-            {#if a.algo_version === 'manual'}
-              <span class="alert-badge alert-badge--manuel">Manuel</span>
-            {:else}
-              <span class="alert-badge {confidenceClass(a.confidence)}">{a.confidence}</span>
-            {/if}
+          <div class="alert-card__actions">
             <SelectAlertButton alert={a} />
-            {#if a.user_excluded}
-              <span class="alert-badge alert-badge--exclu">EXCLUE</span>
-              <button class="btn btn--sm btn-reinstate" onclick={e => { e.stopPropagation(); handleUnexclude(a); }}>Réintégrer</button>
-            {:else if a.algo_version !== 'manual'}
-              <button class="btn btn--sm btn--danger" onclick={e => { e.stopPropagation(); openExcludeModal(a); }}>Exclure</button>
-            {/if}
           </div>
           <span class="alert-card__arrow">{expandedId === a.id ? '▼' : '▶'}</span>
         </div>
@@ -632,16 +573,16 @@
   .alert-card__teams { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .alert-card__league { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
   .alert-card__league .country-flag { width: 16px; height: 12px; object-fit: cover; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255,255,255,0.08); flex-shrink: 0; }
+  .alert-card__teams-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .alert-card__teams { font-size: 13px; font-weight: 500; min-width: 0; flex: 1 1 auto; }
   .alert-card__team-badges { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
   .alert-card__team-badge-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
   .alert-card__team-label { font-size: 10px; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; flex-shrink: 0; }
   .alert-card__arrow { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
 
-  .alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
-  .alert-badge--exclu { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #555; }
+  .alert-card__actions { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .alert-badge--inline { font-size: 10px; padding: 2px 6px; flex-shrink: 0; }
   .alert-badge--manuel { background: rgba(120,100,200,0.15); color: #a090d0; border: 1px solid rgba(120,100,200,0.35); }
-  .btn-reinstate { border-color: var(--color-accent-blue); color: var(--color-accent-blue); background: rgba(61,142,247,0.1); }
-  .btn-reinstate:hover { background: var(--color-accent-blue); color: #fff; }
 
   /* Expand */
   .alert-expand { border-top: 1px solid var(--color-border); padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -663,13 +604,12 @@
     .alert-card__time { grid-area: time; text-align: left; min-width: 0; }
     .alert-card__match { grid-area: match; min-width: 0; }
     .alert-card__teams { white-space: normal; line-height: 1.3; }
+    .alert-card__teams-row { gap: 6px; }
     .alert-card__arrow { grid-area: arrow; align-self: start; padding-top: 4px; }
-    .alert-card__badges {
+    .alert-card__actions {
       grid-area: actions;
       width: 100%;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      gap: 6px;
+      justify-content: center;
       border-top: 1px solid var(--color-border);
       padding-top: 10px;
     }
@@ -677,8 +617,3 @@
   }
 </style>
 
-<ExcludeAlertModal
-  alert={excludeModalAlert}
-  bind:open={excludeModalOpen}
-  onexcluded={handleExcluded}
-/>

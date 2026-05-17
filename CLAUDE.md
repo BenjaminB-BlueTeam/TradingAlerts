@@ -91,7 +91,7 @@ src/
       cache.js          ← cache localStorage TTL par endpoint
       cache.test.js     ← tests unitaires cache (20 tests)
       functions.js      ← appels aux Netlify Functions (generate, check, seed, delete)
-      supabase.js       ← client Supabase + helpers auth + H2H queries + exclusion + alertes
+      supabase.js       ← client Supabase + helpers auth + H2H queries + alertes
       supabase.auth.test.js ← tests unitaires supabase auth helpers
       seedClient.js     ← client seed (orchestre seed ligue par ligue)
     components/
@@ -101,7 +101,6 @@ src/
       Modal.svelte          ← modale globale
       SelectAlertButton.svelte ← bouton toggle sélection alerte (selectionStore)
       ManualSelectButton.svelte ← boutons +LG1/+LG2 sur /matches → createManualAlert + select
-      ExcludeAlertModal.svelte ← modale exclusion manuelle (7 tags + note)
       TeamLgBadges.svelte   ← 2 badges LG1 (but 31-45) + LG2 (but ≥80) par equipe. Fetch team_lg1_cache par team_id (derniere saison via order by updated_at desc). seasonId optionnel — fournir seulement quand on a un season_id explicite (ex: /leagues). Cache module + preload pour batch.
       charts.js             ← graphiques Chart.js (tree-shaké) + helpers line/stacked/horizontal/simpleBar/distributionBar
     stores/
@@ -286,7 +285,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Badges LG1/LG2 par equipe** (2026-05-17) — composant `TeamLgBadges.svelte` reutilisable, 2 badges colorés (vert ≥55%, orange 40-54, rouge <40, gris si n/a). Affichés inline sur `/matches` (card + expand team-detail), `/alerts/[type]`, `/mes-matchs` (prefetch batch par team_id), `/leagues` (tableau equipes, colonnes triables LG1 31-45 + LG2 ≥80 — passe seasonId explicite). La table `alerts` n'ayant pas de season_id, le composant accepte `teamId` seul et resout la derniere saison connue.
 - **Cleanup colonnes orphelines** (2026-05-17, migration 20260517100000) — drop `alerts.fhg_result`, `dc_defeat_pct`, `dc_best_side`, `dc_confidence`, `dc_result` (0 ligne remplie, 0 ref code). Suppression dead code `src/lib/components/MatchCard.svelte` (composant jamais importe).
 - **Page Cartons rouges** (`/red-cards`, 2026-05-17) — analyse statique post-match sur 3904 matchs (49 ligues × 3 saisons FootyStats). 4 KPIs (61.9% but apres rouge, 34.5% ≥2 buts, +37% effet causal), bar chart % but selon minute du rouge, line chart strategie wait-and-bet (4 series par tranche), tableau ligues triable Top/Bottom/Toutes, distribution minute des rouges. Data figee dans `src/lib/data/red-card-stats.json` (regeneration manuelle via script Python)
-- **Exclusion manuelle** — bouton rouge "Exclure" (btn--danger) sur dashboard/alertes, ExcludeAlertModal (7 tags + note), réintégration possible
+- **[SUPPRIMÉ 2026-05-17] Exclusion manuelle** — feature retirée. Migration 20260517120000 drop les colonnes `alerts.user_excluded, user_exclusion_tags, user_exclusion_note, user_excluded_at`. ExcludeAlertModal.svelte supprimé. Le bouton "Exclure" remplacé par centrage de "Sélectionner" sur les cards d'alertes.
 - **Auth Supabase** — email/password solo, sign ups désactivés, guard SvelteKit dans +layout.svelte, page `/login`, redirect automatique si non authentifié
 - **Headers sécurité** — `src/hooks.server.js` injecte CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP sur toutes les réponses SSR
 - **PWA installable** — `static/manifest.json` + `static/sw.js` (service worker cache offline) + icônes 192×512px
@@ -306,7 +305,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Compteur API** — req restantes affiché dans la sidebar
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
 - **Supabase RLS durcie** (2026-05-07) — policies `authenticated` pour le frontend (plus `anon`), `service_role` pour les Netlify Functions.
-- **Notifications Telegram** (2026-05-16) — `lib/telegram.cjs` : helper `sendMessage(text)`. Deux crons actifs : (1) `notify-pre-kickoff.js` (*/5 min) — match imminent dans fenêtre 0-5min avant kickoff ; (2) `notify-daily-summary.js` (5h30 UTC / 7h30 Paris) — résumé alertes Fort du jour. `generate-alerts.js` ne notifie plus Telegram (supprimé). Idempotence via table `notifications_sent` (UNIQUE kind+ref_key). Filtre `user_excluded=neq.true`. Env vars : `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`.
+- **Notifications Telegram** (2026-05-16) — `lib/telegram.cjs` : helper `sendMessage(text)`. Deux crons actifs : (1) `notify-pre-kickoff.js` (*/5 min) — match imminent dans fenêtre 0-5min avant kickoff ; (2) `notify-daily-summary.js` (5h30 UTC / 7h30 Paris) — résumé alertes Fort du jour. `generate-alerts.js` ne notifie plus Telegram (supprimé). Idempotence via table `notifications_sent` (UNIQUE kind+ref_key). Env vars : `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`.
 - **Tests unitaires** — Vitest, 1244 tests (lg1.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, cache 20, formatters 22, teamData 14, selectionFilters + selectionStore + supabase.auth + autres)
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`. Tooltip goal-dot opaque (#1e2330). bar-hover-min opaque.
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)

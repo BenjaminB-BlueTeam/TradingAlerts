@@ -37,10 +37,10 @@
   let cronsLoading = $state(true);
 
   let lg1Alerts = $derived(
-    alerts.filter(a => ['LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D'].includes(a.signal_type) && !a.user_excluded)
+    alerts.filter(a => ['LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D'].includes(a.signal_type))
   );
   let lg2Alerts = $derived(
-    alerts.filter(a => ['LG2_A', 'LG2_B', 'LG2_A+B'].includes(a.signal_type) && !a.user_excluded)
+    alerts.filter(a => ['LG2_A', 'LG2_B', 'LG2_A+B'].includes(a.signal_type))
   );
   let lg1FortToday = $derived(
     lg1Alerts.filter(a => a.confidence === 'fort')
@@ -166,7 +166,7 @@
     error = '';
     const { data, error: dbError } = await supabase
       .from('alerts')
-      .select('signal_type, confidence, user_excluded, match_date')
+      .select('signal_type, confidence, match_date')
       .eq('match_date', getDateStr(0));
     if (dbError) {
       error = 'Impossible de charger les alertes.';
