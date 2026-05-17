@@ -52,7 +52,7 @@ netlify/functions/
   delete-alerts.js      ← suppression d'alertes par IDs (auth requise)
   seed-data.js          ← seed Supabase (team_seasons, h2h_matches) (auth token requis)
   daily-seed.js         ← cron quotidien 6h UTC — seed matchs d'hier dans h2h_matches
-  compute-team-lg1.js  ← cron quotidien 7h UTC — calcule LG1% 0-45 min (goal_events) par (season_id, team_id), upsert team_lg1_cache
+  compute-team-lg1.js  ← cron quotidien 7h UTC — calcule lg1_after30_pct (but 31-45 min) ET lg2_pct (but ≥80 min) par (season_id, team_id), upsert team_lg1_cache
   notify-pre-kickoff.js ← cron */5 min — notification Telegram match imminent (fenêtre 0-5min avant kickoff, selected_alerts)
   notify-daily-summary.js ← cron 9h UTC — résumé quotidien Telegram des alertes Fort (idempotent)
   lib/
@@ -84,6 +84,7 @@ src/
     explore/+page.svelte      ← Explorer toutes les ligues (par pays, stats, classement)
     config/+page.svelte       ← Configuration algo (section Admin)
     debug/+page.svelte        ← Debug (test API/Supabase, seed, testeur API brut)
+    red-cards/+page.svelte    ← Analyse statistique cartons rouges (3904 matchs, 45 ligues, 3 saisons) — KPIs, charts, top ligues, wait-and-bet
   lib/
     api/
       footystats.js     ← appels API via proxy, cache TTL, normalizeLeagues
@@ -102,7 +103,8 @@ src/
       SelectAlertButton.svelte ← bouton toggle sélection alerte (selectionStore)
       ManualSelectButton.svelte ← boutons +LG1/+LG2 sur /matches → createManualAlert + select
       ExcludeAlertModal.svelte ← modale exclusion manuelle (7 tags + note)
-      charts.js             ← graphiques Chart.js (tree-shaké) + helpers line/stacked/horizontal
+      TeamLgBadges.svelte   ← 2 badges LG1 (but 31-45) + LG2 (but ≥80) par equipe, lit team_lg1_cache, cache module + preload
+      charts.js             ← graphiques Chart.js (tree-shaké) + helpers line/stacked/horizontal/simpleBar/distributionBar
     stores/
       appStore.js       ← stores Svelte (config, leagues, prefs, persistence localStorage)
       selectionStore.js ← sélections LG1/LG2 (localStorage, Set de clés matchId:signalType)
@@ -126,6 +128,8 @@ src/
       selectionFilters.js    ← filtres pour /mes-matchs (tri, sections actif/terminé)
       selectionFilters.test.js ← tests unitaires selectionFilters
       countryFlags.js     ← mapping nom de pays FootyStats → ISO 3166-1 alpha-2 + helpers flagUrl/extractCountry/leagueFlagUrl (drapeaux flagcdn.com)
+    data/
+      red-card-stats.json ← stats agregees 3904 matchs (pre-calcul, lu par /red-cards)
     data.js             ← initApp (test connexion API)
   params/
     lgType.js           ← matcher SvelteKit : autorise 'lg1' | 'lg2' comme param [type]
@@ -169,7 +173,7 @@ scripts/
 | `h2h_matches` | Historique matchs H2H avec goal_events (65k+ lignes) | ON | SELECT | — | ALL |
 | `team_seasons` | Stats équipes par saison (legacy, non peuplée) | ON | SELECT | — | ALL |
 | `seed_jobs` | Suivi progression seed | ON | SELECT, INSERT, UPDATE | — | ALL |
-| `team_lg1_cache` | LG1% 0-45 min par equipe par saison (PK: season_id+team_id) | ON | SELECT | — | ALL |
+| `team_lg1_cache` | Stats LG par equipe/saison : `lg1_after30_pct` (but 31-45 min) + `lg2_pct` (but ≥80 min). PK: (season_id, team_id). Refresh quotidien 7h UTC | ON | SELECT | — | ALL |
 | `teams` | 1098 équipes (team_id unique + colonne réelle `name`, pas `team_name`), autocomplete /matches | ON | SELECT | SELECT | ALL |
 | `selected_alerts` | Sélections manuelles LG1/LG2 par Benjamin. Colonne `user_note text` pour notes inline par signal | ON | SELECT, INSERT, DELETE, UPDATE | — | ALL |
 | `notifications_sent` | Idempotence notifications Telegram. PK composée (kind, ref_key UNIQUE). Kinds : fort_alert, pre_kickoff, daily_summary | ON | — | — | ALL |
@@ -279,7 +283,9 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Algo LG2 streak** (2026-04-23) — `lg2.cjs` + `lg2.js` : streak consécutif de matchs avec but >= 80' par équipe (dom ou ext). LG2_A (home), LG2_B (away), LG2_A+B. Confidence = moyen (3) / fort (4+). Spec : `docs/superpowers/specs/2026-04-23-lg2-design.md`
 - **Système d'alertes autonome** — `generate-alerts.js` (cron 12h) : génère LG1_A/B/A+B + LG2_A/B/A+B, algo_version='v2' (LG1) ou 'lg2_v1' (LG2), table Supabase `alerts`
 - **Daily seed auto** — `daily-seed.js` (cron 6h UTC) : seed matchs d'hier dans `h2h_matches`
-- **Calcul LG1% équipes** — `compute-team-lg1.js` (cron 7h UTC) : LG1% 0-45 par (season_id, team_id) depuis `h2h_matches`, upsert dans `team_lg1_cache`
+- **Calcul stats équipes LG1/LG2** — `compute-team-lg1.js` (cron 7h UTC) : pour chaque (season_id, team_id), calcule `lg1_after30_pct` (% matchs avec but en 31-45 min) + `lg2_pct` (% matchs avec but ≥80 min) depuis `h2h_matches`, upsert dans `team_lg1_cache`. Migration 20260517 a renommé `lg1_pct` → `lg1_after30_pct` (semantique passe de 0-45 à 31-45)
+- **Badges LG1/LG2 par equipe** (2026-05-17) — composant `TeamLgBadges.svelte` reutilisable, 2 badges colorés (vert ≥55%, orange 40-54, rouge <40, gris si n/a). Affichés sur `/matches` (MatchCard), `/alerts/[type]`, `/mes-matchs` (prefetch batch), `/leagues` (tableau equipes, colonnes triables LG1 31-45 + LG2 ≥80)
+- **Page Cartons rouges** (`/red-cards`, 2026-05-17) — analyse statique post-match sur 3904 matchs (49 ligues × 3 saisons FootyStats). 4 KPIs (61.9% but apres rouge, 34.5% ≥2 buts, +37% effet causal), bar chart % but selon minute du rouge, line chart strategie wait-and-bet (4 series par tranche), tableau ligues triable Top/Bottom/Toutes, distribution minute des rouges. Data figee dans `src/lib/data/red-card-stats.json` (regeneration manuelle via script Python)
 - **Exclusion manuelle** — bouton rouge "Exclure" (btn--danger) sur dashboard/alertes, ExcludeAlertModal (7 tags + note), réintégration possible
 - **Auth Supabase** — email/password solo, sign ups désactivés, guard SvelteKit dans +layout.svelte, page `/login`, redirect automatique si non authentifié
 - **Headers sécurité** — `src/hooks.server.js` injecte CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP sur toutes les réponses SSR
@@ -290,7 +296,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Sélection manuelle depuis /matches** (2026-05-11) — boutons `+LG1` / `+LG2` sur chaque card de `/matches`. Clic → `createManualAlert()` (INSERT dans `alerts` avec `algo_version='manual'`, `signal_type='LG1_MANUAL'|'LG2_MANUAL'`, `confidence=null`, `status='pending'`) + `select()` → visible dans `/mes-matchs`. Idempotent (conflit unique `match_id+signal_type` géré).
 - **Mes matchs** (`/mes-matchs`) — alertes sélectionnées via selectionStore, sections Actif (A venir/Aujourd'hui) + Passés (collapsible). Expand au clic → 2 colonnes H2H. Notes inline par signal (2026-05-16) : icône crayon → input inline → save onblur/Enter, annulation Escape. `saveNote()` UPDATE `selected_alerts.user_note` + mise à jour optimiste locale via `noteMap` (`Map<"matchId:signalType", string|null>`).
 - **Matchs a venir** (`/matches`) — navigation Flashscore J-1/J+29 (boutons ← date →), cache localStorage TTL 72h par date (`todays-matches-YYYY-MM-DD`). Filtre ligue + autocomplete équipe (Supabase `teams`). Panneau équipe : expand 2 colonnes Domicile/Extérieur (grid 1fr 1fr, `team-detail` + `team-matches` + `match-row` — structure identique à Sélection LG1). Cards matchs à venir expandables + goal bars H2H. Déduplication. Curseur minute interactif.
-- **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : liste équipes triée par LG1% 0-45 (depuis team_lg1_cache Supabase)
+- **Ligues actives** (`/leagues`) — 50 ligues, toggle, tout sélectionner/désélectionner. Expand : tableau équipes avec 2 colonnes triables `LG1 31-45` (`lg1_after30_pct`) et `LG2 ≥80` (`lg2_pct`) depuis team_lg1_cache
 - **Classements ligues** (`/explore`) — par pays, classements. Badges stat (1MT/AVG/BTTS/O2.5) supprimés.
 - **Config** (`/config`) — configuration algo (section Admin)
 - **Debug** (`/debug`) — test API/Supabase, boutons génération alertes LG1/LG2, seed complet, rattrapage matchs, token auth, testeur API brut. Panel CRON : 3 crons avec schedule, description, temps avant prochain run, bouton "Lancer maintenant"
@@ -350,6 +356,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Schéma `teams` vs migration** : la migration `20260507140000_create_teams_table.sql` déclare `team_name` mais la table préexistait avec `(id, team_id, league_id, name, stats, updated_at)` — `CREATE TABLE IF NOT EXISTS` a été un no-op. **La vraie colonne pour le nom est `name`**, pas `team_name`. Toujours vérifier avec `information_schema.columns` (ou MCP Supabase) en cas de doute sur un schéma plutôt que faire confiance au fichier de migration.
 - **Colonnes `alerts` — rebrand fhg→lg1** : le rebrand 2026-05-08 a renommé les signal_types (FHG→LG1) et algo_version ('v2'→'lg1_v2') mais PAS les colonnes. Les colonnes `fhg_pct`, `fhg_confidence`, `fhg_factors` ont été renommées en `lg1_pct`, `lg1_confidence`, `lg1_factors` le 2026-05-11 (migration 20260511110000). Tout le code utilise les noms `lg1_*`. **Ne jamais référencer `fhg_pct/fhg_confidence/fhg_factors`**.
 - **Signal types `LG1_MANUAL` / `LG2_MANUAL`** : créés par `createManualAlert()` côté frontend (algo_version='manual'). Inclus dans les pages `/alerts-lg1` et `/alerts-lg2` avec badge "Manuel". La contrainte `alerts_signal_type_check` les inclut depuis la migration 20260511110000.
+- **Colonnes `team_lg1_cache` — semantique du %** : depuis la migration 20260517090000, la table a `lg1_after30_pct` (renommée de `lg1_pct`) qui cible **31-45 min** (avant : 0-45) + `lg2_pct` (nouveau) qui cible **≥80 min**. **Ne jamais référencer `team_lg1_cache.lg1_pct`** — c'était le nom d'avant le 2026-05-17. Attention à ne pas confondre avec `alerts.lg1_pct` (toujours valide, colonne distincte sur une autre table).
 - **Tables créées après hardening** : si une nouvelle table publique est créée APRÈS la migration `20260507120000_harden_rls_authenticated.sql`, elle doit avoir explicitement une policy `to authenticated` (sinon le frontend logué — qui passe en rôle `authenticated` — voit 0 ligne silencieusement). Ne pas se reposer sur les policies `to anon`. Les policies anon ne s'appliquent qu'au rôle `anon`, pas à `authenticated`.
 
 ## Conventions git
