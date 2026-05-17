@@ -298,6 +298,67 @@ exports.handler = async (event) => {
       }
     }
 
+    // STAT_COMBO : matches où dom OU ext a LG1% > 55 ET LG2% > 55 (contextuels, depuis team_lg1_cache)
+    const teamIds = [...new Set(allMatches.flatMap(m => [m.homeID, m.awayID]).filter(Boolean))];
+    if (teamIds.length > 0) {
+      try {
+        const cacheRows = await supabaseQuery('team_lg1_cache',
+          `team_id=in.(${teamIds.join(',')})&select=team_id,lg1_home_pct,lg2_home_pct,lg1_away_pct,lg2_away_pct&order=updated_at.desc`
+        );
+        const cacheMap = new Map();
+        for (const row of cacheRows) {
+          if (!cacheMap.has(row.team_id)) cacheMap.set(row.team_id, row);
+        }
+
+        const statAlerts = [];
+        for (const m of allMatches.filter(m => m.id && m.homeID && m.awayID)) {
+          const h = cacheMap.get(m.homeID);
+          const a = cacheMap.get(m.awayID);
+          const homeQual = h && h.lg1_home_pct != null && h.lg2_home_pct != null
+            && h.lg1_home_pct > 55 && h.lg2_home_pct > 55;
+          const awayQual = a && a.lg1_away_pct != null && a.lg2_away_pct != null
+            && a.lg1_away_pct > 55 && a.lg2_away_pct > 55;
+          if (!homeQual && !awayQual) continue;
+
+          const minHome = homeQual ? Math.min(h.lg1_home_pct, h.lg2_home_pct) : 0;
+          const minAway = awayQual ? Math.min(a.lg1_away_pct, a.lg2_away_pct) : 0;
+          const confidence = Math.max(minHome, minAway) >= 70 ? 'fort' : 'moyen';
+
+          const factors = { triggerSide: homeQual && awayQual ? 'both' : homeQual ? 'home' : 'away' };
+          if (homeQual) factors.home = { lg1: h.lg1_home_pct, lg2: h.lg2_home_pct };
+          if (awayQual) factors.away = { lg1: a.lg1_away_pct, lg2: a.lg2_away_pct };
+
+          statAlerts.push({
+            match_date: m.date_unix ? new Date(m.date_unix * 1000).toISOString().split('T')[0] : getDateStr(0),
+            kickoff_unix: m.date_unix || null,
+            home_team_id: m.homeID,
+            away_team_id: m.awayID,
+            home_team_name: m.home_name || null,
+            away_team_name: m.away_name || null,
+            league_name: leagueMap[m.competition_id] || null,
+            h2h_count: 0,
+            status: 'pending',
+            match_id: m.id,
+            signal_type: 'STAT_COMBO',
+            lg1_pct: null,
+            lg1_confidence: null,
+            lg1_factors: factors,
+            confidence,
+            algo_version: 'stat_v1',
+          });
+        }
+
+        if (statAlerts.length > 0) {
+          await supabaseInsert('alerts', statAlerts);
+          results.alerts_created += statAlerts.length;
+          console.log(`[generate-alerts] STAT_COMBO: ${statAlerts.length} alerts inserted`);
+        }
+      } catch (e) {
+        console.error('[generate-alerts] STAT_COMBO error:', e.message);
+        results.errors.push(`STAT_COMBO: ${e.message}`);
+      }
+    }
+
     console.log(`[generate-alerts] END — ${results.alerts_created} alerts created, ${results.errors.length} errors`);
   } catch (e) {
     console.error(`[generate-alerts] FATAL: ${e.message}`);

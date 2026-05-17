@@ -15,8 +15,8 @@
   let isLg1 = $derived(type === 'lg1');
 
   const SIGNALS = {
-    lg1: ['LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D', 'LG1_MANUAL'],
-    lg2: ['LG2_A', 'LG2_B', 'LG2_A+B', 'LG2_MANUAL'],
+    lg1: ['LG1_A', 'LG1_B', 'LG1_A+B', 'LG1_C', 'LG1_D', 'LG1_MANUAL', 'STAT_COMBO'],
+    lg2: ['LG2_A', 'LG2_B', 'LG2_A+B', 'LG2_MANUAL', 'STAT_COMBO'],
   };
 
   let alerts = $state([]);
@@ -371,6 +371,9 @@
               <span class="alert-card__teams">{a.home_team_name} vs {a.away_team_name}</span>
               {#if a.algo_version === 'manual'}
                 <span class="alert-badge alert-badge--manuel">Manuel</span>
+              {:else if a.signal_type === 'STAT_COMBO'}
+                <span class="alert-badge alert-badge--stat" title="LG1% > 55% ET LG2% > 55% sur ce contexte">Stat</span>
+                <span class="alert-badge alert-badge--inline {confidenceClass(a.confidence)}">{a.confidence}</span>
               {:else}
                 <span class="alert-badge alert-badge--inline {confidenceClass(a.confidence)}">{a.confidence}</span>
               {/if}
@@ -581,6 +584,7 @@
   .alert-card__actions { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .alert-badge--inline { font-size: 10px; padding: 2px 6px; flex-shrink: 0; }
   .alert-badge--manuel { background: rgba(120,100,200,0.15); color: #a090d0; border: 1px solid rgba(120,100,200,0.35); }
+  .alert-badge--stat { background: rgba(56,138,221,0.15); color: #6ab0f0; border: 1px solid rgba(56,138,221,0.35); }
 
   /* Expand */
   .alert-expand { border-top: 1px solid var(--color-border); padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
