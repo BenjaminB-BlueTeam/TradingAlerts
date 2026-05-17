@@ -7,6 +7,7 @@
   import { cacheGet, cacheSet, cacheInvalidate } from '$lib/api/cache.js';
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
   import ManualSelectButton from '$lib/components/ManualSelectButton.svelte';
+  import TeamLgBadges from '$lib/components/TeamLgBadges.svelte';
   import { selectedKeys } from '$lib/stores/selectionStore.js';
 
   function isSelectedFor(matchId, type) {
@@ -308,6 +309,7 @@
       <div class="team-detail__header">
         <span class="team-detail__name">{selectedTeam.name}</span>
         <span class="team-detail__context">Domicile</span>
+        <TeamLgBadges teamId={selectedTeam.id} size="sm" inline />
         <div class="team-detail__summary"><span><strong>{homeMatches.length}</strong> matchs</span></div>
       </div>
       {#if homeMatches.length > 0}
@@ -345,6 +347,7 @@
       <div class="team-detail__header">
         <span class="team-detail__name">{selectedTeam.name}</span>
         <span class="team-detail__context">Extérieur</span>
+        <TeamLgBadges teamId={selectedTeam.id} size="sm" inline />
         <div class="team-detail__summary"><span><strong>{awayMatches.length}</strong> matchs</span></div>
       </div>
       {#if awayMatches.length > 0}
@@ -405,6 +408,18 @@
                 <span class="sel-badge sel-badge--lg2">LG2</span>
               {/if}
             </div>
+            {#if m.homeID && m.awayID}
+              <div class="match-card__team-stats">
+                <div class="match-card__team-stat-row">
+                  <span class="match-card__team-stat-name">{m.home_name}</span>
+                  <TeamLgBadges teamId={m.homeID} size="sm" inline />
+                </div>
+                <div class="match-card__team-stat-row">
+                  <span class="match-card__team-stat-name">{m.away_name}</span>
+                  <TeamLgBadges teamId={m.awayID} size="sm" inline />
+                </div>
+              </div>
+            {/if}
             <div class="match-card__league">{getLeagueName(m)}</div>
           </div>
           <ManualSelectButton match={m} leagueName={getLeagueName(m)} />
@@ -422,6 +437,7 @@
               <div class="team-detail__header">
                 <span class="team-detail__name">{m.home_name || '?'}</span>
                 <span class="team-detail__context">Domicile</span>
+                <TeamLgBadges teamId={m.homeID} size="sm" inline />
               </div>
               {#if homeMatches.length > 0}
                 <div class="team-matches">
@@ -465,6 +481,7 @@
               <div class="team-detail__header">
                 <span class="team-detail__name">{m.away_name || '?'}</span>
                 <span class="team-detail__context">Extérieur</span>
+                <TeamLgBadges teamId={m.awayID} size="sm" inline />
               </div>
               {#if awayMatches.length > 0}
                 <div class="team-matches">
@@ -589,6 +606,9 @@
   .match-card__hour { font-size: 14px; font-weight: 600; }
   .match-card__match { flex: 1; min-width: 0; }
   .match-card__teams { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+  .match-card__team-stats { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 2px; }
+  .match-card__team-stat-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+  .match-card__team-stat-name { color: var(--color-text-secondary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .match-card__league { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
   .match-card__arrow { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
 

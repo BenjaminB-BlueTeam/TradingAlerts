@@ -3,14 +3,14 @@
 
   /**
    * Cache module-level : evite de refetch la meme equipe plusieurs fois sur la meme page.
-   * Key = "seasonId:teamId"
+   * Key = "seasonId:teamId" si seasonId fourni, sinon "team:teamId"
    * @type {Map<string, {lg1_after30_pct: number|null, lg2_pct: number|null, matches_count: number|null}>}
    */
   const cache = new Map();
 
   let {
     teamId,
-    seasonId,
+    seasonId = null,
     size = 'sm',
     inline = false,
     preload = null,
@@ -53,39 +53,43 @@
       return;
     }
 
-    if (!tid || !sid) {
+    if (!tid) {
       data = null;
       return;
     }
 
-    const key = `${sid}:${tid}`;
+    const key = sid ? `${sid}:${tid}` : `team:${tid}`;
     if (cache.has(key)) {
       data = cache.get(key);
       return;
     }
 
     fetching = true;
-    supabase
+    // Si seasonId fourni : fetch exact ; sinon : derniere saison connue pour cette equipe
+    let q = supabase
       .from('team_lg1_cache')
-      .select('lg1_after30_pct, lg2_pct, matches_count')
-      .eq('team_id', tid)
-      .eq('season_id', sid)
-      .maybeSingle()
-      .then(({ data: row, error }) => {
-        if (error) {
-          console.warn('TeamLgBadges fetch error:', error.message);
-          data = null;
-        } else if (row) {
-          cache.set(key, row);
-          data = row;
-        } else {
-          // Pas de ligne : on met une sentinelle pour ne pas refetcher
-          const empty = { lg1_after30_pct: null, lg2_pct: null, matches_count: null };
-          cache.set(key, empty);
-          data = empty;
-        }
-        fetching = false;
-      });
+      .select('lg1_after30_pct, lg2_pct, matches_count, updated_at')
+      .eq('team_id', tid);
+    if (sid) {
+      q = q.eq('season_id', sid).maybeSingle();
+    } else {
+      q = q.order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    }
+    q.then(({ data: row, error }) => {
+      if (error) {
+        console.warn('TeamLgBadges fetch error:', error.message);
+        data = null;
+      } else if (row) {
+        cache.set(key, row);
+        data = row;
+      } else {
+        // Pas de ligne : on met une sentinelle pour ne pas refetcher
+        const empty = { lg1_after30_pct: null, lg2_pct: null, matches_count: null };
+        cache.set(key, empty);
+        data = empty;
+      }
+      fetching = false;
+    });
   });
 </script>
 

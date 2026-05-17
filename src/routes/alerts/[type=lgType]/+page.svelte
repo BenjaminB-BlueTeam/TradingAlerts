@@ -247,37 +247,33 @@
   let hoverBar = $state(null);
 
   /**
-   * Cache preload des stats equipes : Map<"seasonId:teamId", {lg1_after30_pct, lg2_pct, matches_count}>
+   * Cache preload des stats equipes : Map<teamId, {lg1_after30_pct, lg2_pct, matches_count}>
    * Alimente par prefetchTeamStats() apres chargement des alertes.
+   * On garde la derniere saison connue par team_id (max updated_at).
    */
   let teamStatsCache = $state(new Map());
 
   async function prefetchTeamStats(alertsList) {
     if (alertsList.length === 0) return;
-    // Collecter les paires uniques (season_id, team_id)
-    const pairs = new Set();
     const teamIds = new Set();
     for (const a of alertsList) {
-      if (a.season_id) {
-        if (a.home_team_id) { pairs.add(`${a.season_id}:${a.home_team_id}`); teamIds.add(a.home_team_id); }
-        if (a.away_team_id) { pairs.add(`${a.season_id}:${a.away_team_id}`); teamIds.add(a.away_team_id); }
-      }
+      if (a.home_team_id) teamIds.add(a.home_team_id);
+      if (a.away_team_id) teamIds.add(a.away_team_id);
     }
-    if (pairs.size === 0) return;
-    // Deduire season_ids presents
-    const seasonIds = [...new Set(alertsList.map(a => a.season_id).filter(Boolean))];
     const teamIdsArr = [...teamIds];
-    if (seasonIds.length === 0 || teamIdsArr.length === 0) return;
+    if (teamIdsArr.length === 0) return;
     try {
       const { data, error } = await supabase
         .from('team_lg1_cache')
-        .select('season_id, team_id, lg1_after30_pct, lg2_pct, matches_count')
-        .in('season_id', seasonIds)
-        .in('team_id', teamIdsArr);
+        .select('team_id, lg1_after30_pct, lg2_pct, matches_count, updated_at')
+        .in('team_id', teamIdsArr)
+        .order('updated_at', { ascending: false });
       if (error || !data) return;
       const newCache = new Map(teamStatsCache);
+      // Premier hit par team_id = ligne la plus recente grace au order desc
       for (const row of data) {
-        newCache.set(`${row.season_id}:${row.team_id}`, {
+        if (newCache.has(row.team_id)) continue;
+        newCache.set(row.team_id, {
           lg1_after30_pct: row.lg1_after30_pct,
           lg2_pct: row.lg2_pct,
           matches_count: row.matches_count,
@@ -437,26 +433,24 @@
               {/if}
               {a.league_name || '—'}
             </div>
-            {#if a.home_team_id && a.away_team_id && a.season_id}
+            {#if a.home_team_id && a.away_team_id}
               <div class="alert-card__team-badges">
                 <div class="alert-card__team-badge-row">
                   <span class="alert-card__team-label">{a.home_team_name}</span>
                   <TeamLgBadges
                     teamId={a.home_team_id}
-                    seasonId={a.season_id}
                     size="sm"
                     inline
-                    preload={teamStatsCache.get(`${a.season_id}:${a.home_team_id}`) ?? null}
+                    preload={teamStatsCache.get(a.home_team_id) ?? null}
                   />
                 </div>
                 <div class="alert-card__team-badge-row">
                   <span class="alert-card__team-label">{a.away_team_name}</span>
                   <TeamLgBadges
                     teamId={a.away_team_id}
-                    seasonId={a.season_id}
                     size="sm"
                     inline
-                    preload={teamStatsCache.get(`${a.season_id}:${a.away_team_id}`) ?? null}
+                    preload={teamStatsCache.get(a.away_team_id) ?? null}
                   />
                 </div>
               </div>
