@@ -37,9 +37,9 @@
   }
 
   function tooltip(label, pct, n) {
-    const base = n != null ? `${n} match${n > 1 ? 's' : ''}` : '';
-    if (label === 'LG1') return base ? `${base} — but en 31-45'` : "but en 31-45'";
-    return base ? `${base} — but >= 80'` : "but >= 80'";
+    const base = n != null ? `${n} match${n > 1 ? 's' : ''} cette saison` : 'cette saison';
+    if (label === 'LG1') return `% matchs avec au moins un but en 31-45' (stoppage 1MT compris) — ${base}`;
+    return `% matchs avec au moins un but >= 80' (stoppage 2MT compris) — ${base}`;
   }
 
   $effect(() => {

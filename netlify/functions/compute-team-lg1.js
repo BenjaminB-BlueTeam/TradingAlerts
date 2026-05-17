@@ -2,8 +2,10 @@
    netlify/functions/compute-team-lg1.js
    Tache planifiee — calcul LG1% et LG2% par equipe par saison.
    Lit h2h_matches (saison courante) et calcule 2 metriques par equipe :
-   - lg1_after30_pct : % de matchs ou l'equipe a marque entre 31-45 min (stoppage 1MT compris)
-   - lg2_pct         : % de matchs ou l'equipe a marque >= 80 min (2MT tardive)
+   - lg1_after30_pct : % de matchs ou un but est tombe entre 31-45 min (stoppage 1MT compris)
+   - lg2_pct         : % de matchs ou un but est tombe >= 80 min (stoppage 2MT compris)
+   IMPORTANT : on compte les buts MATCH-LEVEL (peu importe qui marque, equipe ou adversaire)
+   — oriente trading Over 0.5 dans la fenetre, pas algo streak offensif/defensif.
    Upserte dans team_lg1_cache.
    Tourne 1x/jour a 7h UTC via Netlify Scheduled Functions.
    ================================================ */
@@ -127,29 +129,28 @@ exports.handler = async function(event) {
     // Agregation : { "season_id:team_id" -> { season_id, team_id, team_name, total, lg1_after30, lg2 } }
     const stats = new Map();
 
-    function addMatch(seasonId, teamId, teamName, isHome, goalEvents) {
+    function addMatch(seasonId, teamId, teamName, goalEvents) {
       if (!seasonId || !teamId) return;
       const key = `${seasonId}:${teamId}`;
       if (!stats.has(key)) stats.set(key, { season_id: seasonId, team_id: teamId, team_name: teamName, total: 0, lg1_after30: 0, lg2: 0 });
       const s = stats.get(key);
       s.total++;
       const events = Array.isArray(goalEvents) ? goalEvents : [];
-      let scoredLg1After30 = false;
-      let scoredLg2 = false;
+      // Match-level : n'importe quel but dans la fenetre compte (perspective trading Over 0.5)
+      let hasLg1 = false;
+      let hasLg2 = false;
       for (const g of events) {
-        const isTeamGoal = isHome ? g.home === true : g.home === false;
-        if (!isTeamGoal) continue;
-        if (!scoredLg1After30 && isLg1AfterMin30Goal(g)) scoredLg1After30 = true;
-        if (!scoredLg2 && isLg2Goal(g)) scoredLg2 = true;
-        if (scoredLg1After30 && scoredLg2) break;
+        if (!hasLg1 && isLg1AfterMin30Goal(g)) hasLg1 = true;
+        if (!hasLg2 && isLg2Goal(g)) hasLg2 = true;
+        if (hasLg1 && hasLg2) break;
       }
-      if (scoredLg1After30) s.lg1_after30++;
-      if (scoredLg2) s.lg2++;
+      if (hasLg1) s.lg1_after30++;
+      if (hasLg2) s.lg2++;
     }
 
     for (const m of matches) {
-      addMatch(m.season_id, m.home_team_id, m.home_team_name, true,  m.goal_events);
-      addMatch(m.season_id, m.away_team_id, m.away_team_name, false, m.goal_events);
+      addMatch(m.season_id, m.home_team_id, m.home_team_name, m.goal_events);
+      addMatch(m.season_id, m.away_team_id, m.away_team_name, m.goal_events);
     }
 
     const rows = [];
