@@ -650,8 +650,30 @@
     .alert-expand { grid-template-columns: 1fr; }
   }
   @media (max-width: 768px) {
-    .alert-card__header { flex-wrap: wrap; }
-    .alert-card__badges { flex-wrap: wrap; }
+    .alert-card__header {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      grid-template-areas:
+        "time match arrow"
+        "actions actions actions";
+      align-items: start;
+      gap: 8px 12px;
+      padding: 12px;
+    }
+    .alert-card__time { grid-area: time; text-align: left; min-width: 0; }
+    .alert-card__match { grid-area: match; min-width: 0; }
+    .alert-card__teams { white-space: normal; line-height: 1.3; }
+    .alert-card__arrow { grid-area: arrow; align-self: start; padding-top: 4px; }
+    .alert-card__badges {
+      grid-area: actions;
+      width: 100%;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+      border-top: 1px solid var(--color-border);
+      padding-top: 10px;
+    }
+    .alert-card__team-label { max-width: 90px; font-size: 11px; }
   }
 </style>
 
