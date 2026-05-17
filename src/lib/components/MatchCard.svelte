@@ -1,6 +1,7 @@
 <script>
   import { tick } from 'svelte';
   import GoalTimeline from './GoalTimeline.svelte';
+  import TeamLgBadges from './TeamLgBadges.svelte';
   import { createGoalDistChart } from '$lib/components/charts.js';
   import { formaterH2HTimeline } from '$lib/core/h2h.js';
   import { getTimerConseille } from '$lib/core/lg1.js';
@@ -92,6 +93,28 @@
         <div class="match-card__teams-names">
           {m.homeName} <span style="color:var(--color-text-muted);font-weight:400">vs</span> {m.awayName}
         </div>
+        {#if (m.homeId || m.home_team_id) && (m.seasonId || m.season_id)}
+          <div class="match-card__team-badges">
+            <div class="match-card__team-badge-row">
+              <span class="match-card__team-label">{m.homeName}</span>
+              <TeamLgBadges
+                teamId={m.homeId || m.home_team_id}
+                seasonId={m.seasonId || m.season_id}
+                size="sm"
+                inline
+              />
+            </div>
+            <div class="match-card__team-badge-row">
+              <span class="match-card__team-label">{m.awayName}</span>
+              <TeamLgBadges
+                teamId={m.awayId || m.away_team_id}
+                seasonId={m.seasonId || m.season_id}
+                size="sm"
+                inline
+              />
+            </div>
+          </div>
+        {/if}
         <div class="match-card__league">{m.leagueFlag || ''} {m.leagueName || ''}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
@@ -248,3 +271,27 @@
     {/if}
   </div>
 {/if}
+
+<style>
+  .match-card__team-badges {
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .match-card__team-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .match-card__team-label {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+    flex-shrink: 0;
+  }
+</style>

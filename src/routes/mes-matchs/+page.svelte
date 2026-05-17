@@ -5,6 +5,7 @@
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
   import { leagueFlagUrl } from '$lib/utils/countryFlags.js';
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
+  import TeamLgBadges from '$lib/components/TeamLgBadges.svelte';
 
   // ---- State ----
   let allAlerts = $state([]);
@@ -122,6 +123,7 @@
       allAlerts = [];
     } else {
       allAlerts = alertsRes.data || [];
+      prefetchTeamStats(allAlerts);
     }
     if (!notesRes.error && notesRes.data) {
       const nm = new Map();
@@ -211,6 +213,42 @@
   }
 
   function onBarLeave() { hoverBar = null; }
+
+  // ---- Team stats cache (pour TeamLgBadges preload) ----
+  let teamStatsCache = $state(new Map());
+
+  async function prefetchTeamStats(alertsList) {
+    if (alertsList.length === 0) return;
+    const teamIds = new Set();
+    for (const a of alertsList) {
+      if (a.season_id) {
+        if (a.home_team_id) teamIds.add(a.home_team_id);
+        if (a.away_team_id) teamIds.add(a.away_team_id);
+      }
+    }
+    const seasonIds = [...new Set(alertsList.map(a => a.season_id).filter(Boolean))];
+    const teamIdsArr = [...teamIds];
+    if (seasonIds.length === 0 || teamIdsArr.length === 0) return;
+    try {
+      const { data, error } = await supabase
+        .from('team_lg1_cache')
+        .select('season_id, team_id, lg1_after30_pct, lg2_pct, matches_count')
+        .in('season_id', seasonIds)
+        .in('team_id', teamIdsArr);
+      if (error || !data) return;
+      const newCache = new Map(teamStatsCache);
+      for (const row of data) {
+        newCache.set(`${row.season_id}:${row.team_id}`, {
+          lg1_after30_pct: row.lg1_after30_pct,
+          lg2_pct: row.lg2_pct,
+          matches_count: row.matches_count,
+        });
+      }
+      teamStatsCache = newCache;
+    } catch (e) {
+      console.warn('mes-matchs prefetchTeamStats error:', e.message);
+    }
+  }
 
   // ---- UI helpers ----
   function confidenceClass(c) { return c === 'fort' ? 'alert-badge--fort' : 'alert-badge--moyen'; }
@@ -378,6 +416,30 @@
           {/if}
           {a.league_name || '—'}
         </div>
+        {#if a.home_team_id && a.away_team_id && a.season_id}
+          <div class="alert-card__team-badges">
+            <div class="alert-card__team-badge-row">
+              <span class="alert-card__team-label">{a.home_team_name}</span>
+              <TeamLgBadges
+                teamId={a.home_team_id}
+                seasonId={a.season_id}
+                size="sm"
+                inline
+                preload={teamStatsCache.get(`${a.season_id}:${a.home_team_id}`) ?? null}
+              />
+            </div>
+            <div class="alert-card__team-badge-row">
+              <span class="alert-card__team-label">{a.away_team_name}</span>
+              <TeamLgBadges
+                teamId={a.away_team_id}
+                seasonId={a.season_id}
+                size="sm"
+                inline
+                preload={teamStatsCache.get(`${a.season_id}:${a.away_team_id}`) ?? null}
+              />
+            </div>
+          </div>
+        {/if}
       </div>
       <div class="alert-card__badges">
         {#each a.signals as sig}
@@ -761,6 +823,28 @@
     object-fit: cover;
     border-radius: 2px;
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+  }
+
+  .alert-card__team-badges {
+    margin-top: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .alert-card__team-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .alert-card__team-label {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
     flex-shrink: 0;
   }
 

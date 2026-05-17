@@ -1,9 +1,10 @@
 /* ================================================
    netlify/functions/compute-team-lg1.js
-   Tache planifiee — calcul LG1% par equipe par saison.
-   Lit h2h_matches (saison courante), calcule le % de matchs
-   ou chaque equipe a marque en 0-45 min (stoppage compris),
-   et upserte dans team_lg1_cache.
+   Tache planifiee — calcul LG1% et LG2% par equipe par saison.
+   Lit h2h_matches (saison courante) et calcule 2 metriques par equipe :
+   - lg1_after30_pct : % de matchs ou l'equipe a marque entre 31-45 min (stoppage 1MT compris)
+   - lg2_pct         : % de matchs ou l'equipe a marque >= 80 min (2MT tardive)
+   Upserte dans team_lg1_cache.
    Tourne 1x/jour a 7h UTC via Netlify Scheduled Functions.
    ================================================ */
 
@@ -21,15 +22,28 @@ function getCurrentSeasonStart() {
 }
 
 /**
- * Un but est en 1MT (0-45 min, stoppage compris) si :
- * - raw contient "+" et la base est <= 45  (ex: "45+2" → oui, "90+3" → non)
- * - sinon min <= 45
+ * Un but est dans la fenetre LG1 (31-45 min, stoppage 1MT compris) si :
+ * - raw contient "+" et la base est entre 31 et 45 inclus  (ex: "45+2" → oui, "30+1" → non, "90+3" → non)
+ * - sinon 31 <= min <= 45
  */
-function isFirstHalfGoal(g) {
+function isLg1AfterMin30Goal(g) {
   if (g.raw && g.raw.includes('+')) {
-    return parseInt(g.raw) <= 45;
+    const base = parseInt(g.raw);
+    return base >= 31 && base <= 45;
   }
-  return g.min <= 45;
+  return g.min >= 31 && g.min <= 45;
+}
+
+/**
+ * Un but est dans la fenetre LG2 (>= 80 min, stoppage 2MT compris) si :
+ * - raw contient "+" : la base "+x" >= 80 (ex: "80+2" → oui, "90+3" → oui)
+ * - sinon min >= 80
+ */
+function isLg2Goal(g) {
+  if (g.raw && g.raw.includes('+')) {
+    return parseInt(g.raw) >= 80;
+  }
+  return g.min >= 80;
 }
 
 async function fetchMatches(seasonStart) {
@@ -110,21 +124,27 @@ exports.handler = async function(event) {
       return { statusCode: 200, headers: cors, body: 'Aucun match — rien a calculer.' };
     }
 
-    // Agregation : { "season_id:team_id" -> { season_id, team_id, team_name, total, lg1 } }
+    // Agregation : { "season_id:team_id" -> { season_id, team_id, team_name, total, lg1_after30, lg2 } }
     const stats = new Map();
 
     function addMatch(seasonId, teamId, teamName, isHome, goalEvents) {
       if (!seasonId || !teamId) return;
       const key = `${seasonId}:${teamId}`;
-      if (!stats.has(key)) stats.set(key, { season_id: seasonId, team_id: teamId, team_name: teamName, total: 0, lg1: 0 });
+      if (!stats.has(key)) stats.set(key, { season_id: seasonId, team_id: teamId, team_name: teamName, total: 0, lg1_after30: 0, lg2: 0 });
       const s = stats.get(key);
       s.total++;
       const events = Array.isArray(goalEvents) ? goalEvents : [];
-      const scored1MT = events.some(g => {
+      let scoredLg1After30 = false;
+      let scoredLg2 = false;
+      for (const g of events) {
         const isTeamGoal = isHome ? g.home === true : g.home === false;
-        return isTeamGoal && isFirstHalfGoal(g);
-      });
-      if (scored1MT) s.lg1++;
+        if (!isTeamGoal) continue;
+        if (!scoredLg1After30 && isLg1AfterMin30Goal(g)) scoredLg1After30 = true;
+        if (!scoredLg2 && isLg2Goal(g)) scoredLg2 = true;
+        if (scoredLg1After30 && scoredLg2) break;
+      }
+      if (scoredLg1After30) s.lg1_after30++;
+      if (scoredLg2) s.lg2++;
     }
 
     for (const m of matches) {
@@ -136,12 +156,13 @@ exports.handler = async function(event) {
     for (const s of stats.values()) {
       if (s.total === 0) continue;
       rows.push({
-        season_id:     s.season_id,
-        team_id:       s.team_id,
-        team_name:     s.team_name,
-        lg1_pct:       Math.round(s.lg1 / s.total * 100),
-        matches_count: s.total,
-        updated_at:    new Date().toISOString(),
+        season_id:        s.season_id,
+        team_id:          s.team_id,
+        team_name:        s.team_name,
+        lg1_after30_pct:  Math.round(s.lg1_after30 / s.total * 100),
+        lg2_pct:          Math.round(s.lg2 / s.total * 100),
+        matches_count:    s.total,
+        updated_at:       new Date().toISOString(),
       });
     }
 

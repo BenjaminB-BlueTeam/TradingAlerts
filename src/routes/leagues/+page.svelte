@@ -10,7 +10,9 @@
   let loading = $state(true);
   let searchQuery = $state('');
   let expandedLeague = $state(null);
-  let lg1Teams = $state(null);   // Array<{team_name, lg1_pct, matches_count}> | null
+  let lg1Teams = $state(null);   // Array<{team_name, lg1_after30_pct, lg2_pct, matches_count}> | null
+  let sortCol = $state('lg1_after30_pct'); // 'lg1_after30_pct' | 'lg2_pct'
+  let sortAsc = $state(false);
   let lg1Loading = $state(false);
   let loaded = $state(false);
 
@@ -139,9 +141,9 @@
     lg1Loading = true;
     const { data } = await supabase
       .from('team_lg1_cache')
-      .select('team_name, lg1_pct, matches_count')
+      .select('team_id, team_name, lg1_after30_pct, lg2_pct, matches_count')
       .eq('season_id', seasonId)
-      .order('lg1_pct', { ascending: false });
+      .order('lg1_after30_pct', { ascending: false });
     lg1Teams = data || [];
     lg1Loading = false;
   }
@@ -236,22 +238,45 @@
             {#if lg1Loading}
               <div class="league-item__loading">Chargement...</div>
             {:else if lg1Teams && lg1Teams.length > 0}
+              {@const sortedTeams = [...lg1Teams].sort((a, b) => {
+                const va = a[sortCol] ?? -1;
+                const vb = b[sortCol] ?? -1;
+                return sortAsc ? va - vb : vb - va;
+              })}
               <table class="data-table data-table--compact lg1-table">
                 <thead>
                   <tr>
                     <th>#</th>
                     <th>Equipe</th>
-                    <th title="But marque en 0-45 min (stoppage compris)">LG1 0-45</th>
+                    <th
+                      class="lg1-table__th-sort"
+                      class:lg1-table__th-sort--active={sortCol === 'lg1_after30_pct'}
+                      title="But marque en 31-45 min"
+                      onclick={() => { if (sortCol === 'lg1_after30_pct') sortAsc = !sortAsc; else { sortCol = 'lg1_after30_pct'; sortAsc = false; } }}
+                    >
+                      LG1 31-45{sortCol === 'lg1_after30_pct' ? (sortAsc ? ' ▲' : ' ▼') : ''}
+                    </th>
+                    <th
+                      class="lg1-table__th-sort"
+                      class:lg1-table__th-sort--active={sortCol === 'lg2_pct'}
+                      title="But marque ou encaisse >= 80 min"
+                      onclick={() => { if (sortCol === 'lg2_pct') sortAsc = !sortAsc; else { sortCol = 'lg2_pct'; sortAsc = false; } }}
+                    >
+                      LG2 >=80{sortCol === 'lg2_pct' ? (sortAsc ? ' ▲' : ' ▼') : ''}
+                    </th>
                     <th>J</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {#each lg1Teams as t, i}
+                  {#each sortedTeams as t, i}
                     <tr>
                       <td class="lg1-table__rank">{i + 1}</td>
                       <td class="league-table__team">{t.team_name || '—'}</td>
                       <td class="lg1-table__pct">
-                        <strong style:color={lg1Color(t.lg1_pct)}>{t.lg1_pct ?? '—'}%</strong>
+                        <strong style:color={lg1Color(t.lg1_after30_pct)}>{t.lg1_after30_pct ?? '—'}%</strong>
+                      </td>
+                      <td class="lg1-table__pct">
+                        <strong style:color={lg1Color(t.lg2_pct != null ? Math.round(t.lg2_pct) : null)}>{t.lg2_pct != null ? Math.round(t.lg2_pct) + '%' : '—'}</strong>
                       </td>
                       <td class="lg1-table__matches">{t.matches_count ?? '—'}</td>
                     </tr>
@@ -429,6 +454,17 @@
   .lg1-table__pct {
     width: 70px;
     font-size: 13px;
+  }
+  .lg1-table__th-sort {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+  }
+  .lg1-table__th-sort:hover {
+    color: var(--color-text-primary);
+  }
+  .lg1-table__th-sort--active {
+    color: var(--color-accent-blue);
   }
   .lg1-table__matches {
     color: var(--color-text-muted);

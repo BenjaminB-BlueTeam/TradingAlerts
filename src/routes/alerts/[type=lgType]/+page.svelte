@@ -11,6 +11,7 @@
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
   import { selectedKeys, isSelected, unselect } from '$lib/stores/selectionStore.js';
   import { callFunction } from '$lib/api/functions.js';
+  import TeamLgBadges from '$lib/components/TeamLgBadges.svelte';
 
   // Type courant : 'lg1' ou 'lg2'
   let type = $derived($page.params.type);
@@ -163,6 +164,8 @@
       alerts = [];
     } else {
       alerts = data || [];
+      // Prefetch stats equipes en batch pour eviter N+1
+      prefetchTeamStats(alerts);
     }
     loading = false;
   }
@@ -242,6 +245,49 @@
   }
 
   let hoverBar = $state(null);
+
+  /**
+   * Cache preload des stats equipes : Map<"seasonId:teamId", {lg1_after30_pct, lg2_pct, matches_count}>
+   * Alimente par prefetchTeamStats() apres chargement des alertes.
+   */
+  let teamStatsCache = $state(new Map());
+
+  async function prefetchTeamStats(alertsList) {
+    if (alertsList.length === 0) return;
+    // Collecter les paires uniques (season_id, team_id)
+    const pairs = new Set();
+    const teamIds = new Set();
+    for (const a of alertsList) {
+      if (a.season_id) {
+        if (a.home_team_id) { pairs.add(`${a.season_id}:${a.home_team_id}`); teamIds.add(a.home_team_id); }
+        if (a.away_team_id) { pairs.add(`${a.season_id}:${a.away_team_id}`); teamIds.add(a.away_team_id); }
+      }
+    }
+    if (pairs.size === 0) return;
+    // Deduire season_ids presents
+    const seasonIds = [...new Set(alertsList.map(a => a.season_id).filter(Boolean))];
+    const teamIdsArr = [...teamIds];
+    if (seasonIds.length === 0 || teamIdsArr.length === 0) return;
+    try {
+      const { data, error } = await supabase
+        .from('team_lg1_cache')
+        .select('season_id, team_id, lg1_after30_pct, lg2_pct, matches_count')
+        .in('season_id', seasonIds)
+        .in('team_id', teamIdsArr);
+      if (error || !data) return;
+      const newCache = new Map(teamStatsCache);
+      for (const row of data) {
+        newCache.set(`${row.season_id}:${row.team_id}`, {
+          lg1_after30_pct: row.lg1_after30_pct,
+          lg2_pct: row.lg2_pct,
+          matches_count: row.matches_count,
+        });
+      }
+      teamStatsCache = newCache;
+    } catch (e) {
+      console.warn('prefetchTeamStats error:', e.message);
+    }
+  }
 
   function onBarMove(e, key) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -391,6 +437,30 @@
               {/if}
               {a.league_name || '—'}
             </div>
+            {#if a.home_team_id && a.away_team_id && a.season_id}
+              <div class="alert-card__team-badges">
+                <div class="alert-card__team-badge-row">
+                  <span class="alert-card__team-label">{a.home_team_name}</span>
+                  <TeamLgBadges
+                    teamId={a.home_team_id}
+                    seasonId={a.season_id}
+                    size="sm"
+                    inline
+                    preload={teamStatsCache.get(`${a.season_id}:${a.home_team_id}`) ?? null}
+                  />
+                </div>
+                <div class="alert-card__team-badge-row">
+                  <span class="alert-card__team-label">{a.away_team_name}</span>
+                  <TeamLgBadges
+                    teamId={a.away_team_id}
+                    seasonId={a.season_id}
+                    size="sm"
+                    inline
+                    preload={teamStatsCache.get(`${a.season_id}:${a.away_team_id}`) ?? null}
+                  />
+                </div>
+              </div>
+            {/if}
           </div>
           <div class="alert-card__badges">
             {#if a.algo_version === 'manual'}
@@ -568,6 +638,9 @@
   .alert-card__teams { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .alert-card__league { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
   .alert-card__league .country-flag { width: 16px; height: 12px; object-fit: cover; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255,255,255,0.08); flex-shrink: 0; }
+  .alert-card__team-badges { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
+  .alert-card__team-badge-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .alert-card__team-label { font-size: 10px; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; flex-shrink: 0; }
   .alert-card__arrow { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; }
 
   .alert-card__badges { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
