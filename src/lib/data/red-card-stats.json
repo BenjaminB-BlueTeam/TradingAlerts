@@ -1,0 +1,686 @@
+{
+  "generated_at": "2026-05-17",
+  "sample": {
+    "total_matches": 3904,
+    "seasons": 3,
+    "pct_goal_after": 61.89,
+    "pct_2goal_after": 34.53,
+    "avg_goals_after": 1.279,
+    "rate_before_per_hour": 1.6,
+    "rate_after_per_hour": 2.19,
+    "causal_pct": 37.0
+  },
+  "by_minute_bucket": [
+    {
+      "bucket": "0-15",
+      "n": 259,
+      "pct_goal": 92.3,
+      "pct_2goal": 74.5,
+      "avg_goals": 2.79
+    },
+    {
+      "bucket": "16-30",
+      "n": 423,
+      "pct_goal": 90.1,
+      "pct_2goal": 68.6,
+      "avg_goals": 2.41
+    },
+    {
+      "bucket": "31-45",
+      "n": 522,
+      "pct_goal": 88.5,
+      "pct_2goal": 59.8,
+      "avg_goals": 2.03
+    },
+    {
+      "bucket": "46-60",
+      "n": 687,
+      "pct_goal": 78.9,
+      "pct_2goal": 49.2,
+      "avg_goals": 1.62
+    },
+    {
+      "bucket": "61-75",
+      "n": 624,
+      "pct_goal": 63.6,
+      "pct_2goal": 25.6,
+      "avg_goals": 0.99
+    },
+    {
+      "bucket": "76-90+",
+      "n": 1389,
+      "pct_goal": 28.4,
+      "pct_2goal": 4.0,
+      "avg_goals": 0.33
+    }
+  ],
+  "by_league": [
+    {
+      "league": "England Premier League",
+      "country": "England",
+      "n": 80,
+      "pct_goal": 76.2,
+      "pct_2goal": 43.8,
+      "avg_goals": 1.4,
+      "causal_pct": 50.5
+    },
+    {
+      "league": "Netherlands Eerste Divisie",
+      "country": "Netherlands",
+      "n": 74,
+      "pct_goal": 74.3,
+      "pct_2goal": 50.0,
+      "avg_goals": 1.78,
+      "causal_pct": 65.0
+    },
+    {
+      "league": "Germany Bundesliga",
+      "country": "Germany",
+      "n": 83,
+      "pct_goal": 73.5,
+      "pct_2goal": 44.6,
+      "avg_goals": 1.6,
+      "causal_pct": 26.8
+    },
+    {
+      "league": "China Chinese Super League",
+      "country": "China",
+      "n": 79,
+      "pct_goal": 73.4,
+      "pct_2goal": 44.3,
+      "avg_goals": 1.63,
+      "causal_pct": 71.7
+    },
+    {
+      "league": "Qatar Stars League",
+      "country": "Qatar",
+      "n": 63,
+      "pct_goal": 73.0,
+      "pct_2goal": 44.4,
+      "avg_goals": 1.68,
+      "causal_pct": 114.3
+    },
+    {
+      "league": "Thailand Thai League T1",
+      "country": "Thailand",
+      "n": 100,
+      "pct_goal": 72.0,
+      "pct_2goal": 29.0,
+      "avg_goals": 1.32,
+      "causal_pct": 66.7
+    },
+    {
+      "league": "Germany 2. Bundesliga",
+      "country": "Germany",
+      "n": 88,
+      "pct_goal": 71.6,
+      "pct_2goal": 38.6,
+      "avg_goals": 1.41,
+      "causal_pct": 49.3
+    },
+    {
+      "league": "Australia A-League Women",
+      "country": "Australia",
+      "n": 17,
+      "pct_goal": 70.6,
+      "pct_2goal": 41.2,
+      "avg_goals": 1.65,
+      "causal_pct": 55.5
+    },
+    {
+      "league": "Spain Primera Division Women",
+      "country": "Spain",
+      "n": 37,
+      "pct_goal": 70.3,
+      "pct_2goal": 51.4,
+      "avg_goals": 1.78,
+      "causal_pct": 74.0
+    },
+    {
+      "league": "Netherlands Eredivisie",
+      "country": "Netherlands",
+      "n": 94,
+      "pct_goal": 70.2,
+      "pct_2goal": 43.6,
+      "avg_goals": 1.57,
+      "causal_pct": 41.3
+    },
+    {
+      "league": "Iceland Úrvalsdeild",
+      "country": "Iceland",
+      "n": 26,
+      "pct_goal": 69.2,
+      "pct_2goal": 46.2,
+      "avg_goals": 1.69,
+      "causal_pct": 62.7
+    },
+    {
+      "league": "Poland Ekstraklasa",
+      "country": "Poland",
+      "n": 74,
+      "pct_goal": 68.9,
+      "pct_2goal": 45.9,
+      "avg_goals": 1.61,
+      "causal_pct": 43.0
+    },
+    {
+      "league": "India Indian Super League",
+      "country": "India",
+      "n": 35,
+      "pct_goal": 68.6,
+      "pct_2goal": 37.1,
+      "avg_goals": 1.34,
+      "causal_pct": 47.8
+    },
+    {
+      "league": "England EFL League One",
+      "country": "England",
+      "n": 117,
+      "pct_goal": 68.4,
+      "pct_2goal": 43.6,
+      "avg_goals": 1.46,
+      "causal_pct": 47.2
+    },
+    {
+      "league": "England National League",
+      "country": "England",
+      "n": 152,
+      "pct_goal": 67.1,
+      "pct_2goal": 40.8,
+      "avg_goals": 1.43,
+      "causal_pct": 67.0
+    },
+    {
+      "league": "UAE Arabian Gulf League",
+      "country": "UAE",
+      "n": 97,
+      "pct_goal": 67.0,
+      "pct_2goal": 48.5,
+      "avg_goals": 1.84,
+      "causal_pct": 35.3
+    },
+    {
+      "league": "Saudi Arabia Professional League",
+      "country": "Saudi Arabia",
+      "n": 127,
+      "pct_goal": 66.1,
+      "pct_2goal": 40.2,
+      "avg_goals": 1.46,
+      "causal_pct": 72.7
+    },
+    {
+      "league": "Vietnam V.League 1",
+      "country": "Vietnam",
+      "n": 54,
+      "pct_goal": 64.8,
+      "pct_2goal": 42.6,
+      "avg_goals": 1.31,
+      "causal_pct": 28.1
+    },
+    {
+      "league": "France Ligue 1",
+      "country": "France",
+      "n": 137,
+      "pct_goal": 64.2,
+      "pct_2goal": 33.6,
+      "avg_goals": 1.26,
+      "causal_pct": 48.8
+    },
+    {
+      "league": "USA MLS",
+      "country": "USA",
+      "n": 114,
+      "pct_goal": 64.0,
+      "pct_2goal": 38.6,
+      "avg_goals": 1.4,
+      "causal_pct": 48.2
+    },
+    {
+      "league": "Croatia Prva HNL",
+      "country": "Croatia",
+      "n": 43,
+      "pct_goal": 62.8,
+      "pct_2goal": 20.9,
+      "avg_goals": 0.95,
+      "causal_pct": 60.6
+    },
+    {
+      "league": "Spain Segunda División",
+      "country": "Spain",
+      "n": 192,
+      "pct_goal": 62.5,
+      "pct_2goal": 28.6,
+      "avg_goals": 1.16,
+      "causal_pct": 51.7
+    },
+    {
+      "league": "Czech Republic First League",
+      "country": "Czech Republic",
+      "n": 118,
+      "pct_goal": 61.9,
+      "pct_2goal": 32.2,
+      "avg_goals": 1.24,
+      "causal_pct": -11.3
+    },
+    {
+      "league": "Denmark Superliga",
+      "country": "Denmark",
+      "n": 42,
+      "pct_goal": 61.9,
+      "pct_2goal": 35.7,
+      "avg_goals": 1.45,
+      "causal_pct": 60.9
+    },
+    {
+      "league": "Turkey Süper Lig",
+      "country": "Turkey",
+      "n": 99,
+      "pct_goal": 61.6,
+      "pct_2goal": 35.4,
+      "avg_goals": 1.36,
+      "causal_pct": 51.6
+    },
+    {
+      "league": "Norway Eliteserien",
+      "country": "Norway",
+      "n": 39,
+      "pct_goal": 61.5,
+      "pct_2goal": 46.2,
+      "avg_goals": 1.59,
+      "causal_pct": 36.1
+    },
+    {
+      "league": "Poland 1. Liga",
+      "country": "Poland",
+      "n": 57,
+      "pct_goal": 61.4,
+      "pct_2goal": 29.8,
+      "avg_goals": 1.14,
+      "causal_pct": 42.1
+    },
+    {
+      "league": "Iceland 1. Deild",
+      "country": "Iceland",
+      "n": 18,
+      "pct_goal": 61.1,
+      "pct_2goal": 27.8,
+      "avg_goals": 1.17,
+      "causal_pct": 36.2
+    },
+    {
+      "league": "Mexico Liga MX Femenil",
+      "country": "Mexico",
+      "n": 111,
+      "pct_goal": 59.5,
+      "pct_2goal": 31.5,
+      "avg_goals": 1.22,
+      "causal_pct": 17.3
+    },
+    {
+      "league": "Mexico Liga MX",
+      "country": "Mexico",
+      "n": 194,
+      "pct_goal": 59.3,
+      "pct_2goal": 33.0,
+      "avg_goals": 1.1,
+      "causal_pct": 34.5
+    },
+    {
+      "league": "Portugal LigaPro",
+      "country": "Portugal",
+      "n": 132,
+      "pct_goal": 59.1,
+      "pct_2goal": 25.8,
+      "avg_goals": 0.98,
+      "causal_pct": 21.0
+    },
+    {
+      "league": "Slovakia Super Liga",
+      "country": "Slovakia",
+      "n": 66,
+      "pct_goal": 59.1,
+      "pct_2goal": 30.3,
+      "avg_goals": 1.32,
+      "causal_pct": 74.2
+    },
+    {
+      "league": "England EFL League Two",
+      "country": "England",
+      "n": 120,
+      "pct_goal": 58.3,
+      "pct_2goal": 34.2,
+      "avg_goals": 1.27,
+      "causal_pct": 34.6
+    },
+    {
+      "league": "Romania Liga I",
+      "country": "Romania",
+      "n": 95,
+      "pct_goal": 57.9,
+      "pct_2goal": 24.2,
+      "avg_goals": 1.01,
+      "causal_pct": 11.4
+    },
+    {
+      "league": "Slovenia PrvaLiga",
+      "country": "Slovenia",
+      "n": 42,
+      "pct_goal": 57.1,
+      "pct_2goal": 21.4,
+      "avg_goals": 1.07,
+      "causal_pct": -13.7
+    },
+    {
+      "league": "Netherlands Eredivisie Women",
+      "country": "Netherlands",
+      "n": 16,
+      "pct_goal": 56.2,
+      "pct_2goal": 37.5,
+      "avg_goals": 1.19,
+      "causal_pct": 60.8
+    },
+    {
+      "league": "Germany 3. Liga",
+      "country": "Germany",
+      "n": 95,
+      "pct_goal": 55.8,
+      "pct_2goal": 28.4,
+      "avg_goals": 1.14,
+      "causal_pct": -21.4
+    },
+    {
+      "league": "Scotland League Two",
+      "country": "Scotland",
+      "n": 43,
+      "pct_goal": 53.5,
+      "pct_2goal": 23.3,
+      "avg_goals": 0.91,
+      "causal_pct": 93.8
+    },
+    {
+      "league": "Czech Republic FNL",
+      "country": "Czech Republic",
+      "n": 30,
+      "pct_goal": 53.3,
+      "pct_2goal": 30.0,
+      "avg_goals": 0.97,
+      "causal_pct": 38.8
+    },
+    {
+      "league": "Spain La Liga",
+      "country": "Spain",
+      "n": 164,
+      "pct_goal": 53.0,
+      "pct_2goal": 23.8,
+      "avg_goals": 0.91,
+      "causal_pct": 43.5
+    },
+    {
+      "league": "Bolivia LFPB",
+      "country": "Bolivia",
+      "n": 227,
+      "pct_goal": 51.5,
+      "pct_2goal": 28.2,
+      "avg_goals": 1.05,
+      "causal_pct": 25.8
+    },
+    {
+      "league": "Malaysia Super League",
+      "country": "Malaysia",
+      "n": 38,
+      "pct_goal": 50.0,
+      "pct_2goal": 26.3,
+      "avg_goals": 0.92,
+      "causal_pct": -1.7
+    },
+    {
+      "league": "Serbia SuperLiga",
+      "country": "Serbia",
+      "n": 84,
+      "pct_goal": 48.8,
+      "pct_2goal": 27.4,
+      "avg_goals": 1.01,
+      "causal_pct": 2.6
+    },
+    {
+      "league": "Australia A-League",
+      "country": "Australia",
+      "n": 49,
+      "pct_goal": 46.9,
+      "pct_2goal": 28.6,
+      "avg_goals": 0.92,
+      "causal_pct": -9.5
+    },
+    {
+      "league": "Costa Rica Primera División FPD",
+      "country": "Costa Rica",
+      "n": 126,
+      "pct_goal": 43.7,
+      "pct_2goal": 29.4,
+      "avg_goals": 1.04,
+      "causal_pct": 8.2
+    }
+  ],
+  "wait_strategy": [
+    {
+      "red_bucket": "Early (0-30)",
+      "points": [
+        {
+          "wait": 0,
+          "n": 682,
+          "pct": 90.9,
+          "breakeven_odds": 1.1
+        },
+        {
+          "wait": 5,
+          "n": 576,
+          "pct": 89.2,
+          "breakeven_odds": 1.12
+        },
+        {
+          "wait": 10,
+          "n": 503,
+          "pct": 87.7,
+          "breakeven_odds": 1.14
+        },
+        {
+          "wait": 15,
+          "n": 439,
+          "pct": 85.9,
+          "breakeven_odds": 1.16
+        },
+        {
+          "wait": 20,
+          "n": 367,
+          "pct": 83.1,
+          "breakeven_odds": 1.2
+        },
+        {
+          "wait": 25,
+          "n": 315,
+          "pct": 80.3,
+          "breakeven_odds": 1.25
+        },
+        {
+          "wait": 30,
+          "n": 270,
+          "pct": 77.0,
+          "breakeven_odds": 1.3
+        }
+      ]
+    },
+    {
+      "red_bucket": "Mid (31-60)",
+      "points": [
+        {
+          "wait": 0,
+          "n": 1209,
+          "pct": 83.0,
+          "breakeven_odds": 1.2
+        },
+        {
+          "wait": 5,
+          "n": 956,
+          "pct": 78.6,
+          "breakeven_odds": 1.27
+        },
+        {
+          "wait": 10,
+          "n": 799,
+          "pct": 74.3,
+          "breakeven_odds": 1.35
+        },
+        {
+          "wait": 15,
+          "n": 668,
+          "pct": 69.3,
+          "breakeven_odds": 1.44
+        },
+        {
+          "wait": 20,
+          "n": 554,
+          "pct": 63.0,
+          "breakeven_odds": 1.59
+        },
+        {
+          "wait": 25,
+          "n": 478,
+          "pct": 57.1,
+          "breakeven_odds": 1.75
+        },
+        {
+          "wait": 30,
+          "n": 397,
+          "pct": 48.4,
+          "breakeven_odds": 2.07
+        }
+      ]
+    },
+    {
+      "red_bucket": "Late (61-75)",
+      "points": [
+        {
+          "wait": 0,
+          "n": 624,
+          "pct": 63.6,
+          "breakeven_odds": 1.57
+        },
+        {
+          "wait": 5,
+          "n": 523,
+          "pct": 56.6,
+          "breakeven_odds": 1.77
+        },
+        {
+          "wait": 10,
+          "n": 449,
+          "pct": 49.4,
+          "breakeven_odds": 2.02
+        },
+        {
+          "wait": 15,
+          "n": 384,
+          "pct": 40.9,
+          "breakeven_odds": 2.45
+        },
+        {
+          "wait": 20,
+          "n": 300,
+          "pct": 28.0,
+          "breakeven_odds": 3.57
+        },
+        {
+          "wait": 25,
+          "n": 163,
+          "pct": 22.1,
+          "breakeven_odds": 4.53
+        },
+        {
+          "wait": 30,
+          "n": 64,
+          "pct": 15.6,
+          "breakeven_odds": 6.4
+        }
+      ]
+    },
+    {
+      "red_bucket": "Very late (76+)",
+      "points": [
+        {
+          "wait": 0,
+          "n": 1077,
+          "pct": 34.1,
+          "breakeven_odds": 2.93
+        },
+        {
+          "wait": 5,
+          "n": 599,
+          "pct": 29.7,
+          "breakeven_odds": 3.37
+        },
+        {
+          "wait": 10,
+          "n": 301,
+          "pct": 21.9,
+          "breakeven_odds": 4.56
+        },
+        {
+          "wait": 15,
+          "n": 116,
+          "pct": 12.9,
+          "breakeven_odds": 7.73
+        },
+        {
+          "wait": 20,
+          "n": 0,
+          "pct": null,
+          "breakeven_odds": null
+        },
+        {
+          "wait": 25,
+          "n": 0,
+          "pct": null,
+          "breakeven_odds": null
+        },
+        {
+          "wait": 30,
+          "n": 0,
+          "pct": null,
+          "breakeven_odds": null
+        }
+      ]
+    }
+  ],
+  "red_min_distribution": [
+    {
+      "bucket": "0-15",
+      "count": 261,
+      "pct": 6.1
+    },
+    {
+      "bucket": "16-30",
+      "count": 434,
+      "pct": 10.1
+    },
+    {
+      "bucket": "31-45",
+      "count": 548,
+      "pct": 12.8
+    },
+    {
+      "bucket": "46-60",
+      "count": 729,
+      "pct": 17.0
+    },
+    {
+      "bucket": "61-75",
+      "count": 681,
+      "pct": 15.8
+    },
+    {
+      "bucket": "76-90+",
+      "count": 1645,
+      "pct": 38.3
+    }
+  ]
+}

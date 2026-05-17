@@ -18,6 +18,7 @@
     { href: '/mes-matchs',    icon: '⭐', label: 'Mes matchs'         },
     { href: '/alerts/lg1',    icon: '⚡', label: 'Alertes'            },
     { href: '/matches',       icon: '⚽', label: 'Matchs à venir'     },
+    { href: '/red-cards',     icon: '🟥', label: 'Cartons rouges'     },
     { href: '/explore',       icon: '🌍', label: 'Classements ligues' },
     { href: '/dashboard',     icon: '📊', label: 'Dashboard'          },
   ];

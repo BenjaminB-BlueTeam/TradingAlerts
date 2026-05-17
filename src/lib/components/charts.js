@@ -377,4 +377,100 @@ export function makeHorizontalBarChart(canvas, rows) {
   return chart;
 }
 
+/**
+ * Simple vertical bar chart.
+ * rows = [{ label, value, color? }]
+ * yLabel = suffix for Y axis ticks (ex: '%')
+ * tooltipSuffix = suffix for tooltip (ex: '%')
+ */
+export function makeSimpleBarChart(canvas, { labels, values, colors, yMax, yLabel = '', tooltipSuffix = '' }) {
+  if (!canvas) return null;
+  destroyChart(canvas);
+  const barColors = colors || values.map(v => (v >= 65 ? '#1D9E75AA' : v >= 40 ? '#EF9F27AA' : '#E24B4AAA'));
+  const borderColors = colors ? colors.map(c => c) : values.map(v => (v >= 65 ? '#1D9E75' : v >= 40 ? '#EF9F27' : '#E24B4A'));
+  const chart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: barColors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...TOOLTIP_STYLE,
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.y}${tooltipSuffix}`,
+          },
+        },
+      },
+      scales: {
+        x: AXIS_STYLE,
+        y: {
+          ...AXIS_STYLE,
+          beginAtZero: true,
+          ...(yMax != null ? { max: yMax } : {}),
+          ticks: { ...AXIS_STYLE.ticks, callback: v => `${v}${yLabel}` },
+        },
+      },
+    },
+  });
+  canvas._chartInstance = chart;
+  return chart;
+}
+
+/**
+ * Simple horizontal bar chart for distributions.
+ * rows = [{ label, value, pct? }]
+ * color = single color for all bars
+ */
+export function makeDistributionBarChart(canvas, { rows, color = '#378ADD', tooltipSuffix = '' }) {
+  if (!canvas) return null;
+  destroyChart(canvas);
+  const chart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.label),
+      datasets: [{
+        data: rows.map(r => r.value),
+        backgroundColor: color + 'AA',
+        borderColor: color,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...TOOLTIP_STYLE,
+          callbacks: {
+            label: ctx => {
+              const r = rows[ctx.dataIndex];
+              return ` ${r.value}${tooltipSuffix}${r.pct != null ? `  (${r.pct}%)` : ''}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: { ...AXIS_STYLE, beginAtZero: true, ticks: { ...AXIS_STYLE.ticks, callback: v => `${v}${tooltipSuffix}` } },
+        y: { ...AXIS_STYLE, ticks: { ...AXIS_STYLE.ticks, font: { size: 11 } } },
+      },
+    },
+  });
+  canvas._chartInstance = chart;
+  return chart;
+}
+
 export { destroyChart };
