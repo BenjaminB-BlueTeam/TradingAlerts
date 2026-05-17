@@ -1,5 +1,5 @@
 /* ================================================
-   netlify/functions/compute-team-lg1.js
+   netlify/functions/compute-team-stats.js
    Tache planifiee — calcul LG1% et LG2% par equipe par saison.
    Lit h2h_matches (saison courante) et calcule 2 metriques par equipe :
    - lg1_after30_pct : % de matchs ou un but est tombe entre 31-45 min (stoppage 1MT compris)
@@ -7,7 +7,7 @@
    IMPORTANT : on compte les buts MATCH-LEVEL (peu importe qui marque, equipe ou adversaire)
    — oriente trading Over 0.5 dans la fenetre, pas algo streak offensif/defensif.
    Upserte dans team_lg1_cache.
-   Tourne 1x/jour a 5h UTC (7h Paris) via Netlify Scheduled Functions, juste apres daily-seed.
+   Tourne 1x/jour a 4h30 UTC (6h30 Paris) via Netlify Scheduled Functions, juste apres daily-seed.
    ================================================ */
 
 const { requireAuth } = require('./lib/auth.cjs');
@@ -69,7 +69,7 @@ async function fetchMatches(seasonStart) {
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
-      throw new Error(`[compute-team-lg1] Supabase fetch error: HTTP ${res.status} — ${txt.slice(0, 200)}`);
+      throw new Error(`[compute-team-stats] Supabase fetch error: HTTP ${res.status} — ${txt.slice(0, 200)}`);
     }
     const batch = await res.json();
     if (!Array.isArray(batch) || batch.length === 0) break;
@@ -98,7 +98,7 @@ async function upsertCache(rows) {
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
-      throw new Error(`[compute-team-lg1] upsert error: HTTP ${res.status} — ${txt.slice(0, 200)}`);
+      throw new Error(`[compute-team-stats] upsert error: HTTP ${res.status} — ${txt.slice(0, 200)}`);
     }
   }
 }
@@ -113,13 +113,13 @@ exports.handler = async function(event) {
   if (!auth.authorized) return { ...auth.response, headers: { ...(auth.response.headers || {}), ...cors } };
 
   const seasonStart = getCurrentSeasonStart();
-  const runId = await startCronRun('compute-team-lg1', { season_start: seasonStart });
+  const runId = await startCronRun('compute-team-stats', { season_start: seasonStart });
 
   try {
-    console.log(`[compute-team-lg1] Saison courante depuis ${seasonStart}`);
+    console.log(`[compute-team-stats] Saison courante depuis ${seasonStart}`);
 
     const matches = await fetchMatches(seasonStart);
-    console.log(`[compute-team-lg1] ${matches.length} matchs charges`);
+    console.log(`[compute-team-stats] ${matches.length} matchs charges`);
 
     if (matches.length === 0) {
       await endCronRun(runId, { status: 'success', count_processed: 0, count_updated: 0 });
@@ -167,9 +167,9 @@ exports.handler = async function(event) {
       });
     }
 
-    console.log(`[compute-team-lg1] ${rows.length} equipes a upsert`);
+    console.log(`[compute-team-stats] ${rows.length} equipes a upsert`);
     await upsertCache(rows);
-    console.log(`[compute-team-lg1] Done.`);
+    console.log(`[compute-team-stats] Done.`);
 
     await endCronRun(runId, {
       status: 'success',
@@ -183,8 +183,13 @@ exports.handler = async function(event) {
       body: JSON.stringify({ teams: rows.length, matches: matches.length }),
     };
   } catch (err) {
-    console.error('[compute-team-lg1] Erreur:', err.message);
+    console.error('[compute-team-stats] Erreur:', err.message);
     await endCronRun(runId, { status: 'error', error_message: err.message });
     return { statusCode: 500, headers: cors, body: err.message };
   }
+};
+
+// Netlify Scheduled Function — tous les jours a 4h30 UTC (6h30 Paris)
+exports.config = {
+  schedule: '30 4 * * *',
 };

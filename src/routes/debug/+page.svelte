@@ -211,14 +211,6 @@
   // --- CRON : next run ---
   const CRONS = [
     {
-      id: 'generate-alerts',
-      label: 'Génération alertes',
-      fn: 'generate-alerts.js',
-      schedule: '0 6,16 * * *',
-      human: 'Tous les jours à 8h et 18h Paris (6h et 16h UTC)',
-      desc: 'Génère les alertes LG1/LG2 pour J, J+1, J+2.',
-    },
-    {
       id: 'daily-seed',
       label: 'Seed quotidien',
       fn: 'daily-seed.js',
@@ -227,19 +219,27 @@
       desc: 'Seed dans h2h_matches les matchs joués hier (goal_events inclus).',
     },
     {
-      id: 'compute-team-lg1',
+      id: 'compute-team-stats',
       label: 'LG1% / LG2% équipes',
-      fn: 'compute-team-lg1.js',
-      schedule: '0 5 * * *',
-      human: 'Tous les jours à 7h Paris (5h UTC)',
+      fn: 'compute-team-stats.js',
+      schedule: '30 4 * * *',
+      human: 'Tous les jours à 6h30 Paris (4h30 UTC)',
       desc: 'Calcule lg1_after30_pct (but 31-45) et lg2_pct (but >=80) par équipe, upsert dans team_lg1_cache.',
+    },
+    {
+      id: 'generate-alerts',
+      label: 'Génération alertes',
+      fn: 'generate-alerts.js',
+      schedule: '0 5,16 * * *',
+      human: 'Tous les jours à 7h et 18h Paris (5h et 16h UTC)',
+      desc: 'Génère les alertes LG1/LG2 pour J, J+1, J+2.',
     },
     {
       id: 'notify-daily-summary',
       label: 'Résumé Telegram quotidien',
       fn: 'notify-daily-summary.js',
-      schedule: '0 9 * * *',
-      human: 'Tous les jours à 9h UTC (11h Paris)',
+      schedule: '30 5 * * *',
+      human: 'Tous les jours à 7h30 Paris (5h30 UTC)',
       desc: 'Envoie un résumé Telegram des alertes Fort du jour. Idempotent (1 message/jour).',
     },
     {
@@ -252,43 +252,36 @@
     },
   ];
 
+  /**
+   * Calcule le prochain run d'un cron expression simplifie.
+   * Supporte : "M H * * *" (minute, heure(s) UTC fixes) et "* /N * * * *" (recurrent toutes N min).
+   */
   function nextRun(schedule) {
-    // Parsing simplifié pour les schedules fixes utilisés ici
     const now = new Date();
-    const utcH = now.getUTCHours();
     const utcM = now.getUTCMinutes();
-    const nowMins = utcH * 60 + utcM;
+    const nowMins = now.getUTCHours() * 60 + utcM;
 
-    if (schedule === '*/5 * * * *') {
-      const minsUntil = 5 - (utcM % 5);
+    // Recurrent toutes les N minutes
+    const recMatch = schedule.match(/^\*\/(\d+)\s+\*\s+\*\s+\*\s+\*$/);
+    if (recMatch) {
+      const step = parseInt(recMatch[1], 10);
+      const minsUntil = step - (utcM % step);
       return `dans ${minsUntil} min`;
     }
-    if (schedule === '0 * * * *') {
-      const minsUntil = 60 - utcM;
-      return `dans ${minsUntil} min`;
-    }
-    if (schedule === '0 6,16 * * *') {
-      // 6h et 16h UTC
-      const targets = [6 * 60, 16 * 60];
-      const next = targets.find(t => t > nowMins) ?? (targets[0] + 24 * 60);
+
+    // Pattern "M H * * *" ou "M H1,H2,... * * *"
+    const fixedMatch = schedule.match(/^(\d+)\s+([\d,]+)\s+\*\s+\*\s+\*$/);
+    if (fixedMatch) {
+      const min = parseInt(fixedMatch[1], 10);
+      const hours = fixedMatch[2].split(',').map(h => parseInt(h, 10));
+      const targets = hours.map(h => h * 60 + min);
+      const next = targets.find(t => t > nowMins) ?? (Math.min(...targets) + 24 * 60);
       const diff = next - nowMins;
-      return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
+      const h = Math.floor(diff / 60);
+      const m = diff % 60;
+      return `dans ${h}h${m > 0 ? ' ' + m + 'min' : ''}`.trim();
     }
-    if (schedule === '0 4 * * *') {
-      const target = 4 * 60;
-      const diff = target > nowMins ? target - nowMins : 24 * 60 - nowMins + target;
-      return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
-    }
-    if (schedule === '0 5 * * *') {
-      const target = 5 * 60;
-      const diff = target > nowMins ? target - nowMins : 24 * 60 - nowMins + target;
-      return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
-    }
-    if (schedule === '0 9 * * *') {
-      const target = 9 * 60;
-      const diff = target > nowMins ? target - nowMins : 24 * 60 - nowMins + target;
-      return `dans ${Math.floor(diff / 60)}h ${diff % 60 > 0 ? (diff % 60) + 'min' : ''}`.trim();
-    }
+
     return '—';
   }
 
@@ -331,7 +324,7 @@
     lg1CacheRunning = true;
     lg1CacheResult = null;
     try {
-      const res = await callFunction('/.netlify/functions/compute-team-lg1');
+      const res = await callFunction('/.netlify/functions/compute-team-stats');
       lg1CacheResult = await res.json();
     } catch (e) {
       lg1CacheResult = { error: e.message };
@@ -434,7 +427,7 @@
         <div class="cron-item__fn">{cron.fn}</div>
         <div class="cron-item__schedule">{cron.human}</div>
         <div class="cron-item__desc">{cron.desc}</div>
-        {#if cron.id === 'compute-team-lg1'}
+        {#if cron.id === 'compute-team-stats'}
           <div style="margin-top:8px;">
             <button class="btn btn--secondary btn--sm" onclick={handleComputeLg1} disabled={lg1CacheRunning}>
               {lg1CacheRunning ? '⏳ Calcul...' : '▶ Lancer maintenant'}

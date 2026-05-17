@@ -25,11 +25,11 @@
    * }>}
    */
   const CRONS = [
-    { name: 'daily-seed',           label: 'Seed quotidien',     hoursUTC: [4],     freqHours: 24, notes: '6h Paris · matchs hier' },
-    { name: 'compute-team-lg1',     label: 'Calcul LG1% / LG2%', hoursUTC: [5],     freqHours: 24, notes: '7h Paris · badges equipes' },
-    { name: 'generate-alerts',      label: 'Generation alertes', hoursUTC: [6, 16], freqHours: 12, notes: '8h + 18h Paris' },
-    { name: 'notify-daily-summary', label: 'Resume Telegram',    hoursUTC: [9],     freqHours: 24, notes: '11h Paris · alertes Fort' },
-    { name: 'notify-pre-kickoff',   label: 'Telegram pre-match', hoursUTC: null, intervalMin: 5, freqHours: 0.1, notes: 'toutes les 5 min' },
+    { name: 'daily-seed',           label: 'Seed quotidien',     runsAt: [{h: 4,  m: 0}],                       freqHours: 24, notes: '6h Paris · matchs hier' },
+    { name: 'compute-team-stats',     label: 'Calcul LG1% / LG2%', runsAt: [{h: 4,  m: 30}],                      freqHours: 24, notes: '6h30 Paris · badges equipes' },
+    { name: 'generate-alerts',      label: 'Generation alertes', runsAt: [{h: 5,  m: 0}, {h: 16, m: 0}],        freqHours: 12, notes: '7h + 18h Paris' },
+    { name: 'notify-daily-summary', label: 'Resume Telegram',    runsAt: [{h: 5,  m: 30}],                      freqHours: 24, notes: '7h30 Paris · alertes Fort' },
+    { name: 'notify-pre-kickoff',   label: 'Telegram pre-match', runsAt: null, intervalMin: 5,                  freqHours: 0.1, notes: 'toutes les 5 min' },
   ];
 
   /** @type {Map<string, {started_at: string, status: string}>} */
@@ -130,7 +130,7 @@
   });
 
   function nextCronRun(cron) {
-    if (cron.hoursUTC == null && cron.intervalMin) {
+    if (cron.runsAt == null && cron.intervalMin) {
       // Cron recurrent : prochain pas de N minutes
       const d = new Date(now);
       const m = d.getUTCMinutes();
@@ -140,10 +140,10 @@
     }
     const candidates = [];
     for (let day = 0; day <= 1; day++) {
-      for (const h of cron.hoursUTC) {
+      for (const t of cron.runsAt) {
         const d = new Date(now);
         d.setUTCDate(d.getUTCDate() + day);
-        d.setUTCHours(h, 0, 0, 0);
+        d.setUTCHours(t.h, t.m, 0, 0);
         if (d > now) candidates.push(d);
       }
     }

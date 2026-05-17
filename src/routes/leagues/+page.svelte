@@ -284,7 +284,7 @@
                 </tbody>
               </table>
             {:else}
-              <div class="league-item__loading">Données non disponibles — actualisation automatique demain (7h Paris / 5h UTC)</div>
+              <div class="league-item__loading">Données non disponibles — actualisation automatique demain (6h30 Paris / 4h30 UTC)</div>
             {/if}
           </div>
         {/if}

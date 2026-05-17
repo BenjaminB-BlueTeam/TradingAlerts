@@ -6,16 +6,16 @@
   directory = "netlify/functions"
 
 [functions."generate-alerts"]
-  schedule = "0 6,16 * * *"
+  schedule = "0 5,16 * * *"
 
 [functions."daily-seed"]
   schedule = "0 4 * * *"
 
-[functions."compute-team-lg1"]
-  schedule = "0 5 * * *"
+[functions."compute-team-stats"]
+  schedule = "30 4 * * *"
 
 [functions."notify-pre-kickoff"]
   schedule = "*/5 * * * *"
 
 [functions."notify-daily-summary"]
-  schedule = "0 9 * * *"
+  schedule = "30 5 * * *"
