@@ -67,9 +67,9 @@ describe('isFavorite (fonction PURE)', () => {
       expect(isFavorite(set, undefined)).toBe(false);
     });
 
-    it('retourne false si teamId est 0 (conversion Number(0) === 0, n\'est pas falsy pour la comparaison)', () => {
+    it('retourne true si teamId est 0 et que 0 est dans le Set (0 != null, donc non exclu)', () => {
       const set = new Set([0, 1, 2]);
-      expect(isFavorite(set, 0)).toBe(true); // 0 est un nombre valide, mais == null check l'exclut
+      expect(isFavorite(set, 0)).toBe(true); // 0 == null vaut false -> 0 n'est pas exclu, et 0 est dans le Set
     });
   });
 
