@@ -7,7 +7,7 @@
    Sémantique (validée avec Benjamin) :
    - Une équipe passe le seuil LG1 si lg1_home_pct >= seuil OU lg1_away_pct >= seuil.
    - Idem LG2 (dom OU ext).
-   - Les deux seuils combinés en ET (si les deux sont renseignés).
+   - Les deux seuils combinés en OU (l'équipe passe si elle atteint LG1 OU LG2).
    - Un seuil null/non renseigné est ignoré.
    - Si aucun seuil n'est renseigné → aucun résultat (le filtre est inactif).
    ================================================ */
@@ -39,6 +39,8 @@ function contextPasses(homePct, awayPct, min) {
 
 /**
  * Une équipe (ligne team_lg1_cache) passe-t-elle les seuils LG1/LG2 ?
+ * Combinaison en OU : l'équipe est retenue si elle atteint le seuil LG1 OU le seuil LG2.
+ * Un seuil null est ignoré (ne peut pas faire passer l'équipe).
  * @param {object} row - { lg1_home_pct, lg1_away_pct, lg2_home_pct, lg2_away_pct }
  * @param {number|null} lg1Min - seuil LG1 (null = ignoré)
  * @param {number|null} lg2Min - seuil LG2 (null = ignoré)
@@ -47,8 +49,9 @@ function contextPasses(homePct, awayPct, min) {
 export function passesThreshold(row, lg1Min, lg2Min) {
   if (!row) return false;
   if (lg1Min == null && lg2Min == null) return false; // filtre inactif
-  return contextPasses(row.lg1_home_pct, row.lg1_away_pct, lg1Min)
-      && contextPasses(row.lg2_home_pct, row.lg2_away_pct, lg2Min);
+  const lg1Ok = lg1Min != null && contextPasses(row.lg1_home_pct, row.lg1_away_pct, lg1Min);
+  const lg2Ok = lg2Min != null && contextPasses(row.lg2_home_pct, row.lg2_away_pct, lg2Min);
+  return lg1Ok || lg2Ok;
 }
 
 /**

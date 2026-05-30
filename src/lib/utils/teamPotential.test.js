@@ -180,7 +180,7 @@ describe('passesThreshold', () => {
     });
   });
 
-  describe('les deux seuils (ET logique)', () => {
+  describe('les deux seuils (OU logique)', () => {
     it('passe si LG1 ok ET LG2 ok', () => {
       const row = makeRow({
         lg1_home_pct: 60,
@@ -191,24 +191,24 @@ describe('passesThreshold', () => {
       expect(passesThreshold(row, 55, 50)).toBe(true);
     });
 
-    it('ne passe pas si LG1 ok mais LG2 ko', () => {
+    it('passe si LG1 ok meme si LG2 ko (OU)', () => {
       const row = makeRow({
         lg1_home_pct: 60,
         lg1_away_pct: 40,
         lg2_home_pct: 45,
         lg2_away_pct: 30,
       });
-      expect(passesThreshold(row, 55, 50)).toBe(false);
+      expect(passesThreshold(row, 55, 50)).toBe(true);
     });
 
-    it('ne passe pas si LG1 ko mais LG2 ok', () => {
+    it('passe si LG2 ok meme si LG1 ko (OU)', () => {
       const row = makeRow({
         lg1_home_pct: 50,
         lg1_away_pct: 40,
         lg2_home_pct: 52,
         lg2_away_pct: 30,
       });
-      expect(passesThreshold(row, 55, 50)).toBe(false);
+      expect(passesThreshold(row, 55, 50)).toBe(true);
     });
 
     it('ne passe pas si LG1 ko ET LG2 ko', () => {
@@ -536,7 +536,7 @@ describe('filterTeamsByPotential', () => {
       expect(result[0].team_id).toBe(2);
     });
 
-    it('filtre avec les deux seuils', () => {
+    it('filtre avec les deux seuils en OU (LG1 OU LG2 suffit)', () => {
       const rows = [
         makeRow({
           team_id: 1,
@@ -544,25 +544,27 @@ describe('filterTeamsByPotential', () => {
           lg1_away_pct: 40,
           lg2_home_pct: 45,
           lg2_away_pct: 30,
-        }), // LG1 ok (60), LG2 ko (45)
+        }), // LG1 ok (60), LG2 ko (45) -> passe via LG1
         makeRow({
           team_id: 2,
           lg1_home_pct: 70,
           lg1_away_pct: 50,
           lg2_home_pct: 52,
           lg2_away_pct: 48,
-        }), // LG1 ok (70), LG2 ok (52)
+        }), // LG1 ok (70), LG2 ok (52) -> passe
         makeRow({
           team_id: 3,
           lg1_home_pct: 40,
           lg1_away_pct: 35,
           lg2_home_pct: 55,
           lg2_away_pct: 50,
-        }), // LG1 ko (40), LG2 ok (55)
+        }), // LG1 ko (40), LG2 ok (55) -> passe via LG2
       ];
       const result = filterTeamsByPotential(rows, 55, 50);
-      expect(result).toHaveLength(1);
-      expect(result[0].team_id).toBe(2);
+      // OU : les 3 passent (chacune atteint au moins un des deux seuils)
+      expect(result).toHaveLength(3);
+      // Tri par bestLg1 desc : team 2 (70) > team 1 (60) > team 3 (40)
+      expect(result.map(r => r.team_id)).toEqual([2, 1, 3]);
     });
   });
 
