@@ -191,6 +191,33 @@ export async function createManualAlert(match, strategy, leagueName) {
 }
 
 // ============================================================
+// FAVORIS (équipes favorites)
+// ============================================================
+
+export async function getFavorites() {
+  const { data, error } = await supabase
+    .from('favorite_teams')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) { console.error('getFavorites:', error); return []; }
+  return data || [];
+}
+
+export async function addFavoriteTeam(teamId, teamName = null) {
+  const { error } = await supabase.from('favorite_teams').insert({
+    team_id: teamId,
+    team_name: teamName || null,
+  });
+  // Idempotent : ignore violation d'unicité (23505)
+  if (error && error.code !== '23505') throw error;
+}
+
+export async function removeFavoriteTeam(teamId) {
+  const { error } = await supabase.from('favorite_teams').delete().eq('team_id', teamId);
+  if (error) throw error;
+}
+
+// ============================================================
 // AUTH
 // ============================================================
 

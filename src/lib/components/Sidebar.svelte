@@ -16,6 +16,7 @@
 
   const navItems = [
     { href: '/mes-matchs',    icon: '⭐', label: 'Mes matchs'         },
+    { href: '/favoris',       icon: '🌟', label: 'Favoris'            },
     { href: '/alerts/lg1',    icon: '⚡', label: 'Alertes'            },
     { href: '/matches',       icon: '⚽', label: 'Matchs à venir'     },
     { href: '/red-cards',     icon: '🟥', label: 'Cartons rouges'     },

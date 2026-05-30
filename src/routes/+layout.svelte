@@ -7,6 +7,7 @@
   import Toast from '$lib/components/Toast.svelte';
   import { loadFromStorage } from '$lib/stores/appStore.js';
   import { loadSelections } from '$lib/stores/selectionStore.js';
+  import { loadFavorites } from '$lib/stores/favoritesStore.js';
   import { initApp } from '$lib/data.js';
   import { cacheEvict } from '$lib/api/cache.js';
   import { supabase } from '$lib/api/supabase.js';
@@ -40,6 +41,7 @@
     const [apiStatus] = await Promise.all([
       initApp(),
       loadSelections(),
+      loadFavorites(),
     ]);
 
     initialized = true;

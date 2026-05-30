@@ -9,6 +9,8 @@
   import SelectAlertButton from '$lib/components/SelectAlertButton.svelte';
   import { callFunction } from '$lib/api/functions.js';
   import TeamLgBadges from '$lib/components/TeamLgBadges.svelte';
+  import FavoriteStarButton from '$lib/components/FavoriteStarButton.svelte';
+  import { favoriteTeamIds, isFavorite } from '$lib/stores/favoritesStore.js';
 
   // Type courant : 'lg1' ou 'lg2'
   let type = $derived($page.params.type);
@@ -360,6 +362,7 @@
     {#each filteredAlerts as a (a.id)}
       <div class="alert-card"
         class:alert-card--expanded={expandedId === a.id}
+        class:alert-card--favorite={isFavorite($favoriteTeamIds, a.home_team_id) || isFavorite($favoriteTeamIds, a.away_team_id)}
       >
         <div class="alert-card__header" onclick={() => toggleExpand(a)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(a); } }} role="button" tabindex="0" aria-expanded={expandedId === a.id}>
           <div class="alert-card__time">
@@ -387,6 +390,7 @@
             {#if a.home_team_id && a.away_team_id}
               <div class="alert-card__team-badges">
                 <div class="alert-card__team-badge-row">
+                  <FavoriteStarButton teamId={a.home_team_id} teamName={a.home_team_name} />
                   <span class="alert-card__team-label">{a.home_team_name}</span>
                   <TeamLgBadges
                     teamId={a.home_team_id}
@@ -397,6 +401,7 @@
                   />
                 </div>
                 <div class="alert-card__team-badge-row">
+                  <FavoriteStarButton teamId={a.away_team_id} teamName={a.away_team_name} />
                   <span class="alert-card__team-label">{a.away_team_name}</span>
                   <TeamLgBadges
                     teamId={a.away_team_id}

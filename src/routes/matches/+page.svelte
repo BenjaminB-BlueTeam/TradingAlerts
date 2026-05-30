@@ -8,7 +8,9 @@
   import { loadTeamMatches as _loadTeamMatches, computeTeamStats, goalBar } from '$lib/utils/teamData.js';
   import ManualSelectButton from '$lib/components/ManualSelectButton.svelte';
   import TeamLgBadges from '$lib/components/TeamLgBadges.svelte';
+  import FavoriteStarButton from '$lib/components/FavoriteStarButton.svelte';
   import { selectedKeys } from '$lib/stores/selectionStore.js';
+  import { favoriteTeamIds, isFavorite } from '$lib/stores/favoritesStore.js';
 
   function isSelectedFor(matchId, type) {
     return [...$selectedKeys].some(k => k.startsWith(`${matchId}:${type}`));
@@ -308,6 +310,7 @@
     <div class="team-detail">
       <div class="team-detail__header">
         <span class="team-detail__name">{selectedTeam.name}</span>
+        <FavoriteStarButton teamId={selectedTeam.id} teamName={selectedTeam.name} />
         <span class="team-detail__context">Domicile</span>
         <TeamLgBadges teamId={selectedTeam.id} context="home" size="sm" inline />
         <div class="team-detail__summary"><span><strong>{homeMatches.length}</strong> matchs</span></div>
@@ -346,6 +349,7 @@
     <div class="team-detail">
       <div class="team-detail__header">
         <span class="team-detail__name">{selectedTeam.name}</span>
+        <FavoriteStarButton teamId={selectedTeam.id} teamName={selectedTeam.name} />
         <span class="team-detail__context">Extérieur</span>
         <TeamLgBadges teamId={selectedTeam.id} context="away" size="sm" inline />
         <div class="team-detail__summary"><span><strong>{awayMatches.length}</strong> matchs</span></div>
@@ -392,7 +396,7 @@
 {:else if filteredMatches.length > 0}
   <div class="matches-list">
     {#each filteredMatches as m (m.id)}
-      <div class="match-card" class:match-card--expanded={expandedId === m.id}>
+      <div class="match-card" class:match-card--expanded={expandedId === m.id} class:match-card--favorite={isFavorite($favoriteTeamIds, m.homeID) || isFavorite($favoriteTeamIds, m.awayID)}>
         <div class="match-card__header" onclick={() => toggleExpand(m)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(m); } }} role="button" tabindex="0" aria-expanded={expandedId === m.id}>
           <div class="match-card__time">
             <div class="match-card__day">{formatDateUnix(m.date_unix)}</div>
@@ -411,10 +415,12 @@
             {#if m.homeID && m.awayID}
               <div class="match-card__team-stats">
                 <div class="match-card__team-stat-row">
+                  <FavoriteStarButton teamId={m.homeID} teamName={m.home_name} />
                   <span class="match-card__team-stat-name">{m.home_name}</span>
                   <TeamLgBadges teamId={m.homeID} context="home" size="sm" inline />
                 </div>
                 <div class="match-card__team-stat-row">
+                  <FavoriteStarButton teamId={m.awayID} teamName={m.away_name} />
                   <span class="match-card__team-stat-name">{m.away_name}</span>
                   <TeamLgBadges teamId={m.awayID} context="away" size="sm" inline />
                 </div>

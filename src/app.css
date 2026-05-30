@@ -36,6 +36,7 @@
   --color-signal-faible:#888780;
   --color-warning-orange:#EF9F27;
   --color-badge-violet:  #7F77DD;
+  --color-favorite-gold: #D4AF37;
   --color-danger:        #E24B4A;
   --color-success:       #1D9E75;
   --color-text-primary:   #F0F0F0;
@@ -309,7 +310,9 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 /* ---- MATCH CARD ---- */
 .match-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-card); overflow: hidden; transition: border-color var(--transition-fast), box-shadow var(--transition-fast); }
 .match-card:hover { border-color: var(--color-border-hover); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-.match-card--warning { border-left: 3px solid var(--color-warning-orange); }
+.match-card--warning   { border-left: 3px solid var(--color-warning-orange); }
+.match-card--favorite  { border-left: 3px solid var(--color-favorite-gold); background: rgba(212, 175, 55, 0.05); }
+.alert-card--favorite  { border-left: 3px solid var(--color-favorite-gold); background: rgba(212, 175, 55, 0.05); }
 .match-card--exclu { opacity: 0.5; }
 .match-card__header { padding: 14px 16px 10px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .match-card__teams { flex: 1; }
