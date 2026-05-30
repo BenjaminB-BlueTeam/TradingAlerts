@@ -414,6 +414,9 @@
     border-top: 1px solid var(--color-border);
     max-height: 500px;
     overflow-y: auto;
+    /* Scroll horizontal sur petit écran : la table (en-têtes nowrap LG1/LG2)
+       peut dépasser, sinon elle serait coupée par .league-item (overflow:hidden). */
+    overflow-x: auto;
   }
   .league-item__loading {
     padding: 16px;
