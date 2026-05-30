@@ -223,49 +223,148 @@
     {#if potentialResults.length > 100}
       <p class="potential-hint">Affiche les 100 premières — affine les seuils.</p>
     {/if}
-    <div class="potential-list">
+    <div class="fav-list">
       {#each potentialResults.slice(0, 100) as team (team.team_id)}
-        {@const lg1Home = team.lg1_home_pct}
-        {@const lg1Away = team.lg1_away_pct}
-        {@const lg2Home = team.lg2_home_pct}
-        {@const lg2Away = team.lg2_away_pct}
-        <div class="potential-row">
-          <span class="potential-team-name">{team.team_name}</span>
-          <span class="potential-team-n" title="Matchs joués cette saison (domicile · extérieur)">{team.matches_home ?? 0}d·{team.matches_away ?? 0}e</span>
-          <span class="potential-stats">
-            <span class="potential-stat-group">
-              <span class="potential-stat-label">LG1</span>
-              <span class="potential-stat-ctx">D</span>
-              <span
-                class="potential-stat-val"
-                class:potential-stat-val--hit={lg1Min != null && lg1Home != null && lg1Home >= lg1Min}
-              >{lg1Home ?? '–'}{lg1Home != null ? '%' : ''}</span>
-              <span class="potential-stat-ctx">E</span>
-              <span
-                class="potential-stat-val"
-                class:potential-stat-val--hit={lg1Min != null && lg1Away != null && lg1Away >= lg1Min}
-              >{lg1Away ?? '–'}{lg1Away != null ? '%' : ''}</span>
-            </span>
-            <span class="potential-stat-group">
-              <span class="potential-stat-label">LG2</span>
-              <span class="potential-stat-ctx">D</span>
-              <span
-                class="potential-stat-val"
-                class:potential-stat-val--hit={lg2Min != null && lg2Home != null && lg2Home >= lg2Min}
-              >{lg2Home ?? '–'}{lg2Home != null ? '%' : ''}</span>
-              <span class="potential-stat-ctx">E</span>
-              <span
-                class="potential-stat-val"
-                class:potential-stat-val--hit={lg2Min != null && lg2Away != null && lg2Away >= lg2Min}
-              >{lg2Away ?? '–'}{lg2Away != null ? '%' : ''}</span>
-            </span>
-          </span>
-          <FavoriteStarButton teamId={team.team_id} teamName={team.team_name} size="sm" />
-        </div>
+        {@render teamHistoryCard(team, 'disc')}
       {/each}
     </div>
   {/if}
 </div>
+
+<!-- SNIPPET : card équipe réutilisable (favoris + résultats filtre) -->
+{#snippet teamHistoryCard(team, keyPrefix)}
+  {@const isExpanded = expandedTeamId === team.team_id}
+  {@const homeMatches = getTeamMatches(team.team_id, 'home')}
+  {@const awayMatches = getTeamMatches(team.team_id, 'away')}
+
+  <div class="fav-card" class:fav-card--expanded={isExpanded}>
+    <!-- EN-TÊTE DE LA CARD -->
+    <div
+      class="fav-card__header"
+      onclick={() => toggleExpand(team.team_id)}
+      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(team.team_id); } }}
+      role="button"
+      tabindex="0"
+      aria-expanded={isExpanded}
+    >
+      <span class="fav-card__name">{team.team_name || '—'}</span>
+      <div class="fav-card__badges">
+        <TeamLgBadges teamId={team.team_id} size="sm" inline />
+      </div>
+      <FavoriteStarButton teamId={team.team_id} teamName={team.team_name} size="sm" />
+      <span class="fav-card__arrow">{isExpanded ? '▼' : '▶'}</span>
+    </div>
+
+    <!-- HISTORIQUE EXPAND -->
+    {#if isExpanded}
+      <div class="fav-card__expand">
+        {#if homeMatches === null || awayMatches === null}
+          <div class="fav-expand__loading">⏳ Chargement de l'historique...</div>
+        {:else}
+          <!-- Colonne domicile -->
+          <div class="team-detail">
+            <div class="team-detail__header">
+              <span class="team-detail__name">{team.team_name || '—'}</span>
+              <span class="team-detail__context">Domicile</span>
+              <TeamLgBadges teamId={team.team_id} context="home" size="sm" inline />
+              <div class="team-detail__summary">
+                <span><strong>{homeMatches.length}</strong> matchs</span>
+              </div>
+            </div>
+            {#if homeMatches.length > 0}
+              <div class="team-matches">
+                {#each homeMatches as m, i (m.id ?? m.match_id)}
+                  {@const bar = goalBar(m, 'home')}
+                  {@const barKey = `${keyPrefix}_${team.team_id}_home_${i}`}
+                  <div class="match-row">
+                    <span class="match-row__date">{m.match_date ? m.match_date.slice(8,10)+'/'+m.match_date.slice(5,7) : '—'}</span>
+                    <span class="match-row__home match-row__bold">{m.home_team_name}</span>
+                    <span class="match-row__score match-row__score--{bar.result}">{m.home_goals}-{m.away_goals}</span>
+                    <span class="match-row__away">{m.away_team_name}</span>
+                    <div class="match-row__bar">
+                      <div
+                        class="goal-bar"
+                        onmousemove={(e) => onBarMove(e, barKey)}
+                        onmouseleave={onBarLeave}
+                      >
+                        <span class="goal-bar__marker" style="left:33%">30'</span>
+                        <span class="goal-bar__marker" style="left:50%">HT</span>
+                        <span class="goal-bar__marker" style="left:98%">FT</span>
+                        {#if hoverBar?.key === barKey}
+                          <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
+                        {/if}
+                        {#each bar.goals as g}
+                          <span
+                            class="goal-dot"
+                            class:goal-dot--conceded={!g.scored}
+                            style="left:{g.pct}%"
+                            data-tip="{g.label || g.min + '\''}"
+                          ></span>
+                        {/each}
+                      </div>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <p class="team-detail__empty">Aucun match joué cette saison</p>
+            {/if}
+          </div>
+
+          <!-- Colonne extérieur -->
+          <div class="team-detail">
+            <div class="team-detail__header">
+              <span class="team-detail__name">{team.team_name || '—'}</span>
+              <span class="team-detail__context">Extérieur</span>
+              <TeamLgBadges teamId={team.team_id} context="away" size="sm" inline />
+              <div class="team-detail__summary">
+                <span><strong>{awayMatches.length}</strong> matchs</span>
+              </div>
+            </div>
+            {#if awayMatches.length > 0}
+              <div class="team-matches">
+                {#each awayMatches as m, i (m.id ?? m.match_id)}
+                  {@const bar = goalBar(m, 'away')}
+                  {@const barKey = `${keyPrefix}_${team.team_id}_away_${i}`}
+                  <div class="match-row">
+                    <span class="match-row__date">{m.match_date ? m.match_date.slice(8,10)+'/'+m.match_date.slice(5,7) : '—'}</span>
+                    <span class="match-row__home">{m.home_team_name}</span>
+                    <span class="match-row__score match-row__score--{bar.result}">{m.home_goals}-{m.away_goals}</span>
+                    <span class="match-row__away match-row__bold">{m.away_team_name}</span>
+                    <div class="match-row__bar">
+                      <div
+                        class="goal-bar"
+                        onmousemove={(e) => onBarMove(e, barKey)}
+                        onmouseleave={onBarLeave}
+                      >
+                        <span class="goal-bar__marker" style="left:33%">30'</span>
+                        <span class="goal-bar__marker" style="left:50%">HT</span>
+                        <span class="goal-bar__marker" style="left:98%">FT</span>
+                        {#if hoverBar?.key === barKey}
+                          <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
+                        {/if}
+                        {#each bar.goals as g}
+                          <span
+                            class="goal-dot"
+                            class:goal-dot--conceded={!g.scored}
+                            style="left:{g.pct}%"
+                            data-tip="{g.label || g.min + '\''}"
+                          ></span>
+                        {/each}
+                      </div>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <p class="team-detail__empty">Aucun match joué cette saison</p>
+            {/if}
+          </div>
+        {/if}
+      </div>
+    {/if}
+  </div>
+{/snippet}
 
 <!-- LISTE DES FAVORIS -->
 {#if $favoriteTeams.length === 0}
@@ -277,137 +376,7 @@
 {:else}
   <div class="fav-list">
     {#each $favoriteTeams as fav (fav.team_id)}
-      {@const isExpanded = expandedTeamId === fav.team_id}
-      {@const homeMatches = getTeamMatches(fav.team_id, 'home')}
-      {@const awayMatches = getTeamMatches(fav.team_id, 'away')}
-
-      <div class="fav-card" class:fav-card--expanded={isExpanded}>
-        <!-- EN-TÊTE DE LA CARD -->
-        <div
-          class="fav-card__header"
-          onclick={() => toggleExpand(fav.team_id)}
-          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(fav.team_id); } }}
-          role="button"
-          tabindex="0"
-          aria-expanded={isExpanded}
-        >
-          <span class="fav-card__name">{fav.team_name || '—'}</span>
-          <div class="fav-card__badges">
-            <TeamLgBadges teamId={fav.team_id} size="sm" inline />
-          </div>
-          <FavoriteStarButton teamId={fav.team_id} teamName={fav.team_name} size="sm" />
-          <span class="fav-card__arrow">{isExpanded ? '▼' : '▶'}</span>
-        </div>
-
-        <!-- HISTORIQUE EXPAND -->
-        {#if isExpanded}
-          <div class="fav-card__expand">
-            {#if homeMatches === null || awayMatches === null}
-              <div class="fav-expand__loading">⏳ Chargement de l'historique...</div>
-            {:else}
-              <!-- Colonne domicile -->
-              <div class="team-detail">
-                <div class="team-detail__header">
-                  <span class="team-detail__name">{fav.team_name || '—'}</span>
-                  <span class="team-detail__context">Domicile</span>
-                  <TeamLgBadges teamId={fav.team_id} context="home" size="sm" inline />
-                  <div class="team-detail__summary">
-                    <span><strong>{homeMatches.length}</strong> matchs</span>
-                  </div>
-                </div>
-                {#if homeMatches.length > 0}
-                  <div class="team-matches">
-                    {#each homeMatches as m, i (m.id ?? m.match_id)}
-                      {@const bar = goalBar(m, 'home')}
-                      {@const barKey = `fav_${fav.team_id}_home_${i}`}
-                      <div class="match-row">
-                        <span class="match-row__date">{m.match_date ? m.match_date.slice(8,10)+'/'+m.match_date.slice(5,7) : '—'}</span>
-                        <span class="match-row__home match-row__bold">{m.home_team_name}</span>
-                        <span class="match-row__score match-row__score--{bar.result}">{m.home_goals}-{m.away_goals}</span>
-                        <span class="match-row__away">{m.away_team_name}</span>
-                        <div class="match-row__bar">
-                          <div
-                            class="goal-bar"
-                            onmousemove={(e) => onBarMove(e, barKey)}
-                            onmouseleave={onBarLeave}
-                          >
-                            <span class="goal-bar__marker" style="left:33%">30'</span>
-                            <span class="goal-bar__marker" style="left:50%">HT</span>
-                            <span class="goal-bar__marker" style="left:98%">FT</span>
-                            {#if hoverBar?.key === barKey}
-                              <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
-                            {/if}
-                            {#each bar.goals as g}
-                              <span
-                                class="goal-dot"
-                                class:goal-dot--conceded={!g.scored}
-                                style="left:{g.pct}%"
-                                data-tip="{g.label || g.min + '\''}"
-                              ></span>
-                            {/each}
-                          </div>
-                        </div>
-                      </div>
-                    {/each}
-                  </div>
-                {:else}
-                  <p class="team-detail__empty">Aucun match joué cette saison</p>
-                {/if}
-              </div>
-
-              <!-- Colonne extérieur -->
-              <div class="team-detail">
-                <div class="team-detail__header">
-                  <span class="team-detail__name">{fav.team_name || '—'}</span>
-                  <span class="team-detail__context">Extérieur</span>
-                  <TeamLgBadges teamId={fav.team_id} context="away" size="sm" inline />
-                  <div class="team-detail__summary">
-                    <span><strong>{awayMatches.length}</strong> matchs</span>
-                  </div>
-                </div>
-                {#if awayMatches.length > 0}
-                  <div class="team-matches">
-                    {#each awayMatches as m, i (m.id ?? m.match_id)}
-                      {@const bar = goalBar(m, 'away')}
-                      {@const barKey = `fav_${fav.team_id}_away_${i}`}
-                      <div class="match-row">
-                        <span class="match-row__date">{m.match_date ? m.match_date.slice(8,10)+'/'+m.match_date.slice(5,7) : '—'}</span>
-                        <span class="match-row__home">{m.home_team_name}</span>
-                        <span class="match-row__score match-row__score--{bar.result}">{m.home_goals}-{m.away_goals}</span>
-                        <span class="match-row__away match-row__bold">{m.away_team_name}</span>
-                        <div class="match-row__bar">
-                          <div
-                            class="goal-bar"
-                            onmousemove={(e) => onBarMove(e, barKey)}
-                            onmouseleave={onBarLeave}
-                          >
-                            <span class="goal-bar__marker" style="left:33%">30'</span>
-                            <span class="goal-bar__marker" style="left:50%">HT</span>
-                            <span class="goal-bar__marker" style="left:98%">FT</span>
-                            {#if hoverBar?.key === barKey}
-                              <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
-                            {/if}
-                            {#each bar.goals as g}
-                              <span
-                                class="goal-dot"
-                                class:goal-dot--conceded={!g.scored}
-                                style="left:{g.pct}%"
-                                data-tip="{g.label || g.min + '\''}"
-                              ></span>
-                            {/each}
-                          </div>
-                        </div>
-                      </div>
-                    {/each}
-                  </div>
-                {:else}
-                  <p class="team-detail__empty">Aucun match joué cette saison</p>
-                {/if}
-              </div>
-            {/if}
-          </div>
-        {/if}
-      </div>
+      {@render teamHistoryCard(fav, 'fav')}
     {/each}
   </div>
 {/if}
@@ -673,95 +642,6 @@
     font-size: 12px;
     color: var(--color-text-secondary);
     margin: 0 0 8px;
-  }
-
-  .potential-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .potential-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 5px 6px;
-    border-radius: 4px;
-    transition: background var(--transition-fast);
-  }
-
-  .potential-row:hover {
-    background: rgba(255, 255, 255, 0.04);
-  }
-
-  .potential-team-name {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-  }
-
-  .potential-team-n {
-    flex-shrink: 0;
-    font-size: 11px;
-    color: var(--color-text-muted);
-    white-space: nowrap;
-  }
-
-  .potential-stats {
-    display: flex;
-    gap: 10px;
-    flex-shrink: 0;
-    align-items: center;
-  }
-
-  .potential-stat-group {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 11px;
-  }
-
-  .potential-stat-label {
-    font-weight: 700;
-    color: var(--color-text-secondary);
-    margin-right: 2px;
-    font-size: 10px;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-  }
-
-  .potential-stat-ctx {
-    color: var(--color-text-muted);
-    font-size: 10px;
-    font-weight: 600;
-  }
-
-  .potential-stat-val {
-    color: var(--color-text-secondary);
-    min-width: 30px;
-    text-align: right;
-  }
-
-  .potential-stat-val--hit {
-    color: var(--color-accent-green);
-    font-weight: 700;
-  }
-
-  @media (max-width: 600px) {
-    .potential-stats {
-      flex-direction: column;
-      gap: 2px;
-      align-items: flex-start;
-    }
-
-    .potential-row {
-      flex-wrap: wrap;
-    }
   }
 
   /* Filtre select (importé de app.css) */
