@@ -218,6 +218,34 @@ export async function removeFavoriteTeam(teamId) {
 }
 
 // ============================================================
+// POTENTIEL ÉQUIPES (filtre LG1%/LG2% sur la saison)
+// ============================================================
+
+/**
+ * Charge les stats LG1/LG2 contextuelles (dom/ext) de toutes les équipes
+ * depuis team_lg1_cache. Une seule requête légère (~1 ligne/équipe), le
+ * filtrage par seuil se fait ensuite côté client (instantané).
+ * Retourne les lignes brutes — la déduplication par équipe (latest) et le
+ * filtrage sont gérés par $lib/utils/teamPotential.js.
+ *
+ * NB cap PostgREST : Supabase plafonne les réponses (souvent 1000 lignes) ;
+ * `.limit(5000)` ne contourne PAS ce plafond serveur. Aujourd'hui ~939 lignes
+ * donc OK. Le tri `updated_at DESC` privilégie les saisons récentes : si la
+ * table dépasse un jour 1000 lignes, ce sont les plus anciennes (que la dédup
+ * écarte de toute façon) qui seraient tronquées en premier. À paginer si la
+ * volumétrie de team_lg1_cache franchit ce seuil.
+ */
+export async function getTeamPotentialRows() {
+  const { data, error } = await supabase
+    .from('team_lg1_cache')
+    .select('team_id, team_name, lg1_home_pct, lg1_away_pct, lg2_home_pct, lg2_away_pct, matches_home, matches_away, updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(5000);
+  if (error) { console.error('getTeamPotentialRows:', error); return []; }
+  return data || [];
+}
+
+// ============================================================
 // AUTH
 // ============================================================
 

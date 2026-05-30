@@ -1,7 +1,9 @@
 <script>
-  import { supabase } from '$lib/api/supabase.js';
+  import { onMount } from 'svelte';
+  import { supabase, getTeamPotentialRows } from '$lib/api/supabase.js';
   import { favoriteTeams, addFavorite, removeFavorite } from '$lib/stores/favoritesStore.js';
   import { loadTeamMatches as _loadTeamMatches, goalBar } from '$lib/utils/teamData.js';
+  import { filterTeamsByPotential } from '$lib/utils/teamPotential.js';
   import FavoriteStarButton from '$lib/components/FavoriteStarButton.svelte';
   import TeamLgBadges from '$lib/components/TeamLgBadges.svelte';
 
@@ -64,6 +66,22 @@
     teamSuggestions = [];
     searchError = '';
   }
+
+  // ---- Filtre potentiel LG1/LG2 ----
+  let potentialRows = $state([]);
+  let potentialLoading = $state(false);
+  let lg1Input = $state('');
+  let lg2Input = $state('');
+
+  let lg1Min = $derived(lg1Input.trim() === '' ? null : Number(lg1Input));
+  let lg2Min = $derived(lg2Input.trim() === '' ? null : Number(lg2Input));
+  let potentialResults = $derived(filterTeamsByPotential(potentialRows, lg1Min, lg2Min));
+
+  onMount(async () => {
+    potentialLoading = true;
+    try { potentialRows = await getTeamPotentialRows(); }
+    finally { potentialLoading = false; }
+  });
 
   // ---- Expand / historique par équipe ----
   let expandedTeamId = $state(null);
@@ -158,6 +176,95 @@
       {/if}
     </div>
   </div>
+</div>
+
+<!-- FILTRE PAR POTENTIEL -->
+<div class="potential-section">
+  <div class="potential-header">
+    <span class="potential-label">Afficher des équipes par potentiel (saison)</span>
+  </div>
+  <div class="potential-inputs">
+    <label class="potential-input-group">
+      <span class="potential-input-hint">LG1 ≥</span>
+      <input
+        type="number"
+        class="filter-select potential-input"
+        min="0"
+        max="100"
+        placeholder="ex : 40"
+        value={lg1Input}
+        oninput={(e) => lg1Input = e.target.value}
+      />
+      <span class="potential-input-unit">%</span>
+    </label>
+    <label class="potential-input-group">
+      <span class="potential-input-hint">LG2 ≥</span>
+      <input
+        type="number"
+        class="filter-select potential-input"
+        min="0"
+        max="100"
+        placeholder="ex : 35"
+        value={lg2Input}
+        oninput={(e) => lg2Input = e.target.value}
+      />
+      <span class="potential-input-unit">%</span>
+    </label>
+  </div>
+
+  {#if potentialLoading}
+    <p class="potential-hint">⏳ Chargement des stats…</p>
+  {:else if potentialRows.length === 0}
+    <p class="potential-hint">Stats indisponibles.</p>
+  {:else if lg1Min == null && lg2Min == null}
+    <p class="potential-hint">Saisis un seuil LG1 et/ou LG2 pour afficher les équipes correspondantes.</p>
+  {:else}
+    <p class="potential-count">{potentialResults.length} équipe{potentialResults.length > 1 ? 's' : ''} trouvée{potentialResults.length > 1 ? 's' : ''}</p>
+    {#if potentialResults.length > 100}
+      <p class="potential-hint">Affiche les 100 premières — affine les seuils.</p>
+    {/if}
+    <div class="potential-list">
+      {#each potentialResults.slice(0, 100) as team (team.team_id)}
+        {@const lg1Home = team.lg1_home_pct}
+        {@const lg1Away = team.lg1_away_pct}
+        {@const lg2Home = team.lg2_home_pct}
+        {@const lg2Away = team.lg2_away_pct}
+        <div class="potential-row">
+          <span class="potential-team-name">{team.team_name}</span>
+          <span class="potential-team-n" title="Matchs joués cette saison (domicile · extérieur)">{team.matches_home ?? 0}d·{team.matches_away ?? 0}e</span>
+          <span class="potential-stats">
+            <span class="potential-stat-group">
+              <span class="potential-stat-label">LG1</span>
+              <span class="potential-stat-ctx">D</span>
+              <span
+                class="potential-stat-val"
+                class:potential-stat-val--hit={lg1Min != null && lg1Home != null && lg1Home >= lg1Min}
+              >{lg1Home ?? '–'}{lg1Home != null ? '%' : ''}</span>
+              <span class="potential-stat-ctx">E</span>
+              <span
+                class="potential-stat-val"
+                class:potential-stat-val--hit={lg1Min != null && lg1Away != null && lg1Away >= lg1Min}
+              >{lg1Away ?? '–'}{lg1Away != null ? '%' : ''}</span>
+            </span>
+            <span class="potential-stat-group">
+              <span class="potential-stat-label">LG2</span>
+              <span class="potential-stat-ctx">D</span>
+              <span
+                class="potential-stat-val"
+                class:potential-stat-val--hit={lg2Min != null && lg2Home != null && lg2Home >= lg2Min}
+              >{lg2Home ?? '–'}{lg2Home != null ? '%' : ''}</span>
+              <span class="potential-stat-ctx">E</span>
+              <span
+                class="potential-stat-val"
+                class:potential-stat-val--hit={lg2Min != null && lg2Away != null && lg2Away >= lg2Min}
+              >{lg2Away ?? '–'}{lg2Away != null ? '%' : ''}</span>
+            </span>
+          </span>
+          <FavoriteStarButton teamId={team.team_id} teamName={team.team_name} size="sm" />
+        </div>
+      {/each}
+    </div>
+  {/if}
 </div>
 
 <!-- LISTE DES FAVORIS -->
@@ -503,6 +610,158 @@
     padding: 8px 12px;
     color: var(--color-danger);
     font-size: 12px;
+  }
+
+  /* ---- Filtre potentiel ---- */
+  .potential-section {
+    margin-bottom: 24px;
+    padding: 14px 16px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+  }
+
+  .potential-header {
+    margin-bottom: 10px;
+  }
+
+  .potential-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .potential-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .potential-input-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .potential-input-hint {
+    color: var(--color-text-secondary);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .potential-input-unit {
+    color: var(--color-text-muted);
+    font-size: 12px;
+  }
+
+  .potential-input {
+    width: 72px;
+    text-align: center;
+  }
+
+  .potential-hint {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin: 6px 0 0;
+  }
+
+  .potential-count {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin: 0 0 8px;
+  }
+
+  .potential-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .potential-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 6px;
+    border-radius: 4px;
+    transition: background var(--transition-fast);
+  }
+
+  .potential-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .potential-team-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+
+  .potential-team-n {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  .potential-stats {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+    align-items: center;
+  }
+
+  .potential-stat-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+  }
+
+  .potential-stat-label {
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    margin-right: 2px;
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .potential-stat-ctx {
+    color: var(--color-text-muted);
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .potential-stat-val {
+    color: var(--color-text-secondary);
+    min-width: 30px;
+    text-align: right;
+  }
+
+  .potential-stat-val--hit {
+    color: var(--color-accent-green);
+    font-weight: 700;
+  }
+
+  @media (max-width: 600px) {
+    .potential-stats {
+      flex-direction: column;
+      gap: 2px;
+      align-items: flex-start;
+    }
+
+    .potential-row {
+      flex-wrap: wrap;
+    }
   }
 
   /* Filtre select (importé de app.css) */
