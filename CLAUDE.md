@@ -55,8 +55,13 @@ netlify/functions/
   compute-team-stats.js  ← cron quotidien 4h30 UTC (6h30 Paris) — calcule lg1_after30_pct (but 31-45 min) ET lg2_pct (but ≥80 min) par (season_id, team_id), upsert team_lg1_cache. Renomme depuis compute-team-lg1.js (le 17/05/26) car ce cron calcule aussi LG2.
   notify-pre-kickoff.js ← cron */5 min — notification Telegram match imminent (fenêtre 0-5min avant kickoff, selected_alerts)
   notify-daily-summary.js ← cron 5h30 UTC (7h30 Paris) — résumé quotidien Telegram des alertes Fort (idempotent)
+  notify-lg1-live.js    ← cron */5 min — notif Telegram ~30 min après kickoff (avant fenêtre but 31-45') pour les matchs de Mes matchs (selected_alerts), famille LG1
+  notify-lg2-live.js    ← cron */5 min — notif Telegram ~95 min après kickoff (entrée fenêtre but ≥80') pour les matchs de Mes matchs, famille LG2 (offset fixe — FootyStats n'expose pas de minute live)
   lib/
     api.js              ← helpers partagés (footyRequest, supabaseQuery)
+    notifyWindow.cjs    ← logique pure crons live (computeKickoffWindow, isInLiveWindow, matchesFamily, dedupeByMatch) + offsets LG1/LG2
+    notifyWindow.test.js ← tests unitaires fenêtres live (63 tests)
+    notifyLive.cjs      ← orchestrateur partagé runLiveNotifier (selected_alerts → alerts, dédup par match, idempotence notifications_sent)
     auth.cjs            ← requireAuth (FUNCTIONS_AUTH_TOKEN + bypass scheduled)
     auth.test.js        ← tests unitaires auth
     cors.cjs            ← corsHeaders (CORS restreint + dev localhost)
@@ -305,7 +310,8 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **Compteur API** — req restantes affiché dans la sidebar
 - **Svelte 5 runes** — `$state`, `$derived`, `$effect`, `$props()`, `onclick` natif
 - **Supabase RLS durcie** (2026-05-07) — policies `authenticated` pour le frontend (plus `anon`), `service_role` pour les Netlify Functions.
-- **Notifications Telegram** (2026-05-16) — `lib/telegram.cjs` : helper `sendMessage(text)`. Deux crons actifs : (1) `notify-pre-kickoff.js` (*/5 min) — match imminent dans fenêtre 0-5min avant kickoff ; (2) `notify-daily-summary.js` (5h30 UTC / 7h30 Paris) — résumé alertes Fort du jour. `generate-alerts.js` ne notifie plus Telegram (supprimé). Idempotence via table `notifications_sent` (UNIQUE kind+ref_key). Env vars : `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`.
+- **Notifications Telegram** (2026-05-16) — `lib/telegram.cjs` : helper `sendMessage(text)`. Crons : (1) `notify-pre-kickoff.js` (*/5 min) — match imminent dans fenêtre 0-5min avant kickoff ; (2) `notify-daily-summary.js` (5h30 UTC / 7h30 Paris) — résumé alertes Fort du jour. `generate-alerts.js` ne notifie plus Telegram (supprimé). Idempotence via table `notifications_sent` (UNIQUE kind+ref_key). Env vars : `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`.
+- **Notifications Telegram live LG1/LG2** (2026-05-30) — `notify-lg1-live.js` + `notify-lg2-live.js` (crons */5 min) : pour chaque match de Mes matchs (`selected_alerts`), notif Telegram déclenchée APRÈS le coup d'envoi. LG1 = offset +30 min (avant fenêtre but 31-45'), LG2 = offset +95 min (45'+15' pause+35', entrée fenêtre but ≥80' — offset fixe car FootyStats n'expose pas de minute live). Logique pure factorisée dans `lib/notifyWindow.cjs` (63 tests), orchestrateur partagé `lib/notifyLive.cjs` (`runLiveNotifier`). Filtre `status=eq.pending`, dédup 1 notif/match (signal de plus forte confiance), idempotence `kind` `lg1_live`/`lg2_live` + ref_key `kind:match_id`.
 - **Tests unitaires** — Vitest, 1244 tests (lg1.cjs 162, scoring 44, lg2.cjs 27, lg2.js 17, cache 20, formatters 22, teamData 14, selectionFilters + selectionStore + supabase.auth + autres)
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`. Tooltip goal-dot opaque (#1e2330). bar-hover-min opaque.
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)

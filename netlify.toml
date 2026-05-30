@@ -19,3 +19,9 @@
 
 [functions."notify-daily-summary"]
   schedule = "30 5 * * *"
+
+[functions."notify-lg1-live"]
+  schedule = "*/5 * * * *"
+
+[functions."notify-lg2-live"]
+  schedule = "*/5 * * * *"
