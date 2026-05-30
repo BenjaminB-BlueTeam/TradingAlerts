@@ -171,7 +171,7 @@ scripts/
 
 | Table | Rôle | RLS | Policies authenticated | Policies anon | Policies service_role |
 |-------|------|-----|----------------------|---------------|----------------------|
-| `alerts` | Alertes LG1/LG2 (status: pending/validated/lost/expired). Colonnes principales : `lg1_pct`, `lg1_confidence`, `lg1_factors`. **Pas de `season_id`** — pour rattacher une alerte à une saison, passer par `team_lg1_cache.team_id`. Migration 20260517100000 a drop `fhg_result, dc_*` (orphelins) | ON | SELECT + UPDATE + INSERT (algo_version='manual' uniquement) | — | ALL |
+| `alerts` | Alertes LG1/LG2. `status` reste `pending` à vie : la résolution auto (validated/lost) a été retirée avec `check-results` — les lignes validated/lost existantes sont des vestiges figés. Colonnes principales : `lg1_pct`, `lg1_confidence`, `lg1_factors`. **Pas de `season_id`** — pour rattacher une alerte à une saison, passer par `team_lg1_cache.team_id`. Migration 20260517100000 a drop `fhg_result, dc_*` (orphelins) | ON | SELECT + UPDATE + INSERT (algo_version='manual' uniquement) | — | ALL |
 | `trades` | Journal des trades (legacy) | ON | ALL | — | ALL |
 | `h2h_matches` | Historique matchs H2H avec goal_events (65k+ lignes) | ON | SELECT | — | ALL |
 | `team_seasons` | Stats équipes par saison (legacy, non peuplée) | ON | SELECT | — | ALL |
@@ -322,8 +322,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 
 ## Roadmap — prochaines étapes
 
-- [ ] Attendre ~20 alertes LG1 terminées (validated/lost) → lancer `scripts/calibrate-threshold.js`
-- [ ] Attendre ~20 alertes LG2 terminées → calibrer les seuils LG2 (STREAK_MOYEN / STREAK_FORT) avec Wilson CI
+- [x] ~~Calibration empirique LG1/LG2 sur alertes validated/lost~~ — abandonné : la résolution auto des résultats (`check-results`) a été retirée. `scripts/calibrate-threshold.js` reste exploitable sur le stock figé d'alertes déjà résolues (≤ 2026-05-11) si besoin.
 - [ ] Chantier D : Page "Résultats" + filtres équipe/ligue
 - [ ] Chantier E : Blacklist équipes
 - [x] Chantier A : Notifications Telegram — DONE 2026-05-16 (fort_alert, pre_kickoff, daily_summary)
@@ -335,7 +334,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 1. LG1 = streak comportemental par équipe (pas H2H), dom/ext séparés — algo streak v2 depuis 2026-04-23
 2. [ARCHIVÉ] DC supprimée — stratégie retirée de l'app le 2026-05-07 (données existantes préservées en BDD)
 3. Vérification LG1 à la MT (pas à la volée — VAR)
-4. Terminologie : Validé / Perdu
+4. [ARCHIVÉ] Système de vérification des résultats (validated/lost) retiré — `check-results` supprimé, plus de résolution auto des alertes. Les alertes restent `pending`.
 5. Pas de mode démo — données réelles uniquement
 6. Pas de bouton "Analyse IA" — Benjamin fait sa propre analyse
 8. Clé anon sans fallback hardcodé

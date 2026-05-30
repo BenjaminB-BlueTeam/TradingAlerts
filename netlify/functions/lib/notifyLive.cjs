@@ -20,8 +20,7 @@ const {
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-// Seul un match encore "pending" (non résolu) doit déclencher une notif live.
-// Enum réel de alerts.status : pending / validated / lost / expired.
+// Seul un match encore "pending" (non clôturé) doit déclencher une notif live.
 const LIVE_STATUS = 'pending';
 
 async function supabaseFetch(path, params = '') {

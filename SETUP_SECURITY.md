@@ -47,10 +47,10 @@ curl -X POST https://tradingfootalerts.netlify.app/.netlify/functions/delete-ale
 ### 5. Surveiller les crons après déploiement
 
 Dans les 24h suivant le déploiement, vérifier dans Netlify → **Functions** → **Logs** que :
-- `check-results` (HH:00) → pas de 401
-- `generate-alerts` (0h/12h UTC) → pas de 401
-- `daily-seed` (6h UTC) → pas de 401
+- `generate-alerts` (5h/16h UTC) → pas de 401
+- `daily-seed` (4h UTC) → pas de 401
 - `compute-team-stats` (4h30 UTC) → pas de 401
+- `notify-*` (*/5 min + quotidiens) → pas de 401
 
 ---
 

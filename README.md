@@ -23,16 +23,12 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 - Generation automatique toutes les 12h (`generate-alerts.js`) pour J, J+1, J+2
 - Tags **LG1_A**, **LG1_B**, **LG1_A+B** avec confiance fort/moyen
 - Tags **LG2_A**, **LG2_B**, **LG2_A+B** (but >= 80 min)
-- Verification auto des resultats toutes les heures (`check-results.js`)
-- Validation LG1 : buts dans la fenetre 31-45 min (goal_events)
-- Validation LG2 : au moins un but >= 80 min
-- Cleanup automatique des alertes pending > 48h (status `expired`)
+- (La verification auto des resultats — `check-results.js` — a ete retiree : les alertes restent `pending`)
 
 ### Dashboard (`/`) — etat de sante prod
-- **7 KPIs** en 2 sections : "Santé infra" (API FootyStats, Ligues, Seed H2H, LG1 Cache) et "Alertes du jour" (LG1 Fort, LG2 Fort, Taux validées 7j)
+- KPIs "Santé infra" (API FootyStats, Ligues, Seed H2H, LG1 Cache) + "Alertes du jour" (LG1 Fort, LG2 Fort)
 - Seed H2H : derniere date seedee (filtrée <= aujourd'hui) + count total + heure du dernier seed
 - LG1 Cache : date dernier `compute-team-stats`, nombre d'equipes en cache
-- Taux validées 7j : % validated/(validated+lost) sur 7 jours glissants
 - Couleurs : vert/orange/rouge selon ancienneté pour Seed et LG1 Cache
 - Layout centre, max-width 960px, 2 grilles separees (4col + 3col)
 
@@ -43,7 +39,6 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 - Expand detaille : 15 derniers matchs dom/ext par equipe
 - Barres de timing buts (minutes exactes), curseur interactif
 - Stats resume : 1MT%, AVG buts
-- Badges Valide/Perdu/EN COURS
 
 ### Selection LG2 (`/alerts-lg2`)
 - Alertes LG2_A/B/A+B avec filtres : jour (boutons), ligue (dropdown), confiance (dropdown)
@@ -54,8 +49,6 @@ Application de **trading sportif football** qui identifie les matchs avec fort p
 ### Mes matchs (`/mes-matchs`)
 - Alertes selectionnees manuellement dans LG1 et LG2 (via SelectAlertButton)
 - Sections : Actif (A venir / Aujourd'hui) + Termines (collapsible)
-- Saisie inline cote + mise → insert dans `alert_trades` (chips reactifs)
-- Boutons resultat manuel Gagne/Perdu par alerte
 - Tri par date et confiance (fort > moyen)
 
 ### Historique (`/historique`)
@@ -122,17 +115,17 @@ Streak consecutif de matchs avec au moins un but apres la 80e minute, par equipe
     +-- Supabase JS client (authenticated, RLS) --> [Supabase PostgreSQL]
     |
 [Netlify Scheduled Functions (service_role)]
-    +-- generate-alerts.js   (cron 12h) --> FootyStats + Supabase (LG1 + LG2)
-    +-- check-results.js     (cron 1h)  --> FootyStats + Supabase (valide/perdu)
-    +-- daily-seed.js        (cron 6h)  --> FootyStats + Supabase (rolling J-3→J-1)
+    +-- generate-alerts.js   (cron 5h+16h UTC) --> FootyStats + Supabase (LG1 + LG2)
+    +-- daily-seed.js        (cron 4h UTC)  --> FootyStats + Supabase (matchs d'hier)
     +-- compute-team-stats.js (cron 4h30 UTC)  --> Supabase team_lg1_cache
+    +-- notify-*.js          (cron */5 + quotidiens) --> Telegram (pre-kickoff, live LG1/LG2, résumé)
 ```
 
 ### Tables Supabase (RLS actif sur toutes)
 
 | Table | Role | authenticated | anon |
 |-------|------|--------------|------|
-| `alerts` | Alertes LG1/LG2 (pending/validated/lost/expired) | SELECT + UPDATE | — |
+| `alerts` | Alertes LG1/LG2 (status `pending` — résolution auto retirée) | SELECT + UPDATE | — |
 | `trades` | Journal des trades | ALL | — |
 | `h2h_matches` | 65k+ matchs avec goal_events (seed + daily) | SELECT | — |
 | `team_seasons` | Stats equipes par saison (legacy, non peuplee) | SELECT | — |

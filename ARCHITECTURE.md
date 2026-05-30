@@ -10,12 +10,6 @@
   |     Utilise lg1.cjs (LG1 streak v2) + lg2.cjs (LG2 streak)
   |     Insert les alertes LG1_A/B/A+B et LG2_A/B/A+B dans Supabase
   |
-  +-- check-results.js (cron 1h)
-  |     Charge les alertes pending dont le kickoff est passe
-  |     Evalue LG1_A/B/A+B : buts 31-45 min via goal_events
-  |     Evalue LG2_A/B/A+B : au moins un but >= 80 min via goal_events
-  |     Met a jour status -> validated / lost / expired (>48h)
-  |
   +-- daily-seed.js (cron 6h UTC)
   |     Fenetre glissante J-3→J-1 via todays-matches (attrape matchs reprogrammes)
   |     Upsert dans h2h_matches avec scores + goal_events (idempotent, on_conflict=match_id)
@@ -36,7 +30,7 @@ Toutes les tables ont RLS active. `service_role` bypass RLS par defaut.
 
 | Table | Colonnes cles | authenticated | anon | Ecrivain principal |
 |-------|--------------|--------------|------|-------------------|
-| `alerts` | match_id, signal_type, confidence, status, algo_version, user_excluded | SELECT + UPDATE | UPDATE (résultat manuel) | generate-alerts.js, check-results.js |
+| `alerts` | match_id, signal_type, confidence, status (`pending`), algo_version | SELECT + UPDATE | — | generate-alerts.js |
 | `trades` | match_id, mise, resultat | ALL | — | Frontend |
 | `h2h_matches` | match_id, home/away_team_id, goal_events, match_date (65k lignes) | SELECT | — | daily-seed.js, seed-data.js |
 | `teams` | team_id (unique), name (~1098 equipes — colonne réelle `name`, pas `team_name`) | SELECT | SELECT | seed-data.js (league-teams) |
@@ -158,7 +152,7 @@ Bouton SelectAlertButton sur /alerts-lg1 et /alerts-lg2.
 - CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP
 
 ### FUNCTIONS_AUTH_TOKEN
-- `generate-alerts.js`, `check-results.js`, `seed-data.js` exigent `Authorization: Bearer <token>`
+- `generate-alerts.js`, `seed-data.js` exigent `Authorization: Bearer <token>`
 - Token stocke dans `FUNCTIONS_AUTH_TOKEN` (env Netlify, Functions scope)
 - Valeur envoyee par le frontend via `VITE_FUNCTIONS_AUTH_TOKEN`
 

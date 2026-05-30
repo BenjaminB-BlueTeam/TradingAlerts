@@ -458,8 +458,6 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 .alert-badge--lg1 { background: rgba(29, 158, 117, 0.15); color: var(--color-accent-green); }
 .alert-badge--fort { background: rgba(29, 158, 117, 0.15); color: var(--color-accent-green); }
 .alert-badge--moyen { background: rgba(239, 159, 39, 0.15); color: var(--color-signal-moyen); }
-.alert-badge--validated { background: rgba(29, 158, 117, 0.2); color: var(--color-accent-green); }
-.alert-badge--lost { background: rgba(226, 75, 74, 0.2); color: var(--color-danger); }
 .alert-badge--live { background: rgba(239, 159, 39, 0.2); color: var(--color-signal-moyen); animation: pulse 2s infinite; }
 
 /* ---- GOAL BAR (shared across alerts + matches pages) ---- */

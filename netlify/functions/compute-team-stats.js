@@ -59,7 +59,10 @@ async function fetchMatches(seasonStart) {
       + `?select=home_team_id,home_team_name,away_team_id,away_team_name,season_id,goal_events`
       + `&match_date=gte.${seasonStart}`
       + `&goal_events=not.is.null`
-      + `&order=match_date.asc`
+      // Tri TOTAL (match_date seul n'est pas unique : bcp de matchs le meme jour).
+      // Sans le tiebreaker `id`, la pagination limit/offset saute/duplique des lignes
+      // aux frontieres de page -> totaux par equipe fausses (~1/3 des equipes).
+      + `&order=match_date.asc,id.asc`
       + `&limit=${PAGE}&offset=${offset}`;
     const res = await fetch(url, {
       headers: {

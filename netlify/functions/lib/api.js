@@ -7,7 +7,7 @@ const FOOTYSTATS_BASE = 'https://api.football-data-api.com';
 
 /**
  * Requête vers l'API FootyStats via la clé serveur.
- * Utilisé par generate-alerts, check-results et seed-data.
+ * Utilisé par generate-alerts et seed-data.
  */
 async function footyRequest(endpoint, params = {}, timeoutMs = 8000) {
   const apiKey = process.env.FOOTYSTATS_API_KEY;
@@ -24,7 +24,7 @@ async function footyRequest(endpoint, params = {}, timeoutMs = 8000) {
 
 /**
  * Lecture Supabase REST (GET).
- * Utilisé par generate-alerts et check-results.
+ * Utilisé par generate-alerts et les autres fonctions serverless.
  */
 async function supabaseQuery(table, query = '') {
   const supabaseUrl = process.env.SUPABASE_URL;
