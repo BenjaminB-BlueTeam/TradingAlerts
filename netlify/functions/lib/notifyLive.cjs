@@ -20,9 +20,6 @@ const {
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-// Seul un match encore "pending" (non clôturé) doit déclencher une notif live.
-const LIVE_STATUS = 'pending';
-
 async function supabaseFetch(path, params = '') {
   const url = `${SUPABASE_URL}/rest/v1/${path}${params ? '?' + params : ''}`;
   const res = await fetch(url, {
@@ -116,15 +113,14 @@ async function runLiveNotifier(event, { kind, family, offsetSec, buildMessage, l
     }
     const selectedSet = new Set(selectedRows.map(r => `${r.match_id}:${r.signal_type}`));
 
-    // 2. Alertes des matchs sélectionnés dans la fenêtre de kickoff, uniquement "pending".
+    // 2. Alertes des matchs sélectionnés dans la fenêtre de kickoff.
     // Borne basse exclusive (gt) + haute inclusive (lte) => partition stricte qui colle à
     // isInLiveWindow (elapsed ∈ [offset, offset+width[), sans recouvrement entre 2 runs.
     const alertsParams = [
       `match_id=in.(${matchIds.join(',')})`,
       `kickoff_unix=gt.${windowStart}`,
       `kickoff_unix=lte.${windowEnd}`,
-      `status=eq.${LIVE_STATUS}`,
-      'select=match_id,signal_type,home_team_name,away_team_name,league_name,kickoff_unix,confidence,status',
+      'select=match_id,signal_type,home_team_name,away_team_name,league_name,kickoff_unix,confidence',
     ].join('&');
 
     const alertsInWindow = await supabaseFetch('alerts', alertsParams);

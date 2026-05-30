@@ -156,14 +156,6 @@ Bouton SelectAlertButton sur /alerts-lg1 et /alerts-lg2.
 - Token stocke dans `FUNCTIONS_AUTH_TOKEN` (env Netlify, Functions scope)
 - Valeur envoyee par le frontend via `VITE_FUNCTIONS_AUTH_TOKEN`
 
-## Calibration des seuils
-
-`scripts/calibrate-threshold.js` — a lancer manuellement avec les vars Supabase :
-- Tableau par signal_type (LG1_A, LG1_B, LG1_A+B)
-- Tableau par confiance (fort, fort, moyen)
-- Cross-tab signal_type x confiance
-- Wilson CI 95% + recommandations automatiques
-
 ## Seed initial
 
 `scripts/run-seed.mjs` orchestre le seed complet de facon autonome :

@@ -189,7 +189,6 @@ netlify/functions/
   lib/parseMatch.js    # parseMatchRow partage (seed-data + daily-seed)
 scripts/
   run-seed.mjs         # orchestre seed complet autonome (start_full + boucle seed_league)
-  calibrate-threshold.js # calibration seuils LG1 (Wilson CI 95%)
 src/lib/
   core/lg1.js      # logique LG1 streak v2 (client-side ESM, miroir lg1.cjs)
   core/lg2.js          # logique LG2 streak (client-side ESM, miroir lg2.cjs)

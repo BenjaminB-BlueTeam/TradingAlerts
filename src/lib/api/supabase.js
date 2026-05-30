@@ -165,7 +165,6 @@ export async function createManualAlert(match, strategy, leagueName) {
     away_team_name: match.away_name || null,
     league_name: leagueName || null,
     h2h_count: 0,
-    status: 'pending',
     signal_type: signalType,
     lg1_pct: null,
     lg1_confidence: null,

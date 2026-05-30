@@ -235,7 +235,6 @@ exports.handler = async (event) => {
           away_team_name: m.away_name || null,
           league_name: leagueMap[m.competition_id] || null,
           h2h_count: h2h.length,
-          status: 'pending',
         };
 
         const alerts = [];
@@ -337,7 +336,6 @@ exports.handler = async (event) => {
             away_team_name: m.away_name || null,
             league_name: leagueMap[m.competition_id] || null,
             h2h_count: 0,
-            status: 'pending',
             match_id: m.id,
             signal_type: 'STAT_COMBO',
             lg1_pct: null,

@@ -143,7 +143,6 @@ static/
   icon-512.png          ← icône PWA 512×512
 scripts/
   run-seed.mjs          ← orchestre seed complet autonome (~240 saisons)
-  calibrate-threshold.js← calibration seuils LG1 (Wilson CI 95%)
 ```
 
 ---
@@ -171,7 +170,7 @@ scripts/
 
 | Table | Rôle | RLS | Policies authenticated | Policies anon | Policies service_role |
 |-------|------|-----|----------------------|---------------|----------------------|
-| `alerts` | Alertes LG1/LG2. `status` reste `pending` à vie : la résolution auto (validated/lost) a été retirée avec `check-results` — les lignes validated/lost existantes sont des vestiges figés. Colonnes principales : `lg1_pct`, `lg1_confidence`, `lg1_factors`. **Pas de `season_id`** — pour rattacher une alerte à une saison, passer par `team_lg1_cache.team_id`. Migration 20260517100000 a drop `fhg_result, dc_*` (orphelins) | ON | SELECT + UPDATE + INSERT (algo_version='manual' uniquement) | — | ALL |
+| `alerts` | Alertes LG1/LG2. **Plus de colonne `status`** — droppée le 2026-05-30 (migration 20260530xxxxxx) car le système de résolution des résultats a été définitivement retiré (aucun `validated`/`lost`/`pending`). Colonnes principales : `lg1_pct`, `lg1_confidence`, `lg1_factors`. **Pas de `season_id`** — pour rattacher une alerte à une saison, passer par `team_lg1_cache.team_id`. Migration 20260517100000 a drop `fhg_result, dc_*` (orphelins) | ON | SELECT + UPDATE + INSERT (algo_version='manual' uniquement) | — | ALL |
 | `trades` | Journal des trades (legacy) | ON | ALL | — | ALL |
 | `h2h_matches` | Historique matchs H2H avec goal_events (65k+ lignes) | ON | SELECT | — | ALL |
 | `team_seasons` | Stats équipes par saison (legacy, non peuplée) | ON | SELECT | — | ALL |
@@ -316,13 +315,12 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 - **CSS centralisé** — badges, goal-bar, team-detail, match-row dans `app.css`. Tooltip goal-dot opaque (#1e2330). bar-hover-min opaque.
 - **Fetch timeouts** — 8s sur tous les appels réseau (fonctions Netlify)
 - **Parallélisation queries** — `generate-alerts.js` traite les matchs par batch de 5
-- **Calibration seuils** — `scripts/calibrate-threshold.js` : cross-tab signal_type × confiance (LG1 uniquement), Wilson CI, recommandations STREAK_FORT/MOYEN
 
 ---
 
 ## Roadmap — prochaines étapes
 
-- [x] ~~Calibration empirique LG1/LG2 sur alertes validated/lost~~ — abandonné : la résolution auto des résultats (`check-results`) a été retirée. `scripts/calibrate-threshold.js` reste exploitable sur le stock figé d'alertes déjà résolues (≤ 2026-05-11) si besoin.
+- [x] ~~Calibration empirique LG1/LG2~~ — abandonné définitivement : le système de résolution des résultats (`check-results`, colonne `alerts.status`) a été entièrement supprimé. Plus aucune notion de validated/lost/pending.
 - [ ] Chantier D : Page "Résultats" + filtres équipe/ligue
 - [ ] Chantier E : Blacklist équipes
 - [x] Chantier A : Notifications Telegram — DONE 2026-05-16 (fort_alert, pre_kickoff, daily_summary)
@@ -334,7 +332,7 @@ LG2_MIN_MINUTE=80, LG2_STREAK_MIN_MATCHES=3, LG2_STREAK_MOYEN=3, LG2_STREAK_FORT
 1. LG1 = streak comportemental par équipe (pas H2H), dom/ext séparés — algo streak v2 depuis 2026-04-23
 2. [ARCHIVÉ] DC supprimée — stratégie retirée de l'app le 2026-05-07 (données existantes préservées en BDD)
 3. Vérification LG1 à la MT (pas à la volée — VAR)
-4. [ARCHIVÉ] Système de vérification des résultats (validated/lost) retiré — `check-results` supprimé, plus de résolution auto des alertes. Les alertes restent `pending`.
+4. [ARCHIVÉ] Système de vérification des résultats supprimé définitivement — `check-results` retiré, colonne `alerts.status` droppée (2026-05-30). Plus aucune notion de validated/lost/pending : une alerte est juste un signal généré.
 5. Pas de mode démo — données réelles uniquement
 6. Pas de bouton "Analyse IA" — Benjamin fait sa propre analyse
 8. Clé anon sans fallback hardcodé
@@ -504,7 +502,7 @@ L'utilisateur doit pouvoir suivre la chaîne de délégations dans la conversati
 | C | Page "Mes matchs" (sections actif/terminé + chips trades) | ✅ DONE (2026-05-07) |
 | D | Page "Résultats" + filtres équipe/ligue | À faire |
 | E | Blacklist équipes | À faire |
-| A | Notifications externes | À faire |
-| F | Calibration empirique | À faire |
+| A | Notifications externes | ✅ DONE (Telegram + live LG1/LG2) |
+| F | Calibration empirique | ❌ Abandonné (résolution des résultats supprimée) |
 
 **Ordre suggéré : D → E → A → F**
