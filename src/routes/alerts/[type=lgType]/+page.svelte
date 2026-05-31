@@ -598,6 +598,7 @@
     .alert-expand { grid-template-columns: 1fr; }
   }
   @media (max-width: 768px) {
+    .alert-expand { padding: 8px; gap: 8px; }
     .alert-card__header {
       display: grid;
       grid-template-columns: auto 1fr auto;

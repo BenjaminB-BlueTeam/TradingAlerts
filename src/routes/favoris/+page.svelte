@@ -516,6 +516,10 @@
   }
 
   @media (max-width: 768px) {
+    .fav-card__expand {
+      padding: 8px;
+      gap: 8px;
+    }
     .fav-card__header {
       flex-wrap: wrap;
     }

@@ -630,6 +630,7 @@
   }
   @media (max-width: 768px) {
     .match-card__header { flex-wrap: wrap; }
+    .team-expand { padding: 8px; gap: 8px; }
   }
 
   /* Panneau équipe — grille 2 colonnes */
