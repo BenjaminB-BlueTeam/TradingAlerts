@@ -275,7 +275,7 @@
               <div class="team-matches">
                 {#each homeMatches as m, i (m.id ?? m.match_id)}
                   {@const bar = goalBar(m, 'home')}
-                  {@const barKey = `${keyPrefix}_${team.team_id}_home_${i}`}
+                  {@const barKey = `${keyPrefix}_${team.team_id}_home`}
                   <div class="match-row">
                     <span class="match-row__date">{m.match_date ? m.match_date.slice(8,10)+'/'+m.match_date.slice(5,7) : '—'}</span>
                     <span class="match-row__home match-row__bold">{m.home_team_name}</span>
@@ -289,9 +289,13 @@
                       >
                         <span class="goal-bar__marker" style="left:33%">30'</span>
                         <span class="goal-bar__marker" style="left:50%">HT</span>
+                        <span class="goal-bar__marker" style="left:89%">80'</span>
                         <span class="goal-bar__marker" style="left:98%">FT</span>
                         {#if hoverBar?.key === barKey}
                           <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
+                        {/if}
+                        {#if hoverBar?.key === barKey && i === 0}
+                          <span class="bar-hover-min" style="position:absolute;bottom:calc(100% + 4px);left:{hoverBar.pct}%;transform:translateX(-50%);z-index:10;">{hoverBar.min}'</span>
                         {/if}
                         {#each bar.goals as g}
                           <span
@@ -325,7 +329,7 @@
               <div class="team-matches">
                 {#each awayMatches as m, i (m.id ?? m.match_id)}
                   {@const bar = goalBar(m, 'away')}
-                  {@const barKey = `${keyPrefix}_${team.team_id}_away_${i}`}
+                  {@const barKey = `${keyPrefix}_${team.team_id}_away`}
                   <div class="match-row">
                     <span class="match-row__date">{m.match_date ? m.match_date.slice(8,10)+'/'+m.match_date.slice(5,7) : '—'}</span>
                     <span class="match-row__home">{m.home_team_name}</span>
@@ -339,9 +343,13 @@
                       >
                         <span class="goal-bar__marker" style="left:33%">30'</span>
                         <span class="goal-bar__marker" style="left:50%">HT</span>
+                        <span class="goal-bar__marker" style="left:89%">80'</span>
                         <span class="goal-bar__marker" style="left:98%">FT</span>
                         {#if hoverBar?.key === barKey}
                           <div class="goal-cursor" style="left:{hoverBar.pct}%"></div>
+                        {/if}
+                        {#if hoverBar?.key === barKey && i === 0}
+                          <span class="bar-hover-min" style="position:absolute;bottom:calc(100% + 4px);left:{hoverBar.pct}%;transform:translateX(-50%);z-index:10;">{hoverBar.min}'</span>
                         {/if}
                         {#each bar.goals as g}
                           <span
